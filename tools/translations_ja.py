@@ -283,12 +283,6 @@ JA = {
     "左右: ハンドル  うしろ: ブレーキ  Z: するどく まがる\nA: ジャンプ  空中で B: スピントリック",
 "LAP %d/%d": "ラップ %d/%d",
 "POWER": "パワー",
-"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
-    "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
-    "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
-    "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
-    "オーロラ海 ラリー(入口の 西よりの ウィンドウ): 10こ\n"
-    "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
 "AURORA SEA RALLY\nYour DASH BOOTS run on water - as long as you\nkeep moving! Steer with left/right, pull back\nto brake, Z for a sharp carve, A to jump.\nPress B in mid-air for a spin trick: land it for\na speed boost. Talk to the seal to race!":
     "オーロラ海 ラリー\nダッシュブーツは 水のうえも はしれる… とまらなければね!\n"
     "左右で ハンドル、うしろで ブレーキ、Zで するどく まがる、Aで ジャンプ。\n"
@@ -314,4 +308,31 @@ JA = {
     "SELinuxアザラシ: とまれ! わたしは SELinuxアザラシ。\nポリシー: この海で わたしを ぬくことは ゆるされない!\n"
     "ブイの ゲートを 2周する レースで しょうぶだ。\nゲートを くぐるたびに パワー(さいこうそく)が あがり、"
     "はずすと もとに もどる。よーい…",
+# ---------------------------------------------------------------- FROSTCLOUD SKYWAY
+"FROSTCLOUD SKYWAY": "フロストクラウド スカイウェイ",
+"Sky Flight: 60 Fish": "スカイフライト さかな60",
+"Sky Flight: 120 Fish": "スカイフライト さかな120",
+"Sky Flight: 200 Fish": "スカイフライト さかな200",
+"Sky Flight: 300 Fish": "スカイフライト さかな300",
+"FROSTCLOUD SKYWAY\nFly free with the rocket! Move in any direction\nwith the stick, hold A to dash.\nDraw a loop around fish with your trail to grab\nthem all at once. You have 2 minutes!\nFish lines in one flight: 60 / 120 / 200 / 300.\nEach line reached gives its star.":
+    "フロストクラウド スカイウェイ\nロケットで 空を じゆうに とびまわろう! スティックで どの方向にも うごけて、Aを おしつづけると ダッシュ。\n"
+    "ひこうきぐもで さかなを ぐるっと かこむと まとめて ゲット!\nせいげんじかんは 2分!\n"
+    "1回の フライトで あつめた かずが 60 / 120 / 200 / 300 を こえるごとに スターが もらえるよ。",
+"NEXT LINE: %d more fish": "つぎの ラインまで あと %d ひき",
+"DASH": "ダッシュ",
+"PARALOOP! +%d": "パラループ! +%d",
+"TIME UP!  You collected %d fish.": "タイムアップ!  さかなを %d ひき あつめた。",
+"New Kernel Star!": "あたらしい カーネルスター!",
+"\nNo new star this time. Next line: %d fish.": "\nこんかいは あたらしい スターなし。つぎの ライン: %d ひき",
+"\nYou already own every star of the skyway!": "\nスカイウェイの スターは ぜんぶ もっているよ!",
+"TIME UP!": "タイムアップ!",
+"%d FISH! (star already owned)": "%d ひき たっせい! (スターは 入手ずみ)",
+"%d FISH! A star is waiting at the finish!": "%d ひき たっせい! ゴールで スターが もらえるよ!",
+"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
+    "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
+    "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
+    "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
+    "オーロラ海 ラリー(入口の 西よりの ウィンドウ): 10こ\n"
+    "フロストクラウド スカイウェイ(2階 北の ウィンドウ): 12こ\n"
+    "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
 }

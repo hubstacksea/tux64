@@ -59,6 +59,8 @@ const CourseInfo courses[CRS_COUNT] = {
     { "WHITEOUT LABYRINTH", 3, { "Heart of the Labyrinth", "Red Fish in the Dead Ends", "Escape Unseen" }, LV_MAZE },
     { "AURORA SEA RALLY", 5, { "Beat the SELinux Seal", "Sea Rally Under 60 Seconds", "Red Fish on the Ice Floes",
                                "Ride the Whale's Spout", "100 Fish of the Sea" }, LV_SEA },
+    { "FROSTCLOUD SKYWAY", 4, { "Sky Flight: 60 Fish", "Sky Flight: 120 Fish", "Sky Flight: 200 Fish",
+                                "Sky Flight: 300 Fish" }, LV_SKY },
 };
 
 /* ======================================================================
@@ -278,7 +280,7 @@ void dialog_open(const char *text)
     dlg_page_start = 0;
     dlg_t = 0;
     if (pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE && gstate == GS_PLAY &&
-        pl.act != ACT_SWIM && !player_in_air())
+        pl.act != ACT_SWIM && pl.act != ACT_SKYFLY && pl.act != ACT_SKATE && !player_in_air())
         player_set_act(ACT_FROZEN);
 }
 int dialog_active(void) { return dlg_on; }
@@ -375,6 +377,12 @@ void level_load(int level, int spawn)
     dlg_on = 0;
     g_star_dance_star = -1;
     objs_collision();
+    if (level == LV_SKY) {
+        sky_reset();
+        dialog_open("FROSTCLOUD SKYWAY\nFly free with the rocket! Move in any direction\nwith the stick, hold A to dash.\n"
+                    "Draw a loop around fish with your trail to grab\nthem all at once. You have 2 minutes!\n"
+                    "Fish lines in one flight: 60 / 120 / 200 / 300.\nEach line reached gives its star.");
+    }
     if (level == LV_SEA) {
         sfx(SFX_1UP);
         dialog_open("You got the DASH BOOTS!\nThey make you run so fast that you skim over\nthe water... and they won't come off on this sea!\n"
@@ -621,6 +629,7 @@ static void play_update(void)
         if (prev < 0.35f && g_gust >= 0.35f) sfx_ex(SFX_THROW, 0.9f, 0.35f);
         if (g_gust > 0.35f && g_frame % 25 == 0) sfx_ex(SFX_SLIDE, 0.5f * g_gust, 0.5f);
     } else { g_wind = v3(0, 0, 0); g_gust = 0; }
+    sky_update();
     objs_update();
     objs_collision();
     player_update();
@@ -968,6 +977,7 @@ static void render_world(void)
     glEnable(GL_CULL_FACE);
     glDepthMask(GL_TRUE);
     objs_draw_alpha();
+    sky_draw_alpha();
     if (lv.snow) draw_snow();
     glDisable(GL_FOG);
     if (underwater) {
@@ -1056,7 +1066,7 @@ static void draw_hud(void)
             gfx_text_center(g_vw * 0.5f + 40, 82, 1.5f, tr("AIR"), 0.7f, 0.9f, 1, 1);
     }
     /* rocket fuel */
-    if (pl.rocket_t > 0) {
+    if (pl.rocket_t > 0 && cur_level != LV_SKY) {
         float x = g_vw - 120, y = 440;
         gfx_rect(x - 6, y - 14, 12, 24, 0.9f, 0.15f, 0.12f, 1);
         gfx_rect(x - 3, y - 20, 6, 6, 1, 1, 1, 1);
@@ -1076,6 +1086,28 @@ static void draw_hud(void)
         int t = g_course_timer;
         snprintf(buf, sizeof buf, "TIME %d'%02d\"%d", t / 3600, (t / 60) % 60, (t % 60) / 6);
         gfx_text_shadow(g_vw - 230, 66, 2.5f, buf, 1, 1, 1, 1);
+    }
+    /* FROSTCLOUD SKYWAY: time left, fish lines and the dash gauge */
+    if (cur_level == LV_SKY) {
+        int t = g_sky_time, k, next = -1;
+        float x = g_vw * 0.5f;
+        snprintf(buf, sizeof buf, "%d:%02d", t / 3600, (t / 60) % 60);
+        gfx_text_center(x, 72, 4, buf, t < 600 ? 1.0f : 1.0f, t < 600 ? 0.3f : 1.0f, t < 600 ? 0.3f : 1.0f, 1);
+        for (k = 0; k < SKY_LINES; k++) {
+            float sx = 30 + k * 80;
+            int own = has_star(lv.course, k), hit = pl.coins >= g_sky_lines[k];
+            if (!hit && next < 0) next = k;
+            gfx_star2d(sx + 8, 412, 11, own ? 1.0f : 0.35f, own ? 0.85f : 0.35f, own ? 0.1f : 0.45f, 1);
+            snprintf(buf, sizeof buf, "%d", g_sky_lines[k]);
+            gfx_text_shadow(sx + 22, 403, 2, buf, hit ? 0.4f : 0.85f, hit ? 1.0f : 0.85f, hit ? 0.4f : 0.85f, 1);
+        }
+        if (next >= 0) {
+            snprintf(buf, sizeof buf, tr("NEXT LINE: %d more fish"), g_sky_lines[next] - pl.coins);
+            gfx_text_shadow(30, 375, 2, buf, 1, 1, 1, 1);
+        }
+        gfx_rect(30, 440, 204, 16, 0.05f, 0.05f, 0.1f, 0.8f);
+        gfx_rect(32, 442, 200 * pl.sky_dash, 12, 0.4f, 0.85f + 0.15f * sinf(g_frame * 0.2f), 1.0f, 1);
+        gfx_text_shadow(240, 438, 2, tr("DASH"), 0.7f, 0.95f, 1, 1);
     }
     /* AURORA SEA rally: lap, gate power and speed */
     if (cur_level == LV_SEA && pl.boots) {

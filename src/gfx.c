@@ -675,7 +675,7 @@ static void gen_textures(void)
                 }
             }
         /* course pictures */
-        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL10) {
+        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL11) {
             mip = 1;
             for (y = 0; y < w; y++)
                 for (x = 0; x < w; x++) {
@@ -689,6 +689,7 @@ static void gen_textures(void)
                     case TEX_PORTAL7: put(w, x, y, 0.12f + 0.1f * v, 0.06f + 0.06f * v, 0.2f + 0.15f * v, 1); break;
                     case TEX_PORTAL8: put(w, x, y, 0.35f + 0.4f * v, 0.55f + 0.3f * v, 0.95f, 1); break;
                     case TEX_PORTAL9: put(w, x, y, 0.88f, 0.9f, 0.95f, 1); break;
+                    case TEX_PORTAL11: put(w, x, y, 0.3f + 0.45f * v, 0.5f + 0.4f * v, 0.95f, 1); break;
                     case TEX_PORTAL10: put(w, x, y, 0.04f + 0.1f * v, 0.06f + 0.2f * v, 0.2f + 0.3f * v, 1); break;
                     default: put(w, x, y, 0.02f, 0.05f + 0.15f * v, 0.15f + 0.3f * v, 1); break;
                     }
@@ -817,6 +818,20 @@ static void gen_textures(void)
                 pic_circle(w, 46, 34, 1.4f, 1, 1, 1);
                 pic_rect(w, 44, 35, 48, 36, 1, 0.5f, 0.1f);
                 for (i = 0; i < 5; i++) pic_rect(w, 34 + i * 2, 48 + (i & 1), 36 + i * 2, 49 + (i & 1), 0.9f, 0.97f, 1);
+            }
+            if (t == TEX_PORTAL11) {   /* clouds, a looping trail and fish in the sky */
+                int i;
+                for (i = 0; i < 9; i++) pic_circle(w, 4 + i * 7, 56 + (i & 1) * 2, 7, 1, 1, 1);
+                for (i = 0; i < 40; i++) {
+                    float a = TAU_F * i / 40;
+                    pic_circle(w, 32 + cosf(a) * 13, 28 + sinf(a) * 10, 1.0f, 0.6f, 0.95f, 1.0f);
+                }
+                for (i = 0; i < 6; i++) pic_circle(w, 26 + (i % 3) * 6, 25 + (i / 3) * 6, 1.6f, 1.0f, 0.82f, 0.15f);
+                pic_circle(w, 46, 18, 2.4f, 0.1f, 0.1f, 0.12f);   /* flying Tux with his rocket */
+                pic_circle(w, 46, 19, 1.4f, 1, 1, 1);
+                pic_rect(w, 42, 20, 44, 22, 1.0f, 0.5f, 0.1f);
+                pic_circle(w, 10, 10, 1.2f, 1.0f, 0.82f, 0.15f);
+                pic_circle(w, 56, 38, 1.2f, 1.0f, 0.82f, 0.15f);
             }
             pic_frame(w, 0.85f, 0.7f, 0.25f);
         }

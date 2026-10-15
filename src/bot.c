@@ -18,6 +18,8 @@
  *   M X Z N          bounce on the trampoline with good timing, then steer to (X,Z)
  *   B X Z N          AURORA SEA: ride a whale until the spout fires, then steer to (X,Z)
  *   Y I              AURORA SEA debug: stand on the blowhole of whale I
+ *   Z N DASH         FROSTCLOUD SKYWAY: chase fish until time is up (DASH 1 = use the dash)
+ *   q S Y            FROSTCLOUD SKYWAY: fly to path coordinates (arc length S, height Y)
  *   D X Z            AURORA SEA: drive the dash boots to (X,Z)
  *   R N              AURORA SEA: drive the dash boots through the buoy gates until the rally ends
  *   P                print state
@@ -359,7 +361,7 @@ void bot_update(void)
         int i, c = 0, r = 0, b = 0;
         for (i = 0; i < nobj; i++) {
             if (!objs[i].active) continue;
-            if (objs[i].type == OT_COIN) c++;
+            if (objs[i].type == OT_COIN || objs[i].type == OT_SKYCOIN) c++;
             if (objs[i].type == OT_REDCOIN) r++;
             if (objs[i].type == OT_ICECHUNK) b++;
         }
@@ -407,6 +409,44 @@ void bot_update(void)
                 player_init(hp, w->yaw);
             }
         done();
+        break;
+    }
+    case 'Z': {   /* FROSTCLOUD SKYWAY autopilot: chase the nearest fish ahead until time is up (max N frames) */
+        int i, best = -1;
+        float bs = 1e9f, L = sky_len(), dir = sky_screen_dir(pl.sky_s);
+        float ps = fmodf(pl.sky_s, L);
+        if (ps < 0) ps += L;
+        for (i = 0; i < nobj; i++) {
+            Obj *o = &objs[i];
+            float ds;
+            if (!o->active || o->type != OT_SKYCOIN || o->state != 0) continue;
+            ds = o->f[6] - ps;
+            if (ds < -L * 0.5f) ds += L;
+            if (ds > L * 0.5f) ds -= L;
+            if (ds < -0.5f || ds > 30) continue;
+            ds = ds + fabsf(o->f[7] - pl.sky_y) * 0.8f;
+            if (ds < bs) { bs = ds; best = i; }
+        }
+        if (best >= 0) {
+            Obj *o = &objs[best];
+            float ds = o->f[6] - ps, dy = o->f[7] - pl.sky_y, l;
+            if (ds < -L * 0.5f) ds += L;
+            if (ds > L * 0.5f) ds -= L;
+            l = sqrtf(ds * ds + dy * dy);
+            if (l > 0.01f) { in.sx = ds / l * dir; in.sy = dy / l; }
+        } else { in.sx = dir; in.sy = -pl.sky_y * 0.1f; }
+        in.mag = 1;
+        if (pl.sky_dash > 0.3f && a[1] > 0) h |= BT_A;
+        if (g_sky_state == 1 || t > a[0]) {
+            printf("BOT %d: sky flight end fish=%d s=%.1f f%d\n", stepno, pl.coins, pl.sky_s, g_frame);
+            done();
+        }
+        break;
+    }
+    case 'q': {   /* FROSTCLOUD SKYWAY: fly to path coordinates (S, Y) */
+        float ds = a[0] - pl.sky_s, dy = a[1] - pl.sky_y, l = sqrtf(ds * ds + dy * dy);
+        if (l > 0.01f) { in.sx = ds / l * sky_screen_dir(pl.sky_s) * minf(1, l / 2); in.sy = dy / l * minf(1, l / 2); in.mag = minf(1, l / 2); }
+        if (l < 1.0f || t > 600) { printf("BOT %d: flew to s=%.1f y=%.1f (%.1f %.1f) fish=%d f%d\n", stepno, a[0], a[1], pl.sky_s, pl.sky_y, pl.coins, g_frame); done(); }
         break;
     }
     case 'D': {   /* dash boots: drive to (X,Z) */

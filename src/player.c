@@ -297,6 +297,7 @@ static void chain_jump(void)
 static int try_interact_b(void);
 static void enter_fly(void);
 static void skate_enter(int airborne);
+static void sky_enter(void);
 
 static void enter_fall(void) { player_set_act(ACT_FALL); }
 
@@ -931,7 +932,7 @@ static void enter_fly(void)
     player_set_act(ACT_FLY);
 }
 
-int player_rocket_firing(void) { return pl.act == ACT_FLY && held(BT_A) && !pl.no_ctrl; }
+int player_rocket_firing(void) { return (pl.act == ACT_FLY && held(BT_A) && !pl.no_ctrl) || pl.act == ACT_SKYFLY; }
 
 static void act_fly(void)
 {
@@ -1366,6 +1367,64 @@ static void act_skate(void)
     pl.anim += pl.fwd * DT * 0.6f + DT;
 }
 
+/* ------------------------------------------------------------------ sky flight (FROSTCLOUD SKYWAY) */
+static void sky_enter(void)
+{
+    player_set_act(ACT_SKYFLY);
+    pl.sky_s = 0; pl.sky_y = 0; pl.sky_vs = 0; pl.sky_vy = 0;
+    pl.sky_dash = 1.0f;
+    pl.pitch = 0; pl.roll = 0;
+}
+
+static void act_skyfly(void)
+{
+    float dir = sky_screen_dir(pl.sky_s), sx = pl.no_ctrl ? 0 : in.sx, sy = pl.no_ctrl ? 0 : in.sy;
+    float mag = sqrtf(sx * sx + sy * sy);
+    int dash;
+    vec3 t;
+    pl.rocket_t = 5000;
+    if (mag > 1) { sx /= mag; sy /= mag; mag = 1; }
+    dash = held(BT_A) && pl.sky_dash > 0.01f && mag > 0.2f;
+    if (mag > 0.15f) {
+        /* swing the velocity toward the stick direction: a floaty, banking flight */
+        float target = (dash ? 25.0f : 12.5f) * mag, acc = dash ? 55.0f : 24.0f;
+        float dvs = sx * dir / mag * target - pl.sky_vs, dvy = sy / mag * target - pl.sky_vy;
+        float l = sqrtf(dvs * dvs + dvy * dvy), step = minf(l, acc * DT);
+        if (l > 1e-4f) { pl.sky_vs += dvs / l * step; pl.sky_vy += dvy / l * step; }
+    } else {
+        /* let go: drift to a hover */
+        pl.sky_vs *= 1 - 1.4f * DT;
+        pl.sky_vy *= 1 - 1.4f * DT;
+        pl.sky_vy += sinf(g_frame * 0.05f) * 0.6f * DT;
+    }
+    if (dash) {
+        pl.sky_dash = maxf(pl.sky_dash - 0.28f * DT, 0);
+        if (pl.act_t % 4 == 0) fx_spawn(OT_FX_SPARKLE, v3add(pl.pos, v3(0, 0.8f, 0)), 0.8f);
+        if (pressed(BT_A)) sfx(SFX_BLAST);
+    } else if (!held(BT_A)) pl.sky_dash = minf(pl.sky_dash + 0.1f * DT, 1);
+    pl.sky_s += pl.sky_vs * DT;
+    pl.sky_y += pl.sky_vy * DT;
+    if (pl.sky_y != sky_clamp_y(pl.sky_y)) { pl.sky_y = sky_clamp_y(pl.sky_y); pl.sky_vy = 0; }
+    pl.pos = sky_world(pl.sky_s, pl.sky_y);
+    t = sky_tangent(pl.sky_s);
+    pl.vel = v3add(v3scale(t, pl.sky_vs), v3(0, pl.sky_vy, 0));
+    if (fabsf(pl.sky_vs) > 0.8f) {
+        vec3 f = v3scale(t, pl.sky_vs > 0 ? 1.0f : -1.0f);
+        pl.yaw = approach_angle(pl.yaw, atan2f(f.x, f.z), 9 * DT);
+    }
+    {
+        float hs = fabsf(pl.sky_vs), want = (hs + fabsf(pl.sky_vy) > 2) ? atan2f(pl.sky_vy, hs) : 0;
+        pl.pitch = approachf(pl.pitch, clampf(want, -1.3f, 1.3f), 4 * DT);
+        pl.roll = approachf(pl.roll, clampf(sx * dir * 0.2f, -0.5f, 0.5f), 3 * DT);
+    }
+    pl.fwd = sqrtf(pl.sky_vs * pl.sky_vs + pl.sky_vy * pl.sky_vy);
+    pl.floor = NULL;
+    pl.peak_y = pl.pos.y;
+    if (pl.act_t % 3 == 0 && pl.fwd > 3) fx_spawn(OT_FX_SMOKE, v3add(v3mad(pl.pos, yaw_dir(pl.yaw), -0.5f), v3(0, 0.6f, 0)), 0.35f);
+    if (pl.act_t % 8 == 0 && pl.fwd > 3) sfx_ex(SFX_FIRE, 0.2f, 0.8f + pl.fwd * 0.02f);
+    if (!pl.no_ctrl) sky_trail_push(pl.sky_s, pl.sky_y);
+}
+
 static void act_death(void)
 {
     pl.vel.x = pl.vel.z = 0;
@@ -1455,8 +1514,9 @@ void player_update(void)
         player_set_act(ACT_SWIM);
         pl.breath_t = 0;
     }
-    if (pl.act != ACT_SWIM && pl.act != ACT_DROWN && pl.act != ACT_FLY) pl.pitch = approachf(pl.pitch, 0, 4 * DT);
-    if (pl.act != ACT_FLY && pl.act != ACT_SKATE) pl.roll = approachf(pl.roll, 0, 4 * DT);
+    if (pl.act != ACT_SWIM && pl.act != ACT_DROWN && pl.act != ACT_FLY && pl.act != ACT_SKYFLY) pl.pitch = approachf(pl.pitch, 0, 4 * DT);
+    if (pl.act != ACT_FLY && pl.act != ACT_SKATE && pl.act != ACT_SKYFLY) pl.roll = approachf(pl.roll, 0, 4 * DT);
+    if (cur_level == LV_SKY && pl.act != ACT_SKYFLY && pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE) sky_enter();
     /* dash boots: Tux never walks, he dashes - and normal jumps land back on the water */
     if (pl.boots) {
         switch (pl.act) {
@@ -1505,6 +1565,7 @@ void player_update(void)
     case ACT_FLY: act_fly(); break;
     case ACT_SWIM: act_swim(); break;
     case ACT_SKATE: act_skate(); break;
+    case ACT_SKYFLY: act_skyfly(); break;
     case ACT_DEATH: case ACT_DROWN: act_death(); break;
     case ACT_FROZEN: act_frozen(); break;
     case ACT_STAR_DANCE: act_star_dance(); break;
@@ -1763,6 +1824,7 @@ void player_draw(void)
         if (held(BT_Z) && pl.act_s == 0) { tp.body_squash = -0.15f; tp.body_roll = -pl.roll * 1.4f; }
         break;
     }
+    case ACT_SKYFLY:
     case ACT_FLY:
         /* riding the rocket: leaning into the flight direction, flippers back */
         tp.body_pitch = 1.1f - pl.pitch * 0.9f;

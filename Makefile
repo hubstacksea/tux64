@@ -6,7 +6,7 @@
 #   On Windows with MinGW/MSYS2:  mingw32-make   (auto-detects Windows_NT)
 
 SRC_COMMON = src/main.c src/game.c src/player.c src/camera.c src/objects.c src/levels.c \
-             src/levelbuild.c src/models.c src/gfx.c src/audio.c src/collision.c src/bot.c src/lang.c src/lang_ja.c
+             src/levelbuild.c src/models.c src/gfx.c src/audio.c src/collision.c src/bot.c src/lang.c src/lang_ja.c src/sky.c
 CFLAGS ?= -O2
 CFLAGS += -std=gnu99 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
 

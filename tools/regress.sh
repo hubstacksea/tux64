@@ -41,3 +41,7 @@ run sea-race "rally end race=2" --level 11 --quit 9000 --bot "w 30;T 14.5 0.5 10
 run sea-spout "stars=1" --level 11 --quit 1200 --bot "w 3;d;Y 0;B 19 -80 600;D 19 -80;w 300;P"
 run sea-window "lv=11" --level 1 --pos -18 0 2 0 --quit 3000 --bot "w 3;* 20;g -18 9.4 1.0;w 60;p a 3;w 60;P"
 run sea-sink-popup "act=41" --level 11 --pos 30 0 60 0 --quit 400 --bot "w 3;d;k 0 -1 90;u 39 60;w 20;p a 3;w 30;P"
+run sky-lines "stars=3 lv=12" --level 12 --quit 7400 --bot "w 3;Z 8000 1;w 30;P"
+run sky-owned "stars=84 lv=1" --level 12 --quit 7600 --bot "w 3;* 200;Z 8000 1;w 30;d;w 150;P"
+run sky-paraloop "coins=11 " --level 12 --quit 2000 --bot "w 3;q 46 -5;q 59 -5;q 59 5;q 46 5;q 46 -8;w 60;P"
+run sky-window "lv=12" --level 1 --pos 16 6 -36 0 --quit 3000 --bot "w 3;* 20;g 16 -39.5 1.0;w 60;p a 3;w 60;P"

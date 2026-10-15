@@ -46,6 +46,7 @@ void camera_update(void)
     float follow_yaw, hd, h;
     int in_air = player_in_air() || (pl.act == ACT_SKATE && pl.act_s == 1);
 
+    if (pl.act == ACT_SKYFLY && cam.mode == CAM_FOLLOW) { sky_camera(); return; }
     if (cam.mode == CAM_FIXED) {
         cam.pos = cam.fixed_pos;
         cam.at = v3add(pl.pos, v3(0, 1.0f, 0));

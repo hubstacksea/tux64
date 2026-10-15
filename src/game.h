@@ -27,8 +27,8 @@ void input_update(void);
 void input_clear(void);
 
 /* ---------------- levels ---------------- */
-enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_COUNT };
-enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_COUNT };
+enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_COUNT };
+enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_COUNT };
 #define SAVE_COURSES 16   /* room in the save file for future courses */
 #define MAX_STARS 7
 
@@ -76,6 +76,7 @@ enum {
     OT_CLAM, OT_RING, OT_CRATE, OT_GRANDSTAR, OT_TIMERSTART, OT_TIMERGOAL, OT_DECOR, OT_ROCKETBOX,
     OT_GHOST, OT_GHOSTKING, OT_TOPSWITCH, OT_HEART, OT_WATCHDOG, OT_CAGE, OT_STEAM, OT_OOM, OT_MAZEEXIT,
     OT_GATE, OT_ICECHUNK, OT_WHALE, OT_BOOSTPAD, OT_SEAL,
+    OT_SKYCOIN, OT_SKYRING,
     OT_FX_SPARKLE, OT_FX_SMOKE, OT_FX_EXPLODE, OT_FX_BUBBLE, OT_FX_SNOWPUFF, OT_FX_SHOCKWAVE,
     OT_COUNT
 };
@@ -140,6 +141,8 @@ enum {
     ACT_SWIM, ACT_DROWN,
     /* dash boots (AURORA SEA): skimming over water and ice; act_s 1 = airborne */
     ACT_SKATE,
+    /* FROSTCLOUD SKYWAY: free rocket flight in the plane of the sky path */
+    ACT_SKYFLY,
     ACT_COUNT
 };
 #define ACT_FIRST_AIR ACT_JUMP
@@ -185,6 +188,8 @@ typedef struct {
     float ground_vy;             /* vertical speed while skating up/down slopes (ramps launch Tux) */
     int trick;                   /* 0 none, 1 spinning in mid-air, 2 trick finished */
     float trick_t;
+    float sky_s, sky_y, sky_vs, sky_vy;   /* sky path position (arc length, height) and velocity */
+    float sky_dash;              /* dash gauge 0..1 */
 } Player;
 extern Player pl;
 
@@ -304,6 +309,24 @@ extern int g_gate_n, g_gate_next, g_lap, g_sea_power, g_gate_missed;
 extern int g_race_time;          /* frames of the last finished rally */
 void sea_player_moved(vec3 from, vec3 to);   /* gate crossing checks */
 Obj *sea_gate(int k);
+/* FROSTCLOUD SKYWAY (sky.c) */
+#define SKY_LINES 4
+extern const int g_sky_lines[SKY_LINES];   /* fish needed in one flight for each star */
+extern int g_sky_time, g_sky_state, g_sky_lines_hit;
+float sky_len(void);
+vec3 sky_point(float s);
+vec3 sky_tangent(float s);
+vec3 sky_normal(float s);
+vec3 sky_world(float s, float y);
+float sky_screen_dir(float s);
+float sky_clamp_y(float y);
+void sky_reset(void);
+void sky_update(void);
+void sky_trail_push(float s, float y);
+void sky_obj_update(Obj *o);
+void sky_obj_draw(Obj *o);
+void sky_draw_alpha(void);
+void sky_camera(void);
 extern vec3 g_wind;          /* blizzard wind velocity (u/s), zero when calm */
 extern float g_gust;         /* 0..1 gust strength */
 extern const char *g_hud_msg;

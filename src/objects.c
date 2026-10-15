@@ -103,6 +103,8 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_STEAM: o->radius = 0; o->height = 0; break;
     case OT_OOM: o->radius = 0.95f; o->height = 3.4f; o->flags = OF_SHADOW; break;
     case OT_MAZEEXIT: o->radius = 2.0f; o->height = 3.0f; break;
+    case OT_SKYCOIN: o->radius = 0.9f; o->height = 1.0f; break;
+    case OT_SKYRING: o->radius = 2.0f; o->height = 2.0f; break;
     case OT_GATE: if (param >= 0 && param < 32) { gate_idx[param] = (int)(o - objs); if (param + 1 > g_gate_n) g_gate_n = param + 1; }
         o->radius = 0; o->height = 6; o->f[0] = 7.0f; break;
     case OT_ICECHUNK: o->radius = 1.35f; o->height = 1.6f; break;
@@ -2249,6 +2251,7 @@ void objs_update(void)
         case OT_OOM: upd_oom(o); break;
         case OT_MAZEEXIT: upd_mazeexit(o); break;
         case OT_GATE: upd_gate(o); break;
+        case OT_SKYCOIN: case OT_SKYRING: sky_obj_update(o); break;
         case OT_ICECHUNK: upd_icechunk(o); break;
         case OT_WHALE: upd_whale(o); break;
         case OT_BOOSTPAD: upd_boostpad(o); break;
@@ -2605,6 +2608,7 @@ static void draw_obj(Obj *o)
         draw_model_at(mdl[next ? MDL_BUOY_NEXT : MDL_BUOY], v3add(v3mad(o->pos, r, -o->f[0]), v3(0, -bob, 0)), -o->t, 1.0f);
         break;
     }
+    case OT_SKYCOIN: case OT_SKYRING: sky_obj_draw(o); break;
     case OT_ICECHUNK: if (o->state != 90) draw_model_at(mdl[MDL_ICECHUNK], o->pos, o->yaw, o->scale); break;
     case OT_WHALE: {
         float sw = sinf(o->t * 1.6f);

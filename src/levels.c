@@ -386,6 +386,8 @@ static void build_lobby(void)
             lb_quad(TEX_CYDATA, v3(-29.95f, 7, z + 1.5f), v3(-29.95f, 7, z - 1.5f), v3(-29.95f, 14, z - 1.5f), v3(-29.95f, 14, z + 1.5f), 0.7f, 0.9f, 1, 0, 0);
             lb_quad(TEX_CYDATA, v3(29.95f, 7, z - 1.5f), v3(29.95f, 7, z + 1.5f), v3(29.95f, 14, z + 1.5f), v3(29.95f, 14, z - 1.5f), 0.7f, 0.9f, 1, 0, 0);
         }
+        /* FROSTCLOUD SKYWAY window on the balcony, north wall */
+        lobby_window(v3(16, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL11, 0.95f, 0.75f, 0.3f, CRS_SKY);
         for (k = 0; k < 5; k++) {   /* a wall of monitors above the balcony */
             float x = -20 + k * 10;
             lb_appwindow(v3(x, 12.2f, -40.0f), 0, 3.6f, 2.4f, TEX_CYDATA, 0.15f, 0.35f, 0.6f);
@@ -406,6 +408,7 @@ static void build_lobby(void)
     lv.spawn[8] = v3(-27, 0, 3.5f); lv.spawn_yaw[8] = PI_F / 2;
     lv.spawn[9] = v3(27, 0, 3.5f); lv.spawn_yaw[9] = -PI_F / 2;
     lv.spawn[10] = v3(-18, 0, 6.5f); lv.spawn_yaw[10] = PI_F;
+    lv.spawn[11] = v3(16, 6, -36.5f); lv.spawn_yaw[11] = 0;
 
     /* doors */
     o = obj_spawn(OT_DOOR, v3(0, 0, 9.8f), PI_F, 0);
@@ -435,6 +438,8 @@ static void build_lobby(void)
         if (w) w->i[1] = 8;
         w = warp_box(v3(-18, 0.0f, 9.4f), 3.0f, 0.6f, 5, LV_SEA, 0, 1, 10);
         if (w) w->i[1] = 10;
+        w = warp_box(v3(16, 6.0f, -39.4f), 2.5f, 0.6f, 4, LV_SKY, 0, 1, 11);
+        if (w) w->i[1] = 12;
     }
 
     {
@@ -448,6 +453,7 @@ static void build_lobby(void)
                         "ICICLE SPIRE window (west, by the door): 5\n"
                         "WHITEOUT LABYRINTH window (east, by the door): 7\n"
                         "AURORA SEA RALLY window (by the entrance, west): 10\n"
+                        "FROSTCLOUD SKYWAY window (balcony, north): 12\n"
                         "SEGFAULT's door (under the balcony): 16 stars\n"
                         "Jump into an app window to enter its world.");
     {
@@ -1802,6 +1808,87 @@ static void build_sea(void)
                                           "Press B in mid-air for a spin trick: land it for\na speed boost. Talk to the seal to race!");
 }
 
+/* ================================================================
+ * FROSTCLOUD SKYWAY - rocket flight along a loop in the sky (sky.c)
+ * ================================================================ */
+static void sky_coin(float s, float y)
+{
+    Obj *o = obj_spawn(OT_SKYCOIN, sky_world(s, y), 0, 0);
+    if (o) { o->f[6] = s; o->f[7] = y; o->home = o->pos; }
+}
+
+static void build_sky(void)
+{
+    int i, k, n;
+    float L = sky_len(), s;
+    lv.name = "FROSTCLOUD SKYWAY";
+    lv.music = MUS_SKY;
+    lv.course = CRS_SKY;
+    set_sky(0.25f, 0.45f, 0.9f, 0.8f, 0.88f, 1.0f, 90, 320);
+    lv.ambient = 0.62f; lv.diffuse = 0.6f;
+    lv.death_y = -60;
+    lv.clouds = 1;
+    lv.snow = 1;
+    lb_begin();
+    /* a sea of clouds far below */
+    lb_alpha_mode = 1;
+    for (i = -4; i < 4; i++)
+        for (k = -4; k < 4; k++) {
+            float x0 = i * 60.0f, z0 = k * 60.0f, y = 4 + 2 * sea_hash(i, k, 7);
+            lb_quad(TEX_CLOUD, v3(x0, y, z0), v3(x0, y, z0 + 60), v3(x0 + 60, y, z0 + 60), v3(x0 + 60, y, z0), 1, 1, 1, 0, 0);
+            lb_quad(TEX_CLOUD, v3(x0 + 20, y - 3, z0 + 10), v3(x0 + 20, y - 3, z0 + 70), v3(x0 + 80, y - 3, z0 + 70), v3(x0 + 80, y - 3, z0 + 10), 0.9f, 0.93f, 1, 0, 0);
+        }
+    lb_alpha_mode = 0;
+    lb_box(-260, -8, -260, 260, -6, 260, TEX_SNOW, TEX_SNOW, 0.85f, 0.9f, 1, 0);
+    /* the great frost crystal in the middle of the loop */
+    lb_cone(0, -6, 0, 14, 90, 6, TEX_ICE, 0.6f, 0.85f, 1, 0);
+    lb_cone(0, 84, 0, 7, -22, 6, TEX_ICE, 0.7f, 0.9f, 1, 0);
+    for (i = 0; i < 5; i++) {
+        float a = TAU_F * i / 5;
+        lb_cone(sinf(a) * 12, -6, cosf(a) * 12, 6, 40 + 12 * sea_hash(i, 2, 2), 5, TEX_ICE, 0.65f, 0.88f, 1, 0);
+    }
+    /* floating ice islands inside the loop (never between the camera and Tux) */
+    for (i = 0; i < 14; i++) {
+        float ss = L * (i + 0.5f) / 14;
+        vec3 p = v3mad(sky_point(ss), sky_normal(ss), -(16 + 10 * sea_hash(i, 3, 3)));
+        float r = 4 + 3 * sea_hash(i, 4, 3), y = p.y - 16 + 26 * sea_hash(i, 5, 3);
+        lb_cyl(p.x, y, p.z, r, 1.2f, 10, TEX_SNOW, TEX_ICE, 1, 1, 1, 0);
+        lb_cone(p.x, y, p.z, r, -r * 1.6f, 10, TEX_ICE, 0.7f, 0.88f, 1, 0);
+        if (i % 2) lb_cone(p.x + r * 0.3f, y + 1.2f, p.z, 1.2f, 3.5f, 6, TEX_ICE, 0.75f, 0.92f, 1, 0);
+    }
+    finish_geometry();
+
+    lv.spawn[0] = sky_world(0, 0); lv.spawn_yaw[0] = atan2f(sky_tangent(0).x, sky_tangent(0).z);
+    /* fish patterns along the whole loop */
+    n = (int)(L / 13.0f);
+    for (k = 0; k < n; k++) {
+        float s0 = 8 + k * 13.0f;
+        float yc = (k % 3 == 0) ? 0 : ((k % 3 == 1) ? 8 : -8);
+        switch (k % 5) {
+        case 0:   /* a wave */
+            for (i = 0; i < 7; i++) sky_coin(s0 + i * 1.8f, 7 * sinf((s0 + i * 1.8f) * 0.15f));
+            break;
+        case 1:   /* a ring to paraloop */
+            for (i = 0; i < 10; i++) { float a = TAU_F * i / 10; sky_coin(s0 + 6 + cosf(a) * 3.6f, yc + sinf(a) * 3.6f); }
+            break;
+        case 2:   /* a column: sweep up or down through it */
+            for (i = 0; i < 7; i++) sky_coin(s0 + 6, -11 + i * 3.6f);
+            break;
+        case 3:   /* a cluster */
+            for (i = 0; i < 9; i++) sky_coin(s0 + 4 + (i % 3) * 2.2f, yc + (i / 3 - 1) * 2.2f);
+            break;
+        default:  /* a diagonal */
+            for (i = 0; i < 6; i++) sky_coin(s0 + i * 2.0f, (k & 1 ? -1 : 1) * (-9 + i * 3.6f));
+            break;
+        }
+    }
+    /* dash rings */
+    for (s = 30; s < L - 10; s += 55) {
+        Obj *o = obj_spawn(OT_SKYRING, sky_world(s, (int)s % 2 ? 11.0f : -10.0f), 0, 0);
+        if (o) { vec3 t = sky_tangent(s); o->yaw = atan2f(t.x, t.z); }
+    }
+}
+
 void build_level(int level)
 {
     switch (level) {
@@ -1817,6 +1904,7 @@ void build_level(int level)
     case LV_SPIRE: build_spire(); break;
     case LV_MAZE: build_maze(); break;
     case LV_SEA: build_sea(); break;
+    case LV_SKY: build_sky(); break;
     }
 }
 
