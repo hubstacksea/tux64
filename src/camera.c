@@ -93,12 +93,18 @@ void camera_update(void)
     /* vertical focus smoothing */
     target = v3add(pl.pos, v3(0, 1.2f, 0));
     if (pl.act == ACT_SWIM) target.y += 0.3f;
+    /* climbing up a ledge: follow the pull-up animation toward the top instead of snapping there at the end */
+    if (pl.act == ACT_LEDGE_CLIMB)
+        target = v3lerp(target, v3add(pl.ledge_pos, v3(0, 1.2f, 0)), clampf(pl.act_t / 18.0f, 0, 1));
     {
         float rate = in_air ? 1.5f : 5.0f;
         if (target.y < focus_y - 3.0f || target.y > focus_y + 4.0f) rate = 6.0f;
         if (pl.act == ACT_POLE || pl.act == ACT_LEDGE_HANG) rate = 4.0f;
+        if (pl.act == ACT_LEDGE_CLIMB) rate = 12.0f;
         if (pl.act == ACT_SKATE) rate = in_air ? 3.5f : 10.0f;   /* keep up with ramps at dash speed */
         focus_y += (target.y - focus_y) * minf(1.0f, rate * DT);
+        /* never let the focus sink below the ground Tux stands on (the camera ray would start inside the wall) */
+        if (!in_air) focus_y = maxf(focus_y, pl.pos.y + 0.6f);
     }
     target.y = focus_y;
 
