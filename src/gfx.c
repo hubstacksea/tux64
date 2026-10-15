@@ -675,7 +675,7 @@ static void gen_textures(void)
                 }
             }
         /* course pictures */
-        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL11) {
+        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL12) {
             mip = 1;
             for (y = 0; y < w; y++)
                 for (x = 0; x < w; x++) {
@@ -690,6 +690,7 @@ static void gen_textures(void)
                     case TEX_PORTAL8: put(w, x, y, 0.35f + 0.4f * v, 0.55f + 0.3f * v, 0.95f, 1); break;
                     case TEX_PORTAL9: put(w, x, y, 0.88f, 0.9f, 0.95f, 1); break;
                     case TEX_PORTAL11: put(w, x, y, 0.3f + 0.45f * v, 0.5f + 0.4f * v, 0.95f, 1); break;
+                    case TEX_PORTAL12: put(w, x, y, 0.02f + 0.06f * v, 0.01f + 0.03f * v, 0.08f + 0.12f * v, 1); break;
                     case TEX_PORTAL10: put(w, x, y, 0.04f + 0.1f * v, 0.06f + 0.2f * v, 0.2f + 0.3f * v, 1); break;
                     default: put(w, x, y, 0.02f, 0.05f + 0.15f * v, 0.15f + 0.3f * v, 1); break;
                     }
@@ -832,6 +833,26 @@ static void gen_textures(void)
                 pic_rect(w, 42, 20, 44, 22, 1.0f, 0.5f, 0.1f);
                 pic_circle(w, 10, 10, 1.2f, 1.0f, 0.82f, 0.15f);
                 pic_circle(w, 56, 38, 1.2f, 1.0f, 0.82f, 0.15f);
+            }
+            if (t == TEX_PORTAL12) {   /* stars, a ringed ice planet, a comet and Tux on his rocket */
+                int i;
+                for (i = 0; i < 40; i++) pic_circle(w, (i * 37 + 11) % 64, (i * 23 + 5) % 64, 0.6f, 0.9f, 0.9f, 1.0f);
+                for (i = 0; i < 48; i++) {
+                    float a = TAU_F * i / 48;
+                    pic_circle(w, 24 + cosf(a) * 19, 38 + sinf(a) * 5, 1.0f, 0.75f, 0.85f, 1.0f);
+                }
+                pic_circle(w, 24, 38, 12, 0.55f, 0.8f, 1.0f);
+                pic_circle(w, 24, 30, 6, 0.95f, 0.97f, 1.0f);
+                for (i = 0; i < 24; i++) {
+                    float a = PI_F + PI_F * i / 24;
+                    pic_circle(w, 24 + cosf(a) * 19, 38 + sinf(a) * 5, 1.0f, 0.75f, 0.85f, 1.0f);
+                }
+                for (i = 0; i < 10; i++) pic_circle(w, 46 + i * 1.4f, 12 - i * 0.7f, 2.2f - i * 0.18f, 0.5f, 0.85f, 1.0f);
+                pic_circle(w, 45, 12.5f, 2.2f, 1, 1, 1);
+                pic_circle(w, 48, 46, 2.4f, 0.1f, 0.1f, 0.12f);   /* Tux and his rocket flame */
+                pic_circle(w, 48, 47, 1.4f, 1, 1, 1);
+                pic_rect(w, 43, 47, 46, 49, 1.0f, 0.5f, 0.1f);
+                pic_circle(w, 41, 49, 1.5f, 1.0f, 0.85f, 0.3f);
             }
             pic_frame(w, 0.85f, 0.7f, 0.25f);
         }

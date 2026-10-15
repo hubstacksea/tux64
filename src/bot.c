@@ -22,6 +22,11 @@
  *   q S Y            FROSTCLOUD SKYWAY: fly to path coordinates (arc length S, height Y)
  *   D X Z            AURORA SEA: drive the dash boots to (X,Z)
  *   R N              AURORA SEA: drive the dash boots through the buoy gates until the rally ends
+ *   o X Y Z B        STARDUST ORBIT: fly to (X,Y,Z), B 1 = boost
+ *   U N              STARDUST ORBIT: fly the ring run (max N frames)
+ *   c N              STARDUST ORBIT: chase the comet at full boost
+ *   m N              STARDUST ORBIT: ram the ice meteors at full boost
+ *   e N              STARDUST ORBIT: fly to the nearest red fish until none are left
  *   P                print state
  */
 #include "game.h"
@@ -120,6 +125,28 @@ static void done(void)
 }
 
 static unsigned prev;
+
+/* STARDUST ORBIT: point the rocket at tg */
+static float space_steer(vec3 tg)
+{
+    vec3 c = v3add(pl.pos, v3(0, 0.8f, 0)), d = v3sub(tg, c);
+    float wy = atan2f(d.x, d.z), wp = atan2f(d.y, sqrtf(d.x * d.x + d.z * d.z));
+    float dy = angle_diff(wy, pl.yaw), dp = wp - pl.pitch;
+    in.sx = clampf(-dy * 3, -1, 1);
+    in.sy = clampf(-dp * 3, -1, 1);
+    in.mag = 1;
+    return fabsf(dy) + fabsf(dp);
+}
+
+static Obj *nearest(int type)
+{
+    int i;
+    Obj *b = NULL;
+    float bd = 1e9f;
+    for (i = 0; i < nobj; i++)
+        if (objs[i].active && objs[i].type == type && v3dist(objs[i].pos, pl.pos) < bd) { b = &objs[i]; bd = v3dist(b->pos, pl.pos); }
+    return b;
+}
 
 void bot_update(void)
 {
@@ -478,6 +505,70 @@ void bot_update(void)
             done();
         }
         last_state = g_race_state;
+        break;
+    }
+    case 'o': {   /* STARDUST ORBIT: fly to a point */
+        vec3 tg = v3(a[0], a[1], a[2]);
+        space_steer(tg);
+        if (a[3] > 0) h |= BT_A;
+        if (v3dist(v3add(pl.pos, v3(0, 0.8f, 0)), tg) < 3.0f || t > 1800) {
+            printf("BOT %d: flew to (%.0f %.0f %.0f) pos=(%.1f %.1f %.1f) f%d\n", stepno, a[0], a[1], a[2], pl.pos.x, pl.pos.y, pl.pos.z, g_frame);
+            done();
+        }
+        break;
+    }
+    case 'U': {   /* STARDUST ORBIT: ring run autopilot */
+        Obj *r = space_ring(g_ring_run_t > 0 ? g_ring_run_next : 0);
+        static int started;
+        if (t == 1) started = 0;
+        if (g_ring_run_t > 0) started = 1;
+        if (r && pl.act == ACT_SPACEFLY) {
+            float err = space_steer(r->pos), dist = v3dist(r->pos, pl.pos);
+            if (err < 0.2f && dist > 30) h |= BT_A;
+            if (g_trace && t % 30 == 0) printf("U t%d next=%d left=%d dist=%.1f err=%.2f sp=%.1f pos=(%.1f %.1f %.1f) ring=(%.1f %.1f %.1f)\n", t, g_ring_run_next, g_ring_run_t, dist, err, pl.sp_speed, pl.pos.x, pl.pos.y, pl.pos.z, r->pos.x, r->pos.y, r->pos.z);
+        }
+        if ((started && g_ring_run_t == 0) || pl.act == ACT_STAR_DANCE || t > a[0]) {
+            printf("BOT %d: ring run end next=%d left=%d act=%d f%d\n", stepno, g_ring_run_next, g_ring_run_t, pl.act, g_frame);
+            done();
+        }
+        break;
+    }
+    case 'c': {   /* STARDUST ORBIT: chase the comet */
+        Obj *o = find(OT_COMET);
+        if (o && pl.act == ACT_SPACEFLY) {
+            float d = v3dist(o->pos, pl.pos);
+            space_steer(v3add(o->pos, v3scale(v3sub(o->pos, o->prev_pos), minf(d / 50.0f, 1.5f) * 60)));
+            h |= BT_A;
+        }
+        if (!o || pl.act == ACT_STAR_DANCE || t > a[0]) {
+            printf("BOT %d: comet chase end comet=%d act=%d f%d\n", stepno, o != NULL, pl.act, g_frame);
+            done();
+        }
+        break;
+    }
+    case 'm': {   /* STARDUST ORBIT: smash the ice meteors */
+        Obj *o = nearest(OT_METEOR);
+        if (o && pl.act == ACT_SPACEFLY) {
+            float err = space_steer(o->pos);
+            if (err < 0.5f || v3dist(o->pos, pl.pos) > 40) h |= BT_A;
+        }
+        if (!o || t > a[0]) {
+            printf("BOT %d: meteors end left=%d f%d\n", stepno, g_meteors_left, g_frame);
+            done();
+        }
+        break;
+    }
+    case 'e': {   /* STARDUST ORBIT: collect the red fish */
+        Obj *o = nearest(OT_REDCOIN);
+        if (o && pl.act == ACT_SPACEFLY) {
+            float err = space_steer(o->pos), dist = v3dist(o->pos, pl.pos);
+            if (err < 0.3f && dist > 40) h |= BT_A;
+            if (err > 1.2f && dist < 20) h |= BT_B;
+        }
+        if (!o || t > a[0]) {
+            printf("BOT %d: red fish end red=%d f%d\n", stepno, pl.red_coins, g_frame);
+            done();
+        }
         break;
     }
     case 'd':

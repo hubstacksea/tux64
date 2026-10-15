@@ -314,6 +314,13 @@ static const SongDef songdefs[MUS_COUNT] = {
       "f4 - - - - - - - e4 - - - - - - - d4 - - - - - - - g4 - - - - - - - "
       "f4 - - - - - - - e4 - - - - - - - a4 - - - - - - - g4 - - - b4 - - -",
       B_ROOT, D_SOFT, 1, W_TRI, 1 },
+    /* SPACE: a driving, starry chase */
+    { 156, "Am Am F F G G Em Em Am Am F F G G E E",
+      "a5 - e5 a5 c6 - b5 a5 f5 - a5 c6 f6 - e6 c6 g5 - b5 d6 g6 - f6 d6 e6 - b5 - g5 - . . "
+      "a5 - c6 - e6 - a6 - f6 - e6 - c6 - a5 - g5 - b5 - d6 - g6 - g#5 - b5 - e6 - - - . .",
+      "a4 - - - - - - - f4 - - - - - - - g4 - - - - - - - e4 - - - - - - - "
+      "a4 - - - c5 - - - a4 - - - f4 - - - g4 - - - b4 - - - g#4 - - - b4 - - -",
+      B_OCT, D_ROCK, 1, W_SQ25, 1 },
 };
 
 #define MAXSTEPS 512

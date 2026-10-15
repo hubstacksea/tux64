@@ -16,6 +16,7 @@ void camera_reset(void)
     cam.mode = CAM_FOLLOW;
     cam.yaw_target_off = 0;
     cam.shake = 0;
+    cam.fov = 55;
     focus_y = pl.pos.y + 1.2f;
     cam.at = v3(pl.pos.x, focus_y, pl.pos.z);
     cam.pos = v3add(v3mad(cam.at, yaw_dir(cam.yaw), -cam.dist), v3(0, cam.dist * 0.4f, 0));
@@ -56,6 +57,8 @@ void camera_update(void)
     int in_air = player_in_air() || (pl.act == ACT_SKATE && pl.act_s == 1);
 
     if (pl.act == ACT_SKYFLY && cam.mode == CAM_FOLLOW) { sky_camera(); return; }
+    if (pl.act == ACT_SPACEFLY && cam.mode == CAM_FOLLOW) { space_camera(); return; }
+    cam.fov = approachf(cam.fov, 55, 30 * DT);
     if (cam.mode == CAM_FIXED) {
         cam.pos = cam.fixed_pos;
         cam.at = v3add(pl.pos, v3(0, 1.0f, 0));

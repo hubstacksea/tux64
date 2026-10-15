@@ -28,6 +28,8 @@ void player_set_act(int a)
         pl.peak_y = pl.pos.y;
 }
 
+static void space_enter(void);
+
 void player_init(vec3 pos, float yaw)
 {
     int lives = pl.lives, coins = pl.coins, health = pl.health;
@@ -44,6 +46,7 @@ void player_init(vec3 pos, float yaw)
     pl.peak_y = pos.y;
     pl.floor_y = col_floor(pos.x, pos.y + 1.0f, pos.z, &pl.floor);
     if (pl.floor && pos.y - pl.floor_y < 0.5f) { pl.pos.y = pl.floor_y; pl.act = ACT_IDLE; }
+    if (lv.space) space_enter();   /* STARDUST ORBIT: on the rocket from the start */
 }
 
 float water_level_at(float x, float z, float y)
@@ -932,7 +935,7 @@ static void enter_fly(void)
     player_set_act(ACT_FLY);
 }
 
-int player_rocket_firing(void) { return (pl.act == ACT_FLY && held(BT_A) && !pl.no_ctrl) || pl.act == ACT_SKYFLY; }
+int player_rocket_firing(void) { return (pl.act == ACT_FLY && held(BT_A) && !pl.no_ctrl) || pl.act == ACT_SKYFLY || pl.act == ACT_SPACEFLY; }
 
 static void act_fly(void)
 {
@@ -1425,6 +1428,116 @@ static void act_skyfly(void)
     if (!pl.no_ctrl) sky_trail_push(pl.sky_s, pl.sky_y);
 }
 
+/* ------------------------------------------------------------------ space flight (STARDUST ORBIT) */
+#define SP_CRUISE 24.0f
+#define SP_BOOST  54.0f
+#define SP_BRAKE  9.0f
+#define SP_RING   78.0f
+#define SP_LIMIT  330.0f
+
+static void space_enter(void)
+{
+    player_set_act(ACT_SPACEFLY);
+    pl.sp_speed = SP_CRUISE * 0.5f;
+    pl.sp_stun = 0;
+    pl.sp_turn = 0;
+    pl.boost_t = 0;
+    pl.pitch = 0; pl.roll = 0;
+}
+
+static vec3 space_dir(void)
+{
+    return v3(sinf(pl.yaw) * cosf(pl.pitch), sinf(pl.pitch), cosf(pl.yaw) * cosf(pl.pitch));
+}
+
+/* the rocket hit the planet, the station or a rock: glance off it */
+static void space_crash(vec3 n)
+{
+    vec3 d = space_dir();
+    float dn = v3dot(d, n);
+    if (dn >= 0) return;
+    d = v3norm(v3mad(d, n, -(dn < -0.25f ? 1.6f : 1.05f) * dn));
+    pl.yaw = atan2f(d.x, d.z);
+    pl.pitch = clampf(asinf(clampf(d.y, -1, 1)), -1.3f, 1.3f);
+    if (dn < -0.25f) {
+        if (pl.sp_speed > 30) {
+            pl.sp_stun = 18;
+            cam.shake = maxf(cam.shake, 0.35f);
+            fx_spawn(OT_FX_SMOKE, pl.pos, 1.0f);
+            sfx(SFX_THUD);
+        } else sfx_ex(SFX_THUD, 0.5f, 1.3f);
+        pl.sp_speed *= dn < -0.6f ? 0.4f : 0.7f;
+        pl.boost_t = 0;
+    }
+}
+
+static void act_spacefly(void)
+{
+    int ctl = !pl.no_ctrl && pl.sp_stun == 0;
+    float sx = ctl ? in.sx : 0, sy = ctl ? in.sy : 0, target, rate;
+    int boost = ctl && held(BT_A), brake = ctl && held(BT_B);
+    vec3 d;
+    pl.rocket_t = 5000;
+    if (pl.sp_stun > 0) pl.sp_stun--;
+    /* Z: a quick half loop to fly back the other way */
+    if (ctl && pressed(BT_Z) && pl.sp_turn == 0) { pl.sp_turn = 24; sfx(SFX_BACKFLIP); }
+    if (pl.sp_turn > 0) {
+        pl.sp_turn--;
+        pl.yaw = wrap_angle(pl.yaw + PI_F / 24);
+        pl.pitch *= 0.92f;
+        sx = 0;
+    }
+    /* steering: left/right turns and banks, forward dives, back climbs; let go and the nose levels out */
+    {
+        float turn = 2.2f - minf(pl.sp_speed, 80) * 0.008f;
+        pl.yaw = wrap_angle(pl.yaw - sx * turn * DT);
+        if (fabsf(sy) > 0.1f) pl.pitch = clampf(pl.pitch - sy * 1.8f * DT, -1.3f, 1.3f);
+        else pl.pitch = approachf(pl.pitch, 0, 0.35f * DT);
+        pl.roll = approachf(pl.roll, sx * 0.8f, 4 * DT);
+    }
+    /* too far out: the rocket swings back toward the planet */
+    {
+        float r = v3len(pl.pos);
+        if (r > SP_LIMIT) {
+            vec3 to = v3scale(pl.pos, -1.0f / r);
+            pl.yaw = approach_angle(pl.yaw, atan2f(to.x, to.z), 1.6f * DT);
+            pl.pitch = approachf(pl.pitch, clampf(asinf(clampf(to.y, -1, 1)), -1.2f, 1.2f), 1.0f * DT);
+            if (pl.act_t % 150 == 1) hud_message("Too far out! Heading back to orbit.", 120);
+        }
+    }
+    /* speed: cruise all the time, A boosts, B brakes; boost rings shoot Tux forward */
+    target = boost ? SP_BOOST : brake ? SP_BRAKE : SP_CRUISE;
+    if (pl.boost_t > 0) { pl.boost_t--; target = maxf(target, SP_RING); }
+    rate = pl.sp_speed < target ? (boost || pl.boost_t > 0 ? 75.0f : 30.0f) : (brake ? 60.0f : 25.0f);
+    pl.sp_speed = approachf(pl.sp_speed, target, rate * DT);
+    if (boost && pressed(BT_A)) { sfx(SFX_BLAST); cam.shake = maxf(cam.shake, 0.1f); }
+    /* move, sweeping the path ahead so even full speed never tunnels through a wall */
+    d = space_dir();
+    pl.vel = v3scale(d, pl.sp_speed);
+    {
+        vec3 c0 = v3add(pl.pos, v3(0, 0.8f, 0)), n, wn;
+        float l = pl.sp_speed * DT, t, fy, cy;
+        Surf *s;
+        if (col_ray(c0, v3mad(c0, d, l + 0.9f), &t, &n, 0)) {
+            float go = maxf(t * (l + 0.9f) - 0.9f, 0);
+            c0 = v3mad(c0, d, go);
+            space_crash(n);
+        } else c0 = v3mad(c0, d, l);
+        pl.pos = v3sub(c0, v3(0, 0.8f, 0));
+        if (col_walls(&pl.pos, 0.8f, 0.85f, &wn, NULL)) space_crash(wn);
+        fy = col_floor(pl.pos.x, pl.pos.y + 0.8f, pl.pos.z, &s);
+        if (s && pl.pos.y < fy + 0.05f) { pl.pos.y = fy + 0.05f; space_crash(s->n); }
+        cy = col_ceil(pl.pos.x, pl.pos.y + 0.8f, pl.pos.z, &s);
+        if (s && cy < pl.pos.y + 1.6f) { pl.pos.y = cy - 1.6f; space_crash(s->n); }
+    }
+    pl.fwd = pl.sp_speed;
+    pl.floor = NULL;
+    pl.peak_y = pl.pos.y;
+    if (pl.act_t % 3 == 0) fx_spawn(OT_FX_SMOKE, v3add(v3mad(pl.pos, d, -0.7f), v3(0, 0.7f, 0)), boost ? 0.3f : 0.18f);
+    if (boost && pl.act_t % 3 == 0) fx_spawn(OT_FX_SPARKLE, v3add(v3mad(pl.pos, d, -1.0f), v3(0, 0.8f, 0)), 0.9f);
+    if (pl.act_t % 6 == 0) sfx_ex(SFX_FIRE, boost || pl.boost_t ? 0.4f : 0.22f, 0.7f + pl.sp_speed * 0.012f);
+}
+
 static void act_death(void)
 {
     pl.vel.x = pl.vel.z = 0;
@@ -1432,6 +1545,8 @@ static void act_death(void)
         pl.vel.y = 1.0f;
         air_step();
         if (pl.pos.y > pl.water_y - 1.1f) pl.pos.y = pl.water_y - 1.1f;
+    } else if (lv.space) {
+        pl.vel = v3(0, 0, 0);
     } else if (player_in_air() || pl.pos.y > pl.floor_y + 0.05f) {
         apply_gravity(1.0f);
         if (air_step() == ASTEP_LAND) pl.vel.y = 0;
@@ -1444,7 +1559,7 @@ static void act_frozen(void)
 {
     pl.vel.x = pl.vel.z = 0;
     pl.fwd = 0;
-    if (pl.pos.y > pl.floor_y + 0.05f && pl.water_y < -1e8f) {
+    if (pl.pos.y > pl.floor_y + 0.05f && pl.water_y < -1e8f && !lv.space) {
         apply_gravity(1.0f);
         if (air_step() == ASTEP_LAND) pl.vel.y = 0;
     }
@@ -1455,7 +1570,8 @@ static void act_star_dance(void)
 {
     pl.vel.x = pl.vel.z = 0;
     pl.fwd = 0;
-    if (pl.pos.y > pl.floor_y + 0.05f) {
+    if (lv.space) pl.vel = v3(0, 0, 0);
+    else if (pl.pos.y > pl.floor_y + 0.05f) {
         apply_gravity(1.0f);
         if (air_step() == ASTEP_LAND) pl.vel.y = 0;
     }
@@ -1514,9 +1630,10 @@ void player_update(void)
         player_set_act(ACT_SWIM);
         pl.breath_t = 0;
     }
-    if (pl.act != ACT_SWIM && pl.act != ACT_DROWN && pl.act != ACT_FLY && pl.act != ACT_SKYFLY) pl.pitch = approachf(pl.pitch, 0, 4 * DT);
-    if (pl.act != ACT_FLY && pl.act != ACT_SKATE && pl.act != ACT_SKYFLY) pl.roll = approachf(pl.roll, 0, 4 * DT);
+    if (pl.act != ACT_SWIM && pl.act != ACT_DROWN && pl.act != ACT_FLY && pl.act != ACT_SKYFLY && pl.act != ACT_SPACEFLY) pl.pitch = approachf(pl.pitch, 0, 4 * DT);
+    if (pl.act != ACT_FLY && pl.act != ACT_SKATE && pl.act != ACT_SKYFLY && pl.act != ACT_SPACEFLY) pl.roll = approachf(pl.roll, 0, 4 * DT);
     if (cur_level == LV_SKY && pl.act != ACT_SKYFLY && pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE) sky_enter();
+    if (lv.space && pl.act != ACT_SPACEFLY && pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE) space_enter();
     /* dash boots: Tux never walks, he dashes - and normal jumps land back on the water */
     if (pl.boots) {
         switch (pl.act) {
@@ -1566,6 +1683,7 @@ void player_update(void)
     case ACT_SWIM: act_swim(); break;
     case ACT_SKATE: act_skate(); break;
     case ACT_SKYFLY: act_skyfly(); break;
+    case ACT_SPACEFLY: act_spacefly(); break;
     case ACT_DEATH: case ACT_DROWN: act_death(); break;
     case ACT_FROZEN: act_frozen(); break;
     case ACT_STAR_DANCE: act_star_dance(); break;
@@ -1825,6 +1943,7 @@ void player_draw(void)
         break;
     }
     case ACT_SKYFLY:
+    case ACT_SPACEFLY:
     case ACT_FLY:
         /* riding the rocket: leaning into the flight direction, flippers back */
         tp.body_pitch = 1.1f - pl.pitch * 0.9f;

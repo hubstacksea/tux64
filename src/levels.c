@@ -388,6 +388,8 @@ static void build_lobby(void)
         }
         /* FROSTCLOUD SKYWAY window on the balcony, north wall */
         lobby_window(v3(16, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL11, 0.95f, 0.75f, 0.3f, CRS_SKY);
+        /* STARDUST ORBIT window on the balcony, north wall (west side) */
+        lobby_window(v3(-16, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL12, 0.6f, 0.4f, 1.0f, CRS_SPACE);
         for (k = 0; k < 5; k++) {   /* a wall of monitors above the balcony */
             float x = -20 + k * 10;
             lb_appwindow(v3(x, 12.2f, -40.0f), 0, 3.6f, 2.4f, TEX_CYDATA, 0.15f, 0.35f, 0.6f);
@@ -409,6 +411,7 @@ static void build_lobby(void)
     lv.spawn[9] = v3(27, 0, 3.5f); lv.spawn_yaw[9] = -PI_F / 2;
     lv.spawn[10] = v3(-18, 0, 6.5f); lv.spawn_yaw[10] = PI_F;
     lv.spawn[11] = v3(16, 6, -36.5f); lv.spawn_yaw[11] = 0;
+    lv.spawn[12] = v3(-16, 6, -36.5f); lv.spawn_yaw[12] = 0;
 
     /* doors */
     o = obj_spawn(OT_DOOR, v3(0, 0, 9.8f), PI_F, 0);
@@ -440,6 +443,8 @@ static void build_lobby(void)
         if (w) w->i[1] = 10;
         w = warp_box(v3(16, 6.0f, -39.4f), 2.5f, 0.6f, 4, LV_SKY, 0, 1, 11);
         if (w) w->i[1] = 12;
+        w = warp_box(v3(-16, 6.0f, -39.4f), 2.5f, 0.6f, 4, LV_SPACE, 0, 1, 12);
+        if (w) w->i[1] = 14;
     }
 
     {
@@ -454,6 +459,7 @@ static void build_lobby(void)
                         "WHITEOUT LABYRINTH window (east, by the door): 7\n"
                         "AURORA SEA RALLY window (by the entrance, west): 10\n"
                         "FROSTCLOUD SKYWAY window (balcony, north): 12\n"
+                        "STARDUST ORBIT window (balcony, north-west): 14\n"
                         "SEGFAULT's door (under the balcony): 16 stars\n"
                         "Jump into an app window to enter its world.");
     {
@@ -1889,6 +1895,185 @@ static void build_sky(void)
     }
 }
 
+
+/* ================================================================
+ * STARDUST ORBIT - free rocket flight around an ice planet (space.c)
+ * ================================================================ */
+/* one triangle of a closed body around c, wound so that it faces outward */
+static void out_tri(int tex, vec3 c, vec3 a, vec3 b, vec3 d, float r, float g, float bb, int collide)
+{
+    vec3 n = v3cross(v3sub(b, a), v3sub(d, a)), m = v3scale(v3add(v3add(a, b), d), 1.0f / 3);
+    if (v3dot(n, v3sub(m, c)) < 0) { vec3 t = b; b = d; d = t; }
+    lb_tri(tex, a, b, d, r, g, bb, 0, collide);
+}
+
+static vec3 ball_v(vec3 c, float R, int i, int j, int sl, int st, int seed, float rough)
+{
+    float th = TAU_F * (i % sl) / sl, ph = PI_F * j / st - PI_F / 2;
+    float k = (j == 0 || j == st) ? 1.0f : 1.0f + rough * (sea_hash(i % sl, j, seed) - 0.5f);
+    return v3add(c, v3(cosf(ph) * sinf(th) * R * k, sinf(ph) * R * k, cosf(ph) * cosf(th) * R * k));
+}
+
+/* a (lumpy) ball: style 0 = rock, 1 = the ice planet (snowy poles), 2 = grey moon */
+static void lb_ball(vec3 c, float R, int sl, int st, int seed, float rough, int style)
+{
+    int i, j;
+    for (j = 0; j < st; j++)
+        for (i = 0; i < sl; i++) {
+            vec3 a = ball_v(c, R, i, j, sl, st, seed, rough), b = ball_v(c, R, i + 1, j, sl, st, seed, rough);
+            vec3 e = ball_v(c, R, i + 1, j + 1, sl, st, seed, rough), d = ball_v(c, R, i, j + 1, sl, st, seed, rough);
+            float lat = fabsf((j + 0.5f) / st - 0.5f) * 2, h = sea_hash(i, j, seed + 7), cr, cg, cb;
+            int tex;
+            if (style == 1) {
+                if (lat > 0.62f + 0.12f * h) { tex = TEX_SNOW; cr = cg = cb = 0.95f + 0.05f * h; }
+                else { tex = TEX_ICE; cr = 0.45f + 0.2f * h; cg = 0.7f + 0.15f * h; cb = 1.0f; }
+            } else if (style == 2) { tex = TEX_ROCK; cr = cg = 0.6f + 0.2f * h; cb = 0.68f + 0.2f * h; }
+            else { tex = TEX_ROCK; cr = 0.72f + 0.15f * h; cg = 0.64f + 0.12f * h; cb = 0.6f + 0.12f * h; }
+            if (j > 0) out_tri(tex, c, a, b, e, cr, cg, cb, 1);
+            if (j < st - 1) out_tri(tex, c, a, e, d, cr, cg, cb, 1);
+        }
+}
+
+static void space_boost_ring(vec3 p, vec3 dir)
+{
+    Obj *o = obj_spawn(OT_SPACERING, p, atan2f(dir.x, dir.z), -1);
+    if (o) { dir = v3norm(dir); o->pitch = asinf(clampf(dir.y, -1, 1)); }
+}
+
+static void build_space(void)
+{
+    static const vec3 avoid[] = { { 172, 4, 40 }, { -120, 12, -150 } };   /* meteors in the belt */
+    vec3 st = v3(0, 40, -240), moon = v3(230, 40, 140), rf[3];
+    int i, k;
+    Obj *o;
+    lv.name = "STARDUST ORBIT";
+    lv.music = MUS_SPACE;
+    lv.course = CRS_SPACE;
+    set_sky(0.0f, 0.0f, 0.03f, 0.0f, 0.0f, 0.02f, 320, 900);
+    lv.ambient = 0.55f; lv.diffuse = 0.8f;
+    lv.death_y = -5000;
+    lv.space = 1;
+    g_coin_star_idx = 5;
+    lb_begin();
+    /* the ice planet and its ring */
+    lb_ball(v3(0, 0, 0), 38, 28, 18, 1, 0.06f, 1);
+    lb_alpha_mode = 1;
+    for (i = 0; i < 64; i++) {
+        float a0 = TAU_F * i / 64, a1 = TAU_F * (i + 1) / 64;
+        for (k = 0; k < 3; k++) {
+            float r0 = 52 + k * 7, r1 = r0 + 6, c = k == 1 ? 0.75f : 0.95f;
+            lb_quad(TEX_NONE, v3(sinf(a0) * r0, 0, cosf(a0) * r0), v3(sinf(a1) * r0, 0, cosf(a1) * r0),
+                    v3(sinf(a1) * r1, 0, cosf(a1) * r1), v3(sinf(a0) * r1, 0, cosf(a0) * r1), c * 0.7f, c * 0.85f, c, 0, 0);
+        }
+    }
+    lb_alpha_mode = 0;
+    /* the little grey moon */
+    lb_ball(moon, 16, 16, 10, 5, 0.12f, 2);
+    /* KERNEL STATION: a hub tube to fly through, solar wings, modules and an antenna */
+    lb_box(st.x - 5.5f, st.y - 5.5f, st.z - 25, st.x + 5.5f, st.y - 4.5f, st.z + 25, TEX_METAL, TEX_METAL, 0.8f, 0.82f, 0.9f, 0);
+    lb_box(st.x - 5.5f, st.y + 4.5f, st.z - 25, st.x + 5.5f, st.y + 5.5f, st.z + 25, TEX_METAL, TEX_METAL, 0.8f, 0.82f, 0.9f, 0);
+    lb_box(st.x - 5.5f, st.y - 4.5f, st.z - 25, st.x - 4.5f, st.y + 4.5f, st.z + 25, TEX_METAL, TEX_METAL, 0.75f, 0.78f, 0.88f, 0);
+    lb_box(st.x + 4.5f, st.y - 4.5f, st.z - 25, st.x + 5.5f, st.y + 4.5f, st.z + 25, TEX_METAL, TEX_METAL, 0.75f, 0.78f, 0.88f, 0);
+    for (k = 0; k < 2; k++) {   /* glowing frames around both mouths */
+        float z = st.z + (k ? 25.5f : -25.5f);
+        lb_box(st.x - 6.5f, st.y - 6.5f, z - 0.5f, st.x + 6.5f, st.y - 5.5f, z + 0.5f, TEX_NONE, TEX_NONE, 0.3f, 1, 0.6f, 0);
+        lb_box(st.x - 6.5f, st.y + 5.5f, z - 0.5f, st.x + 6.5f, st.y + 6.5f, z + 0.5f, TEX_NONE, TEX_NONE, 0.3f, 1, 0.6f, 0);
+        lb_box(st.x - 6.5f, st.y - 5.5f, z - 0.5f, st.x - 5.5f, st.y + 5.5f, z + 0.5f, TEX_NONE, TEX_NONE, 0.3f, 1, 0.6f, 0);
+        lb_box(st.x + 5.5f, st.y - 5.5f, z - 0.5f, st.x + 6.5f, st.y + 5.5f, z + 0.5f, TEX_NONE, TEX_NONE, 0.3f, 1, 0.6f, 0);
+    }
+    /* baffles inside: over, under, right, left */
+    lb_box(st.x - 4.5f, st.y, st.z + 14.6f, st.x + 4.5f, st.y + 4.5f, st.z + 15.4f, TEX_CIRCUIT, TEX_METAL, 1, 0.5f, 0.4f, 0);
+    lb_box(st.x - 4.5f, st.y - 4.5f, st.z + 4.6f, st.x + 4.5f, st.y, st.z + 5.4f, TEX_CIRCUIT, TEX_METAL, 1, 0.5f, 0.4f, 0);
+    lb_box(st.x - 4.5f, st.y - 4.5f, st.z - 5.4f, st.x, st.y + 4.5f, st.z - 4.6f, TEX_CIRCUIT, TEX_METAL, 1, 0.5f, 0.4f, 0);
+    lb_box(st.x, st.y - 4.5f, st.z - 13.4f, st.x + 4.5f, st.y + 4.5f, st.z - 12.6f, TEX_CIRCUIT, TEX_METAL, 1, 0.5f, 0.4f, 0);
+    for (k = -1; k <= 1; k += 2) {
+        lb_box(st.x + k * 5.5f, st.y - 1, st.z - 1, st.x + k * 30, st.y + 1, st.z + 1, TEX_METAL, TEX_METAL, 0.7f, 0.7f, 0.8f, 0);
+        lb_box(st.x + k * 30, st.y - 0.4f, st.z - 14, st.x + k * 62, st.y + 0.4f, st.z - 1.5f, TEX_CIRCUIT, TEX_METAL, 0.35f, 0.55f, 1, 0);
+        lb_box(st.x + k * 30, st.y - 0.4f, st.z + 1.5f, st.x + k * 62, st.y + 0.4f, st.z + 14, TEX_CIRCUIT, TEX_METAL, 0.35f, 0.55f, 1, 0);
+    }
+    lb_box(st.x - 4, st.y + 5.5f, st.z + 6, st.x + 4, st.y + 11, st.z + 18, TEX_METAL, TEX_METAL, 0.95f, 0.95f, 1, 0);
+    lb_box(st.x - 4, st.y + 5.5f, st.z - 18, st.x + 4, st.y + 11, st.z - 6, TEX_METAL, TEX_METAL, 0.95f, 0.95f, 1, 0);
+    lb_cyl(st.x, st.y + 5.5f, st.z, 0.6f, 18, 6, TEX_METAL, TEX_METAL, 0.9f, 0.9f, 0.95f, 0);
+    lb_box(st.x - 3, st.y - 9, st.z - 3, st.x + 3, st.y - 5.5f, st.z + 3, TEX_METAL, TEX_METAL, 0.6f, 0.6f, 0.7f, 0);
+    /* the asteroid belt (rocks keep clear of the red fish and the meteors) */
+    for (k = 0; k < 3; k++) {
+        float a = 0.8f + k * 1.95f;
+        rf[k] = v3(sinf(a) * 170, (k - 1) * 6.0f, cosf(a) * 170);
+    }
+    for (i = 0; i < 46; i++) {
+        float a = TAU_F * (i + 0.6f * sea_hash(i, 1, 30)) / 46, r = 150 + 40 * sea_hash(i, 2, 30);
+        float y = -15 + 30 * sea_hash(i, 3, 30), sz = 2.5f + 4.0f * sea_hash(i, 4, 30);
+        vec3 c = v3(sinf(a) * r, y, cosf(a) * r);
+        int ok = 1;
+        for (k = 0; k < 3; k++) if (v3dist(c, rf[k]) < sz + 6) ok = 0;
+        for (k = 0; k < 2; k++) if (v3dist(c, avoid[k]) < sz + 8) ok = 0;
+        if (ok) lb_ball(c, sz, 7, 5, 40 + i, 0.5f, 0);
+    }
+    finish_geometry();
+
+    /* the ring course: Tux starts lined up with the first (green) ring */
+    for (k = 0; k < SPACE_RINGS; k++) {
+        vec3 p = space_ring_pos(k), t = v3norm(v3sub(space_ring_pos((k + 1) % SPACE_RINGS), space_ring_pos((k + SPACE_RINGS - 1) % SPACE_RINGS)));
+        o = obj_spawn(OT_SPACERING, p, atan2f(t.x, t.z), k);
+        if (o) o->pitch = asinf(clampf(t.y, -1, 1));
+        coin_line(v3lerp(p, space_ring_pos((k + 1) % SPACE_RINGS), 0.3f), v3lerp(p, space_ring_pos((k + 1) % SPACE_RINGS), 0.7f), 3, 0);
+        if (k == 0) {
+            vec3 th = v3norm(v3(t.x, 0, t.z));
+            lv.spawn[0] = v3sub(v3mad(p, th, -45), v3(0, 0.8f, 0));
+            lv.spawn_yaw[0] = atan2f(t.x, t.z);
+        }
+    }
+    /* star 0: in the middle of the station's tube */
+    obj_spawn(OT_STAR, st, 0, 0);
+    obj_spawn(OT_COIN, v3(st.x, st.y - 2.2f, st.z + 20), 0, 0);
+    obj_spawn(OT_COIN, v3(st.x, st.y - 2.2f, st.z + 17), 0, 0);
+    obj_spawn(OT_COIN, v3(st.x, st.y + 2.2f, st.z + 10), 0, 0);
+    obj_spawn(OT_COIN, v3(st.x, st.y + 2.2f, st.z + 7), 0, 0);
+    obj_spawn(OT_COIN, v3(st.x + 2.2f, st.y, st.z - 8), 0, 0);
+    obj_spawn(OT_COIN, v3(st.x - 2.2f, st.y, st.z - 17), 0, 0);
+    obj_spawn(OT_COIN, v3(st.x - 2.2f, st.y, st.z - 21), 0, 0);
+    /* star 2: the comet */
+    o = obj_spawn(OT_COMET, v3(0, 0, 0), 0, 0);
+    if (o) o->f[0] = 5.0f;
+    /* star 3: red fish */
+    for (k = 0; k < 3; k++) obj_spawn(OT_REDCOIN, rf[k], 0, 0);
+    obj_spawn(OT_REDCOIN, v3(st.x, st.y + 25.0f, st.z), 0, 0);              /* antenna tip */
+    obj_spawn(OT_REDCOIN, v3(st.x + 46, st.y + 2.5f, st.z), 0, 0);          /* between the solar wings */
+    obj_spawn(OT_REDCOIN, v3add(moon, v3scale(v3norm(moon), 19.5f)), 0, 0);  /* far side of the moon */
+    obj_spawn(OT_REDCOIN, v3(0, -46, 0), 0, 0);                             /* under the south pole */
+    obj_spawn(OT_REDCOIN, v3(-29.2f, 0, 38.1f), 0, 0);                      /* between planet and ring */
+    obj_spawn(OT_STARMARKER, v3(0, 88, 0), 0, 3);
+    /* star 4: ice meteors */
+    obj_spawn(OT_METEOR, v3(0, 60, 0), 0, 0);
+    obj_spawn(OT_METEOR, v3(0, -62, 0), 0, 0);
+    obj_spawn(OT_METEOR, avoid[0], 0, 0);
+    obj_spawn(OT_METEOR, avoid[1], 0, 0);
+    obj_spawn(OT_METEOR, v3(st.x, st.y, st.z - 44), 0, 0);
+    obj_spawn(OT_METEOR, v3(205, 50, 128), 0, 0);
+    /* drifting asteroids: smash them at full boost for fish */
+    for (i = 0; i < 18; i++) {
+        o = obj_spawn(OT_ASTEROID, v3(0, 0, 0), 0, i);
+        if (!o) break;
+        o->f[0] = TAU_F * i / 18;
+        o->f[1] = 156 + 28 * sea_hash(i, 5, 31);
+        o->f[2] = -10 + 20 * sea_hash(i, 6, 31);
+        o->f[3] = (i & 1 ? 1 : -1) * (0.02f + 0.03f * sea_hash(i, 7, 31));
+        o->f[5] = 0.3f + sea_hash(i, 8, 31);
+        o->radius = 1.6f + 1.1f * sea_hash(i, 9, 31);
+    }
+    /* fish: around the planet under its ring, and around the moon */
+    coin_ring(v3(0, 0, 0), 46, 24, 0);
+    coin_ring(moon, 22, 12, 0);
+    obj_spawn(OT_ONEUP, v3add(moon, v3(0, 19, 0)), 0, 0);
+    /* boost rings on the way to the station, the moon and the north pole */
+    space_boost_ring(v3(0, 22, -130), v3(0, 0.12f, -1));
+    space_boost_ring(v3(0, 32, -175), v3(0, 0.1f, -1));
+    space_boost_ring(v3(115, 18, 70), v3norm(moon));
+    space_boost_ring(v3(165, 28, 100), v3norm(moon));
+    space_boost_ring(v3(-60, 30, 30), v3(0.5f, 0.5f, -0.4f));
+    space_boost_ring(v3(-150, 20, 120), v3(1, 0, 0.2f));
+}
+
 void build_level(int level)
 {
     switch (level) {
@@ -1905,6 +2090,7 @@ void build_level(int level)
     case LV_MAZE: build_maze(); break;
     case LV_SEA: build_sea(); break;
     case LV_SKY: build_sky(); break;
+    case LV_SPACE: build_space(); break;
     }
 }
 

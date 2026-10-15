@@ -328,11 +328,34 @@ JA = {
 "TIME UP!": "タイムアップ!",
 "%d FISH! (star already owned)": "%d ひき たっせい! (スターは 入手ずみ)",
 "%d FISH! A star is waiting at the finish!": "%d ひき たっせい! ゴールで スターが もらえるよ!",
-"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
+"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSTARDUST ORBIT window (balcony, north-west): 14\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
     "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
     "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
     "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
     "オーロラ海 ラリー(入口の 西よりの ウィンドウ): 10こ\n"
     "フロストクラウド スカイウェイ(2階 北の ウィンドウ): 12こ\n"
+    "スターダスト オービット(2階 北西の ウィンドウ): 14こ\n"
     "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
+# ---------------------------------------------------------------- STARDUST ORBIT
+"STARDUST ORBIT": "スターダスト オービット",
+"Through the Station Core": "ステーションの トンネルを ぬけて",
+"Comet Ring Run": "コメット リングラン",
+"Catch the Ice Comet": "氷のすいせいを つかまえろ",
+"Red Fish of the Asteroid Belt": "小わくせい帯の 赤いさかな",
+"Smash the Ice Meteors": "氷のいん石を くだけ",
+"100 Fish of Orbit": "オービットの さかな100ぴき",
+"STARDUST ORBIT\nOut here the rocket never runs out of fuel!\nStick: steer (forward dives, back climbs)\nA: boost   B: brake   Z: quick turn\nFly through the rings, chase the comet and ram\nthe ice meteors at full boost to smash them!":
+    "スターダスト オービット\nここでは ロケットの ねんりょうが なくならない!\n"
+    "スティック: そうじゅう (前で 下へ、後ろで 上へ)\nA: ブースト   B: ブレーキ   Z: クイックターン\n"
+    "リングを くぐり、すいせいを おいかけ、氷のいん石には フルブーストで たいあたりして くだこう!",
+"ICE METEORS LEFT: %d": "氷のいん石 のこり %d",
+"RING %d/%d": "リング %d/%d",
+"Too far out! Heading back to orbit.": "とおくへ 行きすぎ! オービットに もどるよ。",
+"TIME UP! Start again from the green ring.": "タイムアップ! みどりの リングから やりなおそう。",
+"RING RUN! Fly through all 20 rings in 35 seconds!": "リングラン! 35びょうで 20この リングを ぜんぶ くぐれ!",
+"RING RUN CLEAR!": "リングラン クリア!",
+"You caught the comet!": "すいせいを つかまえた!",
+"All the ice meteors are smashed!": "氷のいん石を ぜんぶ くだいた!",
+"ICE METEOR SMASHED! %d left": "いん石を くだいた! のこり %d",
+"Too slow! Ram it at full boost (hold A)!": "おそすぎる! Aを おしつづけて フルブーストで たいあたり!",
 }

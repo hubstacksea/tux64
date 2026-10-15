@@ -105,6 +105,10 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_MAZEEXIT: o->radius = 2.0f; o->height = 3.0f; break;
     case OT_SKYCOIN: o->radius = 0.9f; o->height = 1.0f; break;
     case OT_SKYRING: o->radius = 2.0f; o->height = 2.0f; break;
+    case OT_SPACERING: o->radius = 4.0f; o->height = 0; o->flags = OF_NOCULL; break;
+    case OT_COMET: o->radius = 1.5f; o->height = 0; o->flags = OF_NOCULL; break;
+    case OT_METEOR: o->radius = 3.2f; o->height = 0; o->flags = OF_NOCULL; break;
+    case OT_ASTEROID: o->radius = 2.0f; o->height = 0; break;
     case OT_GATE: if (param >= 0 && param < 32) { gate_idx[param] = (int)(o - objs); if (param + 1 > g_gate_n) g_gate_n = param + 1; }
         o->radius = 0; o->height = 6; o->f[0] = 7.0f; break;
     case OT_ICECHUNK: o->radius = 1.35f; o->height = 1.6f; break;
@@ -2266,6 +2270,7 @@ void objs_update(void)
         case OT_MAZEEXIT: upd_mazeexit(o); break;
         case OT_GATE: upd_gate(o); break;
         case OT_SKYCOIN: case OT_SKYRING: sky_obj_update(o); break;
+        case OT_SPACERING: case OT_COMET: case OT_METEOR: case OT_ASTEROID: space_obj_update(o); break;
         case OT_ICECHUNK: upd_icechunk(o); break;
         case OT_WHALE: upd_whale(o); break;
         case OT_BOOSTPAD: upd_boostpad(o); break;
@@ -2623,6 +2628,7 @@ static void draw_obj(Obj *o)
         break;
     }
     case OT_SKYCOIN: case OT_SKYRING: sky_obj_draw(o); break;
+    case OT_SPACERING: case OT_COMET: case OT_METEOR: case OT_ASTEROID: space_obj_draw(o); break;
     case OT_ICECHUNK: if (o->state != 90) draw_model_at(mdl[MDL_ICECHUNK], o->pos, o->yaw, o->scale); break;
     case OT_WHALE: {
         float sw = sinf(o->t * 1.6f);
@@ -2724,7 +2730,7 @@ void objs_draw(void)
         float d;
         if (!o->active || o->type >= OT_FX_SPARKLE) continue;
         d = v3dist(o->pos, cam.pos);
-        if (d > lv.fog_end + 20 && o->type != OT_GRANDSTAR) continue;
+        if (d > lv.fog_end + 20 && o->type != OT_GRANDSTAR && !(o->flags & OF_NOCULL)) continue;
         draw_obj(o);
     }
     /* shadows */
@@ -2735,7 +2741,7 @@ void objs_draw(void)
     glPolygonOffset(-2, -2);
     for (i = 0; i < nobj; i++) {
         Obj *o = &objs[i];
-        if (!o->active || !(o->flags & OF_SHADOW)) continue;
+        if (!o->active || !(o->flags & OF_SHADOW) || lv.space) continue;
         if (v3dist(o->pos, cam.pos) > 60) continue;
         if (o->type == OT_FORKBOMB && o->state == 90) continue;
         if (o->type == OT_BLUECOIN && o->param == 1 && g_blue_switch_timer <= 0) continue;

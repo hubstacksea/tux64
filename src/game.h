@@ -27,8 +27,8 @@ void input_update(void);
 void input_clear(void);
 
 /* ---------------- levels ---------------- */
-enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_COUNT };
-enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_COUNT };
+enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_COUNT };
+enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_COUNT };
 #define SAVE_COURSES 16   /* room in the save file for future courses */
 #define MAX_STARS 7
 
@@ -45,12 +45,13 @@ typedef struct {
     GLuint dl, dl_alpha;
     WaterBox water[8];
     int nwater;
-    vec3 spawn[12];
-    float spawn_yaw[12];
+    vec3 spawn[16];
+    float spawn_yaw[16];
     struct { vec3 p; const char *text; int course; } label[16];   /* floating window titles */
     int nlabels;
     int snow, clouds, stars_sky, dark;   /* snow: 0 none, 1 light snowfall, 2 blizzard */
     int aurora;                          /* northern lights in the sky */
+    int space;                           /* outer space: stars all around, nebulae, no ground */
     float wind_yaw;
 } Level;
 extern Level lv;
@@ -77,6 +78,7 @@ enum {
     OT_GHOST, OT_GHOSTKING, OT_TOPSWITCH, OT_HEART, OT_WATCHDOG, OT_CAGE, OT_STEAM, OT_OOM, OT_MAZEEXIT,
     OT_GATE, OT_ICECHUNK, OT_WHALE, OT_BOOSTPAD, OT_SEAL,
     OT_SKYCOIN, OT_SKYRING,
+    OT_SPACERING, OT_COMET, OT_METEOR, OT_ASTEROID,
     OT_FX_SPARKLE, OT_FX_SMOKE, OT_FX_EXPLODE, OT_FX_BUBBLE, OT_FX_SNOWPUFF, OT_FX_SHOCKWAVE,
     OT_COUNT
 };
@@ -143,6 +145,8 @@ enum {
     ACT_SKATE,
     /* FROSTCLOUD SKYWAY: free rocket flight in the plane of the sky path */
     ACT_SKYFLY,
+    /* STARDUST ORBIT: free 3D rocket flight with an endless fuel tank */
+    ACT_SPACEFLY,
     ACT_COUNT
 };
 #define ACT_FIRST_AIR ACT_JUMP
@@ -190,6 +194,9 @@ typedef struct {
     float trick_t;
     float sky_s, sky_y, sky_vs, sky_vy;   /* sky path position (arc length, height) and velocity */
     float sky_dash;              /* dash gauge 0..1 */
+    float sp_speed;              /* space flight: current cruise speed */
+    int sp_stun;                 /* frames of lost control after a crash */
+    int sp_turn;                 /* frames left of a Z quick turn */
 } Player;
 extern Player pl;
 
@@ -216,6 +223,7 @@ typedef struct {
     int mode;
     float shake;
     vec3 fixed_pos;
+    float fov;                   /* vertical field of view (degrees) */
 } Camera;
 extern Camera cam;
 void camera_reset(void);
@@ -327,6 +335,20 @@ void sky_obj_update(Obj *o);
 void sky_obj_draw(Obj *o);
 void sky_draw_alpha(void);
 void sky_camera(void);
+/* STARDUST ORBIT (space.c) */
+#define SPACE_RINGS 20
+#define SPACE_RING_TIME (35 * 60)
+#define SPACE_METEORS 6
+extern int g_ring_run_next, g_ring_run_t, g_meteors_left;
+void space_reset(void);
+void space_update(void);
+void space_obj_update(Obj *o);
+void space_obj_draw(Obj *o);
+void space_draw_alpha(void);
+void space_draw_sky(void);
+void space_camera(void);
+vec3 space_ring_pos(int k);
+Obj *space_ring(int k);
 extern vec3 g_wind;          /* blizzard wind velocity (u/s), zero when calm */
 extern float g_gust;         /* 0..1 gust strength */
 extern const char *g_hud_msg;

@@ -61,6 +61,8 @@ const CourseInfo courses[CRS_COUNT] = {
                                "Ride the Whale's Spout", "100 Fish of the Sea" }, LV_SEA },
     { "FROSTCLOUD SKYWAY", 4, { "Sky Flight: 60 Fish", "Sky Flight: 120 Fish", "Sky Flight: 200 Fish",
                                 "Sky Flight: 300 Fish" }, LV_SKY },
+    { "STARDUST ORBIT", 6, { "Through the Station Core", "Comet Ring Run", "Catch the Ice Comet",
+                             "Red Fish of the Asteroid Belt", "Smash the Ice Meteors", "100 Fish of Orbit" }, LV_SPACE },
 };
 
 /* ======================================================================
@@ -280,7 +282,7 @@ void dialog_open(const char *text)
     dlg_page_start = 0;
     dlg_t = 0;
     if (pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE && gstate == GS_PLAY &&
-        pl.act != ACT_SWIM && pl.act != ACT_SKYFLY && pl.act != ACT_SKATE && !player_in_air())
+        pl.act != ACT_SWIM && pl.act != ACT_SKYFLY && pl.act != ACT_SKATE && pl.act != ACT_SPACEFLY && !player_in_air())
         player_set_act(ACT_FROZEN);
 }
 int dialog_active(void) { return dlg_on; }
@@ -382,6 +384,13 @@ void level_load(int level, int spawn)
         dialog_open("FROSTCLOUD SKYWAY\nFly free with the rocket! Move in any direction\nwith the stick, hold A to dash.\n"
                     "Draw a loop around fish with your trail to grab\nthem all at once. You have 2 minutes!\n"
                     "Fish lines in one flight: 60 / 120 / 200 / 300.\nEach line reached gives its star.");
+    }
+    if (level == LV_SPACE) {
+        space_reset();
+        camera_update();
+        dialog_open("STARDUST ORBIT\nOut here the rocket never runs out of fuel!\n"
+                    "Stick: steer (forward dives, back climbs)\nA: boost   B: brake   Z: quick turn\n"
+                    "Fly through the rings, chase the comet and ram\nthe ice meteors at full boost to smash them!");
     }
     if (level == LV_SEA) {
         sfx(SFX_1UP);
@@ -630,6 +639,7 @@ static void play_update(void)
         if (g_gust > 0.35f && g_frame % 25 == 0) sfx_ex(SFX_SLIDE, 0.5f * g_gust, 0.5f);
     } else { g_wind = v3(0, 0, 0); g_gust = 0; }
     sky_update();
+    space_update();
     objs_update();
     objs_collision();
     player_update();
@@ -808,6 +818,7 @@ static void draw_sky(void)
         glVertex3f(sinf(a) * 50, -20, cosf(a) * 50);
     }
     glEnd();
+    if (lv.space) space_draw_sky();
     if (lv.stars_sky) {
         glPointSize(2);
         glBegin(GL_POINTS);
@@ -939,7 +950,7 @@ static void render_world(void)
     float fog[3];
     float wy;
     int underwater;
-    gfx_begin_3d(55.0f, 0.3f, 400.0f);
+    gfx_begin_3d(cam.fov > 1 ? cam.fov : 55.0f, 0.3f, lv.space ? 1000.0f : 400.0f);
     wy = water_level_at(cam.pos.x, cam.pos.z, cam.pos.y);
     underwater = wy > -1e8f && cam.pos.y < wy;
     memcpy(fog, lv.fog, sizeof fog);
@@ -978,6 +989,7 @@ static void render_world(void)
     glDepthMask(GL_TRUE);
     objs_draw_alpha();
     sky_draw_alpha();
+    space_draw_alpha();
     if (lv.snow) draw_snow();
     glDisable(GL_FOG);
     if (underwater) {
@@ -1066,7 +1078,7 @@ static void draw_hud(void)
             gfx_text_center(g_vw * 0.5f + 40, 82, 1.5f, tr("AIR"), 0.7f, 0.9f, 1, 1);
     }
     /* rocket fuel */
-    if (pl.rocket_t > 0 && cur_level != LV_SKY) {
+    if (pl.rocket_t > 0 && cur_level != LV_SKY && !lv.space) {
         float x = g_vw - 120, y = 440;
         gfx_rect(x - 6, y - 14, 12, 24, 0.9f, 0.15f, 0.12f, 1);
         gfx_rect(x - 3, y - 20, 6, 6, 1, 1, 1, 1);
@@ -1108,6 +1120,54 @@ static void draw_hud(void)
         gfx_rect(30, 440, 204, 16, 0.05f, 0.05f, 0.1f, 0.8f);
         gfx_rect(32, 442, 200 * pl.sky_dash, 12, 0.4f, 0.85f + 0.15f * sinf(g_frame * 0.2f), 1.0f, 1);
         gfx_text_shadow(240, 438, 2, tr("DASH"), 0.7f, 0.95f, 1, 1);
+    }
+    /* STARDUST ORBIT: speed, ring run, meteors and a marker on the next ring */
+    if (lv.space && pl.act == ACT_SPACEFLY) {
+        float x = 24, y = 420, k = clampf(pl.sp_speed / 78.0f, 0, 1);
+        snprintf(buf, sizeof buf, "%d km/h", (int)(pl.sp_speed * 36));
+        gfx_rect(x, y + 26, 204, 12, 0.05f, 0.05f, 0.1f, 0.8f);
+        gfx_rect(x + 2, y + 28, 200 * k, 8, 0.3f + 0.7f * k, 0.9f - 0.4f * k * k, 1.0f - 0.8f * k, 1);
+        gfx_text_shadow(x, y, 2, buf, pl.boost_t > 0 ? 1.0f : 0.8f, pl.boost_t > 0 ? 0.7f : 0.95f, pl.boost_t > 0 ? 0.3f : 1, 1);
+        if (g_meteors_left < SPACE_METEORS && g_meteors_left > 0) {
+            snprintf(buf, sizeof buf, tr("ICE METEORS LEFT: %d"), g_meteors_left);
+            gfx_text_shadow(x, y - 30, 2, buf, 0.6f, 0.85f, 1, 1);
+        }
+        if (g_ring_run_t > 0) {
+            int t = g_ring_run_t;
+            snprintf(buf, sizeof buf, tr("RING %d/%d"), g_ring_run_next, SPACE_RINGS);
+            gfx_text_shadow(g_vw - 230, 100, 2.5f, buf, 1, 0.9f, 0.4f, 1);
+            snprintf(buf, sizeof buf, "%d\"%d", t / 60, (t % 60) / 6);
+            gfx_text_center(g_vw * 0.5f, 72, 4, buf, 1, t < 600 ? 0.35f : 1, t < 600 ? 0.3f : 1, 1);
+        }
+        {
+            Obj *r = space_ring(g_ring_run_t > 0 ? g_ring_run_next : 0);
+            if (r && (g_ring_run_t > 0 || v3dist(r->pos, pl.pos) < 140)) {
+                const float *mv = view_mv, *pr = view_pr;
+                vec3 p = r->pos;
+                float e[4], c[4], sx, sy, cx = g_vw * 0.5f, cy = 240;
+                int i2, behind;
+                for (i2 = 0; i2 < 4; i2++) e[i2] = mv[i2] * p.x + mv[4 + i2] * p.y + mv[8 + i2] * p.z + mv[12 + i2];
+                for (i2 = 0; i2 < 4; i2++) c[i2] = pr[i2] * e[0] + pr[4 + i2] * e[1] + pr[8 + i2] * e[2] + pr[12 + i2] * e[3];
+                behind = c[3] <= 0.1f;
+                if (behind) { c[0] = -c[0]; c[1] = -c[1]; c[3] = maxf(fabsf(c[3]), 0.1f); }
+                sx = (c[0] / c[3] * 0.5f + 0.5f) * g_vw;
+                sy = (1 - (c[1] / c[3] * 0.5f + 0.5f)) * 480;
+                if (behind || sx < 30 || sx > g_vw - 30 || sy < 40 || sy > 450) {
+                    /* off screen: an arrow on the edge pointing at it */
+                    float dx = sx - cx, dy = sy - cy, l = sqrtf(dx * dx + dy * dy), f;
+                    if (l < 1) { dx = 0; dy = 1; l = 1; }
+                    dx /= l; dy /= l;
+                    f = minf((cx - 40) / maxf(fabsf(dx), 1e-3f), (cy - 50) / maxf(fabsf(dy), 1e-3f));
+                    sx = cx + dx * f; sy = cy + dy * f;
+                    gfx_circle2d(sx, sy, 11, 0, 0, 0, 0.5f);
+                    gfx_circle2d(sx, sy, 8, g_ring_run_t > 0 ? 1 : 0.3f, g_ring_run_t > 0 ? 0.85f : 1, 0.3f, 0.9f);
+                    gfx_circle2d(sx + dx * 12, sy + dy * 12, 4, 1, 1, 1, 0.9f);
+                } else {
+                    float pulse = 1 + 0.15f * sinf(g_frame * 0.3f);
+                    gfx_circle2d(sx, sy - 30 * pulse, 6, g_ring_run_t > 0 ? 1 : 0.3f, g_ring_run_t > 0 ? 0.85f : 1, 0.3f, 0.9f);
+                }
+            }
+        }
     }
     /* AURORA SEA rally: lap, gate power and speed */
     if (cur_level == LV_SEA && pl.boots) {
