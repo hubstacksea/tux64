@@ -12,6 +12,10 @@
  *   d                press A until no dialog is open
  *   u ACT N          wait until player action == ACT (max N frames)
  *   T X Y Z          teleport (debug)
+ *   A TYPE N         walk up to the nearest object of TYPE and punch it (N frames)
+ *   Q N              fight the watchdog: dodge its lunge, then kick it
+ *   G TYPE           walk to the nearest object of TYPE and pick it up with B
+ *   M X Z N          bounce on the trampoline with good timing, then steer to (X,Z)
  *   P                print state
  */
 #include "game.h"
@@ -26,6 +30,7 @@ static char op;
 static float a[4];
 static char keys[16];
 extern int g_frame;
+extern int g_trace;
 
 void bot_set(const char *s)
 {
@@ -169,6 +174,85 @@ void bot_update(void)
         if (ok || t > 1200) { if (!ok) printf("BOT %d: N TIMEOUT\n", stepno); done(); }
         break;
     }
+    case 'L': {   /* lure Segfault's charge into a spike mine (max N frames) */
+        static int mine = -1, dodge, hp0;
+        Obj *b = find(OT_SEGFAULT), *m;
+        vec3 c = v3(0, 0, -150);
+        if (t == 1) {
+            int i;
+            float bd = 1e9f;
+            mine = -1; dodge = 0; hp0 = b ? b->hp : 0;
+            for (i = 0; i < nobj; i++)
+                if (objs[i].active && objs[i].type == OT_SPIKEBOMB && objs[i].state == 0 && v3dist(objs[i].pos, pl.pos) < bd) {
+                    bd = v3dist(objs[i].pos, pl.pos); mine = i;
+                }
+        }
+        if (!b || mine < 0 || b->hp != hp0 || t > a[0]) { printf("BOT %d: lure end hp=%d f%d\n", stepno, b ? b->hp : -1, g_frame); done(); break; }
+        m = &objs[mine];
+        if (g_trace && t % 30 == 0) printf("L t%d seg st%d tm%d pos(%.1f %.1f) d=%.1f mine(%.1f %.1f) st%d pl(%.1f %.1f %.1f) hp%d\n", t, b->state, b->timer, b->pos.x, b->pos.z, v3distxz(b->pos, pl.pos), m->pos.x, m->pos.z, m->state, pl.pos.x, pl.pos.y, pl.pos.z, pl.health);
+        if (b->state == 3 && b->timer >= 40 && v3distxz(b->pos, pl.pos) < 8) dodge = 25;
+        if (dodge > 0) {
+            vec3 r = v3norm(v3sub(m->pos, c));
+            dodge--;
+            stick_to(pl.pos.x - r.z * 5 + r.x, pl.pos.z + r.x * 5 + r.z, 1);
+        } else {
+            vec3 r = v3norm(v3sub(m->pos, c));
+            vec3 tp = v3mad(m->pos, r, 3.5f);
+            if (v3distxz(tp, pl.pos) > 0.5f) stick_to(tp.x, tp.z, minf(1, v3distxz(tp, pl.pos)));
+        }
+        break;
+    }
+    case 'A': {
+        static int tgt;
+        Obj *o;
+        if (t == 1) {
+            int i;
+            float bd = 1e9f;
+            tgt = -1;
+            for (i = 0; i < nobj; i++)
+                if (objs[i].active && objs[i].type == (int)a[0] && objs[i].state != 90 && v3dist(objs[i].pos, pl.pos) < bd) {
+                    bd = v3dist(objs[i].pos, pl.pos); tgt = i;
+                }
+        }
+        o = tgt >= 0 ? &objs[tgt] : NULL;
+        if (o && (!o->active || o->type != (int)a[0] || o->state == 90)) { printf("BOT %d: target down f%d\n", stepno, g_frame); done(); break; }
+        if (!o || t > a[1]) { done(); break; }
+        if (v3distxz(o->pos, pl.pos) > 1.6f) stick_to(o->pos.x, o->pos.z, 1);
+        else { pl.yaw = yaw_to(pl.pos, o->pos); if (t % 8 == 0) h |= BT_B; }
+        break;
+    }
+    case 'Q': {
+        Obj *o = find(OT_WATCHDOG);
+        static int hp0;
+        if (t == 1 && o) hp0 = o->hp;
+        if (!o || o->hp != hp0 || t > a[0]) { printf("BOT %d: watchdog hp=%d f%d\n", stepno, o ? o->hp : -1, g_frame); done(); break; }
+        if (o->state == 2) {
+            stick_to(o->pos.x, o->pos.z, 1);
+            if (v3distxz(o->pos, pl.pos) < 2.6f) { pl.yaw = yaw_to(pl.pos, o->pos); in.mag = 0; in.sx = in.sy = 0; if (t % 6 == 0) h |= BT_B; }
+        } else if (o->state == 1 && o->timer >= 8 && o->timer < 30) {
+            vec3 d = v3norm(v3sub(pl.pos, o->pos));
+            stick_to(pl.pos.x - d.z * 5, pl.pos.z + d.x * 5, 1);   /* sidestep */
+        } else {
+            vec3 d = v3norm(v3sub(pl.pos, o->home));
+            vec3 tp = v3mad(o->home, d, 9.5f);
+            if (v3distxz(tp, pl.pos) > 0.5f) stick_to(tp.x, tp.z, minf(1, v3distxz(tp, pl.pos)));
+        }
+        break;
+    }
+    case 'G': {
+        Obj *o = NULL;
+        int i;
+        float bd = 1e9f;
+        for (i = 0; i < nobj; i++)
+            if (objs[i].active && objs[i].type == (int)a[0] && objs[i].state != 90 && objs[i].state != 101 && fabsf(objs[i].pos.y - pl.pos.y) < 1.2f && v3dist(objs[i].pos, pl.pos) < bd && v3dist(objs[i].pos, pl.pos) < 12) {
+                bd = v3dist(objs[i].pos, pl.pos); o = &objs[i];
+            }
+        if (!o && t <= 400) break;
+        if (!o || pl.held >= 0 || t > 400) { printf("BOT %d: grab %s f%d\n", stepno, pl.held >= 0 ? "ok" : "failed", g_frame); done(); break; }
+        if (v3distxz(o->pos, pl.pos) > 1.2f) stick_to(o->pos.x, o->pos.z, 1);
+        else { pl.yaw = yaw_to(pl.pos, o->pos); if (t % 4 == 0) { h |= BT_B; if (g_trace) printf("G: d=%.2f dy=%.2f st=%d act=%d\n", v3distxz(o->pos, pl.pos), o->pos.y - pl.pos.y, o->state, pl.act); } }
+        break;
+    }
     case 'f': {
         Obj *o = find((int)a[0]);
         if (o) pl.yaw = yaw_to(pl.pos, o->pos);
@@ -179,23 +263,6 @@ void bot_update(void)
         float ang = t * 0.35f;
         in.sx = sinf(ang); in.sy = cosf(ang); in.mag = 1;
         if (t >= (int)a[0]) done();
-        break;
-    }
-    case 'R': {   /* keep spinning; release toward a spike mine */
-        int i;
-        float ang = t * 0.35f;
-        in.sx = sinf(ang); in.sy = cosf(ang); in.mag = 1;
-        if (pl.act != ACT_SPIN) { printf("BOT %d: not spinning (act %d)\n", stepno, pl.act); done(); break; }
-        if (pl.spin_v > 8.5f) {
-            for (i = 0; i < nobj; i++) {
-                Obj *o = &objs[i];
-                float da;
-                if (!o->active || o->type != OT_SPIKEBOMB) continue;
-                da = fabsf(angle_diff(yaw_to(pl.pos, o->pos), pl.spin_ang + pl.spin_v * DT));
-                if (da < 0.06f) { h |= BT_B; printf("BOT %d: release spin_v=%.1f f%d\n", stepno, pl.spin_v, g_frame); done(); break; }
-            }
-        }
-        if (t > 900) done();
         break;
     }
     case 'S': {   /* swim to 3D point */
@@ -240,6 +307,19 @@ void bot_update(void)
             printf("BOT %d: triple jump end act=%d f%d\n", stepno, pl.act, g_frame);
             done();
         }
+        break;
+    }
+    case 'M': {   /* trampoline: time A presses, after 3 good bounces steer to (X,Z) */
+        static int pressed_this_fall;
+        Obj *o = find(OT_TRAMPOLINE);
+        if (!o) { done(); break; }
+        if (pl.tramp_combo >= 3 && pl.act == ACT_TRAMP && pl.pos.y > o->pos.y + 6) stick_to(a[0], a[1], 1);
+        else if (v3distxz(pl.pos, o->pos) > 0.3f) stick_to(o->pos.x, o->pos.z, minf(1, v3distxz(pl.pos, o->pos)));
+        if (pl.vel.y > 0) pressed_this_fall = 0;
+        if (pl.vel.y < 0 && !pressed_this_fall && pl.pos.y < o->pos.y + 0.9f + 2.0f && player_in_air()) {
+            h |= BT_A; pressed_this_fall = 1;
+        }
+        if (t > a[2]) done();
         break;
     }
     case 'X': { /* debug: set state of first object of TYPE:  X TYPE STATE */
@@ -290,11 +370,6 @@ void bot_update(void)
         }
         break;
     }
-    case 'C':   /* aim cannon (degrees) and fire */
-        pl.cannon_yaw = RAD(a[0]);
-        pl.cannon_pitch = RAD(a[1]);
-        if (t > 3) { h |= BT_A; done(); }
-        break;
     case 'd':
         if (dialog_active()) { if (t % 6 == 0) h |= BT_A; }
         else if (t > 3) done();
@@ -310,14 +385,14 @@ void bot_update(void)
         done();
         break;
     case 'P':
-        printf("BOT %d: f%d act=%d pos=(%.2f %.2f %.2f) hp=%d coins=%d stars=%d lv=%d cap=%d fwd=%.1f\n", stepno, g_frame, pl.act,
-               pl.pos.x, pl.pos.y, pl.pos.z, pl.health, pl.coins, total_stars(), cur_level, pl.cap_t, pl.fwd);
+        printf("BOT %d: f%d act=%d pos=(%.2f %.2f %.2f) hp=%d coins=%d stars=%d lv=%d rocket=%d fwd=%.1f\n", stepno, g_frame, pl.act,
+               pl.pos.x, pl.pos.y, pl.pos.z, pl.health, pl.coins, total_stars(), cur_level, pl.rocket_t, pl.fwd);
         {
             int i;
             for (i = 0; i < nobj; i++) {
                 Obj *o = &objs[i];
                 if (!o->active) continue;
-                if (o->type == OT_KING || o->type == OT_SEGFAULT || o->type == OT_BRUTE || o->type == OT_RACER || o->type == OT_STAR || o->type == OT_BABY || o->type == OT_MOTHER || o->type == OT_GHOSTKING || (o->type == OT_GHOST && v3dist(o->pos, pl.pos) < 12) || o->type == OT_CHOMP || o->type == OT_CHOMPPOST || o->type == OT_CAGE || o->type == OT_OOM)
+                if (o->type == OT_KING || o->type == OT_SEGFAULT || o->type == OT_BRUTE || o->type == OT_RACER || o->type == OT_STAR || o->type == OT_BABY || o->type == OT_MOTHER || o->type == OT_GHOSTKING || (o->type == OT_GHOST && v3dist(o->pos, pl.pos) < 12) || o->type == OT_WATCHDOG || o->type == OT_CAGE || o->type == OT_OOM)
                     printf("   obj type %d state %d hp %d pos=(%.2f %.2f %.2f) param %d\n", o->type, o->state, o->hp, o->pos.x, o->pos.y, o->pos.z, o->param);
             }
         }

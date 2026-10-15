@@ -38,7 +38,6 @@ void player_init(vec3 pos, float yaw)
     pl.held = -1;
     pl.platform = -1;
     pl.pole = -1;
-    pl.cannon = -1;
     pl.visible = 1;
     pl.act = ACT_FALL;
     pl.peak_y = pos.y;
@@ -80,7 +79,6 @@ int player_is_attacking(void)
     case ACT_GPOUND_LAND: return pl.act_t < 4;
     case ACT_ROLLOUT: return 0;
     case ACT_SWIM: return pl.act_s == 2;
-    case ACT_SHOT: return 1;
     }
     return 0;
 }
@@ -88,7 +86,7 @@ int player_is_attacking(void)
 static int is_unhurtable(void)
 {
     return pl.invinc > 0 || pl.act == ACT_DEATH || pl.act == ACT_DROWN || pl.act == ACT_STAR_DANCE ||
-           pl.act == ACT_FROZEN || pl.act == ACT_CANNON || pl.act == ACT_KNOCKBACK || pl.act == ACT_AIR_KNOCK;
+           pl.act == ACT_FROZEN || pl.act == ACT_KNOCKBACK || pl.act == ACT_AIR_KNOCK;
 }
 
 static void drop_held(int throwit);
@@ -179,6 +177,8 @@ static int ground_step(void)
     return GSTEP_NONE;
 }
 
+static void tramp_bounce(Obj *t);
+
 static int air_step(void)
 {
     float spd = v3len(pl.vel) * DT;
@@ -209,6 +209,11 @@ static int air_step(void)
             }
         }
         if (fl && np.y <= fy) {
+            if (pl.vel.y <= 0 && fl->owner >= 0 && objs[fl->owner].type == OT_TRAMPOLINE && fl->n.y > 0.7f) {
+                pl.pos = v3(np.x, fy, np.z);
+                tramp_bounce(&objs[fl->owner]);
+                return ASTEP_NONE;
+            }
             if (pl.vel.y <= 0) {
                 pl.pos = v3(np.x, fy, np.z);
                 pl.floor = fl;
@@ -289,7 +294,7 @@ static void chain_jump(void)
 }
 
 static int try_interact_b(void);
-static void enter_fly(float speed, float pitch);
+static void enter_fly(void);
 
 static void enter_fall(void) { player_set_act(ACT_FALL); }
 
@@ -599,7 +604,7 @@ static void drop_held(int throwit)
     o->flags &= ~OF_HELD;
     if (throwit) {
         vec3 d = yaw_dir(pl.yaw);
-        float spd = o->type == OT_KING ? 9.0f : 12.0f;
+        float spd = 12.0f;
         o->vel = v3(d.x * spd + pl.vel.x * 0.3f, 7.0f, d.z * spd + pl.vel.z * 0.3f);
         o->state = 100;   /* generic "thrown" state */
         o->timer = 0;
@@ -625,15 +630,6 @@ static int try_interact_b(void)
     g = objs_try_grab();
     if (g >= 0) {
         Obj *o = &objs[g];
-        if (o->type == OT_SEGFAULT) {
-            pl.spin_v = 0;
-            pl.spin_ang = yaw_to(pl.pos, o->pos);
-            player_set_act(ACT_SPIN);
-            sfx(SFX_GRAB);
-            pl.held = g;
-            o->flags |= OF_HELD;
-            return 1;
-        }
         pl.held = g;
         o->flags |= OF_HELD;
         sfx(SFX_GRAB);
@@ -648,7 +644,6 @@ static void act_hold(void)
 {
     float maxs = 6.5f;
     if (pl.held < 0 || !objs[pl.held].active) { pl.held = -1; player_set_act(ACT_IDLE); return; }
-    if (objs[pl.held].type == OT_KING) maxs = 4.0f;
     if (floor_is_slidey()) { drop_held(0); begin_belly_slide(pl.fwd); return; }
     if (pressed(BT_A)) { do_jump(ACT_HOLD_JUMP); return; }
     if (pressed(BT_B)) { player_set_act(ACT_THROW); return; }
@@ -675,51 +670,13 @@ static void act_throw(void)
     if (pl.act_t > 14) player_set_act(ACT_IDLE);
 }
 
-static void act_spin(void)
-{
-    Obj *o;
-    float stick_ang;
-    static float last_stick_ang;
-    if (pl.held < 0 || !objs[pl.held].active) { pl.held = -1; player_set_act(ACT_IDLE); return; }
-    o = &objs[pl.held];
-    if (pl.act_t == 0) last_stick_ang = atan2f(in.sx, in.sy);
-    /* spin up: rotating the stick or simply holding a direction */
-    stick_ang = atan2f(in.sx, in.sy);
-    if (int_mag > 0.3f) {
-        float d = fabsf(angle_diff(stick_ang, last_stick_ang));
-        pl.spin_v += (d * 25.0f + 3.0f) * DT;
-    } else {
-        pl.spin_v -= 1.5f * DT;
-    }
-    last_stick_ang = stick_ang;
-    pl.spin_v = clampf(pl.spin_v, 0.8f, 11.0f);
-    pl.spin_ang = wrap_angle(pl.spin_ang + pl.spin_v * DT);
-    pl.yaw = pl.spin_ang;
-    pl.vel = v3(0, 0, 0);
-    pl.fwd = 0;
-    if ((int)(pl.act_t) % 20 == 0) sfx_ex(SFX_THROW, 0.4f, 0.6f + pl.spin_v * 0.08f);
-    if (pressed(BT_B) && pl.act_t > 10) {
-        o->flags &= ~OF_HELD;
-        o->state = 100;
-        o->timer = 0;
-        o->f[0] = pl.spin_v;
-        o->vel = v3scale(yaw_dir(pl.spin_ang), 6.0f + pl.spin_v * 2.0f);
-        o->vel.y = 6.0f + pl.spin_v * 0.6f;
-        pl.held = -1;
-        sfx(SFX_THROW);
-        sfx_ex(SFX_SQUAWK, 0.8f, 1.2f);
-        player_set_act(ACT_IDLE);
-    }
-}
-
-/* ------------------------------------------------------------------ air actions */
 static void air_control(int allow_turn, float turn_rate)
 {
     float d = angle_diff(int_yaw, pl.yaw);
     float fc = cosf(d) * int_mag, sc = sinf(d) * int_mag;
     vec3 f, r;
     float cap = RUN_SPEED;
-    if (pl.act == ACT_LONGJUMP || pl.act == ACT_DIVE || pl.act == ACT_SHOT || pl.act == ACT_ROLLOUT) cap = 15.0f;
+    if (pl.act == ACT_LONGJUMP || pl.act == ACT_DIVE || pl.act == ACT_ROLLOUT) cap = 15.0f;
     if (fc > 0) { if (pl.fwd < cap) pl.fwd = minf(pl.fwd + fc * 13.5f * DT, cap); }
     else pl.fwd += fc * 13.5f * DT;
     if (allow_turn) pl.yaw = approach_angle(pl.yaw, int_yaw, turn_rate * int_mag * DT);
@@ -758,7 +715,7 @@ static int try_ledge(void)
 static void land_damage(void)
 {
     float fall = pl.peak_y - pl.pos.y;
-    if (fall > 11.0f && !(floor_flags() & SF_SNOW) && pl.act != ACT_SHOT) {
+    if (fall > 11.0f && !(floor_flags() & SF_SNOW) && pl.act != ACT_TRAMP) {
         pl.health -= fall > 20 ? 4 : 3;
         sfx(SFX_HURT);
         sfx(SFX_THUD);
@@ -774,6 +731,12 @@ static void land_damage(void)
 static int air_common(int land_act, int can_wallkick, int can_dive, int can_pound)
 {
     int r;
+    /* rocket pack: press A in mid-air to ignite (not while lining up a trampoline bounce) */
+    if (pl.rocket_t > 0 && pressed(BT_A) && pl.wall_timer == 0 && pl.act_t > 3 && pl.held < 0 &&
+        !(pl.act == ACT_TRAMP && pl.vel.y < 0)) {
+        enter_fly();
+        return 1;
+    }
     if (can_pound && pressed(BT_Z)) {
         player_set_act(ACT_GPOUND);
         pl.vel = v3(0, 0, 0);
@@ -830,7 +793,7 @@ static int air_common(int land_act, int can_wallkick, int can_dive, int can_poun
         float into = v3dot(yaw_dir(pl.yaw), pl.wall_n);
         if (into < -0.5f && pl.fwd > 3.0f) {
             if (pl.vel.y < 0 && try_ledge()) return 1;
-            if (pl.fwd > 13.5f && pl.act != ACT_SHOT) {
+            if (pl.fwd > 13.5f) {
                 /* bonk */
                 pl.fwd = -3;
                 pl.vel.y = minf(pl.vel.y, 3);
@@ -854,11 +817,7 @@ static int air_common(int land_act, int can_wallkick, int can_dive, int can_poun
 
 static void act_jump(void)
 {
-    if (pl.act == ACT_TJUMP && pl.cap_t > 0 && pl.act_t > 24 && pl.vel.y < 6.0f) {
-        enter_fly(22.0f, 0.55f);
-        return;
-    }
-    int turn = pl.act == ACT_JUMP || pl.act == ACT_DJUMP || pl.act == ACT_FALL || pl.act == ACT_BOUNCE;
+    int turn = pl.act == ACT_JUMP || pl.act == ACT_DJUMP || pl.act == ACT_FALL || pl.act == ACT_BOUNCE || pl.act == ACT_TRAMP;
     int wk = pl.act != ACT_BACKFLIP;
     if (pl.act == ACT_JUMP || pl.act == ACT_DJUMP || pl.act == ACT_HOLD_JUMP) {
         if (!held(BT_A) && pl.vel.y > 6.0f) pl.vel.y = 6.0f;
@@ -933,76 +892,88 @@ static void act_burn_jump(void)
     }
 }
 
-static void act_shot(void)
+/* ---- trampoline: each well-timed A press (just before touching it) bounces Tux higher ---- */
+static void tramp_bounce(Obj *t)
 {
-    int r;
-    if (pl.cap_t > 0 && pl.act_t > 5) {
-        float sp = v3len(pl.vel);
-        enter_fly(sp * 0.75f, asinf(clampf(pl.vel.y / maxf(sp, 0.1f), -1, 1)) * 0.6f);
-        pl.yaw = atan2f(pl.vel.x, pl.vel.z);
-        return;
-    }
-    apply_gravity(0.7f);
-    r = air_step();
-    if (pl.pos.y > pl.peak_y) pl.peak_y = pl.pos.y;
-    if (pl.act_t % 3 == 0) fx_spawn(OT_FX_SPARKLE, pl.pos, 0.3f);
-    if (r == ASTEP_LAND) {
-        pl.peak_y = pl.pos.y;
-        pl.fwd = v3len(v3(pl.vel.x, 0, pl.vel.z)) * 0.5f;
-        begin_belly_slide(pl.fwd);
-        return;
-    }
-    if (r == ASTEP_WALL || r == ASTEP_CEIL) {
-        if (g_trace) printf("SHOT hit %s n=(%.2f %.2f %.2f) at (%.2f %.2f %.2f)\n", r == ASTEP_WALL ? "wall" : "ceil", pl.wall_n.x, pl.wall_n.y, pl.wall_n.z, pl.pos.x, pl.pos.y, pl.pos.z);
-        pl.fwd = -2;
-        pl.vel.y = 0;
-        sfx(SFX_THUD);
-        player_set_act(ACT_AIR_KNOCK);
-        pl.invinc = 30;
-        return;
-    }
-    if (pressed(BT_B) && pl.act_t > 20) {
-        pl.fwd = v3len(v3(pl.vel.x, 0, pl.vel.z));
-        player_set_act(ACT_DIVE);
-    }
+    static const float vy[4] = { 13.0f, 21.0f, 30.0f, 44.0f };
+    int good = pl.a_age <= 10;
+    if (pl.act != ACT_TRAMP) pl.tramp_combo = 0;
+    if (pl.act == ACT_GPOUND) pl.tramp_combo = pl.tramp_combo < 1 ? 2 : 3;
+    else if (good) pl.tramp_combo = pl.tramp_combo < 3 ? pl.tramp_combo + 1 : 3;
+    else pl.tramp_combo = 0;
+    if (pl.held >= 0) pl.tramp_combo = 0;
+    pl.vel.y = vy[pl.tramp_combo];
+    pl.fwd *= 0.5f;
+    pl.vel.x *= 0.5f; pl.vel.z *= 0.5f;
+    pl.peak_y = pl.pos.y;
+    pl.kicked = 0;
+    pl.a_age = 99;
+    t->f[0] = 1.0f;   /* squash the mat */
+    sfx_ex(SFX_BOUNCE, 0.9f, 0.7f + pl.tramp_combo * 0.2f);
+    if (pl.tramp_combo == 3) { sfx(SFX_JUMP3); fx_spawn(OT_FX_SPARKLE, pl.pos, 1.0f); }
+    if (pl.held >= 0) { player_set_act(ACT_HOLD_JUMP); return; }
+    player_set_act(ACT_TRAMP);
 }
 
-static void enter_fly(float speed, float pitch)
+/* ---- rocket pack flight: hold A to fire the rocket, stick steers (forward = nose down) ---- */
+static void enter_fly(void)
 {
-    pl.fwd = clampf(speed, 8.0f, 30.0f);
-    pl.pitch = clampf(pitch, -1.0f, 0.8f);
-    sfx(SFX_JUMP3);
+    float hs = v3len(v3(pl.vel.x, 0, pl.vel.z));
+    if (hs > 0.5f) pl.yaw = atan2f(pl.vel.x, pl.vel.z);
+    pl.vel.y = maxf(pl.vel.y, 4.0f);
+    pl.pitch = 0.25f;
+    pl.fwd = hs;
+    sfx(SFX_BLAST);
+    cam.shake = maxf(cam.shake, 0.15f);
+    fx_spawn(OT_FX_SMOKE, pl.pos, 1.0f);
     player_set_act(ACT_FLY);
 }
 
+int player_rocket_firing(void) { return pl.act == ACT_FLY && held(BT_A) && !pl.no_ctrl; }
+
 static void act_fly(void)
 {
-    int r;
+    int r, thrust;
     vec3 d;
-    float tp;
-    if (pl.cap_t <= 0 || pressed(BT_Z) || pressed(BT_B)) {
-        pl.fwd *= 0.5f;
+    if (pl.rocket_t <= 0 || pressed(BT_Z) || pressed(BT_B)) {
+        pl.fwd = v3len(v3(pl.vel.x, 0, pl.vel.z)) * 0.6f;
         pl.pitch = 0;
         player_set_act(ACT_FALL);
         return;
     }
-    /* airplane controls: stick forward = nose down */
-    tp = -in.sy * 0.95f;
-    pl.pitch = approachf(pl.pitch, tp, 1.6f * DT);
-    pl.yaw = wrap_angle(pl.yaw - in.sx * 1.7f * DT);
-    pl.roll = approachf(pl.roll, in.sx * 0.6f, 3 * DT);
-    pl.fwd += (-sinf(pl.pitch) * (pl.pitch > 0 ? 12.0f : 24.0f) - 0.8f) * DT;
-    pl.fwd = clampf(pl.fwd, 0, 30);
+    thrust = held(BT_A) && !pl.no_ctrl;
+    pl.pitch = approachf(pl.pitch, -in.sy * 0.9f + (thrust ? 0.1f : -0.3f), 1.8f * DT);
+    pl.yaw = wrap_angle(pl.yaw - in.sx * 2.0f * DT);
+    pl.roll = approachf(pl.roll, in.sx * 0.5f, 3 * DT);
     d = v3(sinf(pl.yaw) * cosf(pl.pitch), sinf(pl.pitch), cosf(pl.yaw) * cosf(pl.pitch));
-    pl.vel = v3scale(d, pl.fwd);
-    pl.vel.y -= 1.0f;
-    if (pl.fwd < 3.0f) { pl.pitch = 0; player_set_act(ACT_FALL); return; }
-    if (pl.act_t % 40 == 0) sfx_ex(SFX_SWIM, 0.4f, 0.6f);
+    if (thrust) {
+        /* the rocket carries Tux's weight while it burns: level flight at pitch 0 */
+        pl.vel = v3mad(pl.vel, d, 32.0f * DT);
+        pl.vel = v3scale(pl.vel, 1 - 1.5f * DT);
+        pl.act_s = 0;
+        if (pl.act_t % 3 == 0) {
+            vec3 nz = v3add(v3mad(pl.pos, yaw_dir(pl.yaw), -0.6f), v3(0, 0.5f, 0));
+            fx_spawn(OT_FX_SMOKE, nz, 0.45f);
+        }
+        if (pl.act_t % 5 == 0) sfx_ex(SFX_FIRE, 0.35f, 0.6f);
+    } else {
+        /* engine idle: Tux arcs down; after a while he just falls */
+        pl.vel.y -= GRAV * 0.6f * DT;
+        pl.vel.x *= 1 - 0.6f * DT; pl.vel.z *= 1 - 0.6f * DT;
+        if (++pl.act_s > 50) {
+            pl.fwd = v3len(v3(pl.vel.x, 0, pl.vel.z));
+            pl.pitch = 0;
+            player_set_act(ACT_FALL);
+            return;
+        }
+    }
+    if (pl.vel.y < TERM_VEL) pl.vel.y = TERM_VEL;
+    pl.fwd = v3len(v3(pl.vel.x, 0, pl.vel.z));
     r = air_step();
     pl.peak_y = pl.pos.y;
     if (r == ASTEP_LAND) {
         pl.pitch = 0; pl.roll = 0;
-        if (pl.fwd > 7) begin_belly_slide(pl.fwd * 0.7f);
+        if (pl.fwd > 9) begin_belly_slide(pl.fwd * 0.7f);
         else player_set_act(ACT_LANDING);
         return;
     }
@@ -1014,7 +985,7 @@ static void act_fly(void)
         player_set_act(ACT_AIR_KNOCK);
         return;
     }
-    if (r == ASTEP_CEIL) pl.pitch = -0.3f;
+    if (r == ASTEP_CEIL) { pl.pitch = -0.3f; if (pl.vel.y > 0) pl.vel.y = 0; }
 }
 
 static void act_hold_air(void)
@@ -1032,7 +1003,7 @@ static void act_hold_air(void)
     if (pl.pos.y > pl.peak_y) pl.peak_y = pl.pos.y;
 }
 
-/* ------------------------------------------------------------------ ledge / pole / cannon */
+/* ------------------------------------------------------------------ ledge / pole */
 static void act_ledge_hang(void)
 {
     vec3 d = yaw_dir(pl.yaw);
@@ -1106,35 +1077,6 @@ static void act_pole(void)
     if (fabsf(in.sy) > 0.2f) pl.anim += DT * 6;
     pl.vel = v3(0, 0, 0);
     pl.peak_y = pl.pos.y;
-}
-
-static void act_cannon(void)
-{
-    Obj *o;
-    if (pl.cannon < 0) { player_set_act(ACT_IDLE); return; }
-    o = &objs[pl.cannon];
-    pl.visible = 0;
-    pl.vel = v3(0, 0, 0);
-    pl.pos = v3(o->pos.x, o->pos.y - 1.0f, o->pos.z);
-    if (pl.act_t < 30) return;
-    pl.cannon_yaw = wrap_angle(pl.cannon_yaw - in.sx * 1.2f * DT);
-    pl.cannon_pitch = clampf(pl.cannon_pitch + in.sy * 0.8f * DT, RAD(5), RAD(80));
-    if (pressed(BT_A)) {
-        vec3 d = v3(sinf(pl.cannon_yaw) * cosf(pl.cannon_pitch), sinf(pl.cannon_pitch),
-                    cosf(pl.cannon_yaw) * cosf(pl.cannon_pitch));
-        pl.pos = v3(o->pos.x, o->pos.y + 0.8f, o->pos.z);
-        pl.vel = v3scale(d, 38.0f);
-        pl.yaw = pl.cannon_yaw;
-        pl.fwd = 0;
-        pl.visible = 1;
-        pl.cannon = -1;
-        cam.mode = CAM_FOLLOW;
-        sfx(SFX_CANNON);
-        cam.shake = 0.3f;
-        fx_spawn(OT_FX_SMOKE, pl.pos, 1.5f);
-        player_set_act(ACT_SHOT);
-        pl.peak_y = pl.pos.y;
-    }
 }
 
 /* ------------------------------------------------------------------ water */
@@ -1282,10 +1224,12 @@ void player_update(void)
 {
     compute_intended();
     if (pl.invinc > 0 && pl.act != ACT_DEATH) pl.invinc--;
-    if (pl.cap_t > 0) {
-        pl.cap_t--;
-        if (pl.cap_t == 180) hud_message("The feather cap is wearing off!", 120);
-        if (pl.cap_t == 0) { sfx(SFX_POP); if (music_current() == MUS_RACE && g_race_state != 1) music_play(lv.music); }
+    if (pressed(BT_A)) pl.a_age = 0;
+    else if (pl.a_age < 1000) pl.a_age++;
+    if (pl.rocket_t > 0) {
+        pl.rocket_t--;
+        if (pl.rocket_t == 180) hud_message("The rocket is running out of fuel!", 120);
+        if (pl.rocket_t == 0) { sfx(SFX_POP); if (music_current() == MUS_RACE && g_race_state != 1) music_play(lv.music); }
     }
     if (pl.heal_queue > 0 && g_frame % 4 == 0) {
         pl.heal_queue--;
@@ -1297,7 +1241,7 @@ void player_update(void)
     pl.water_y = water_level_at(pl.pos.x, pl.pos.z, pl.pos.y);
     if (pl.water_y > -1e8f && pl.pos.y < pl.water_y - 1.0f && pl.act != ACT_SWIM && pl.act != ACT_DROWN &&
         !(player_in_air() && pl.vel.y > 0) &&
-        pl.act != ACT_DEATH && pl.act != ACT_CANNON && pl.act != ACT_STAR_DANCE) {
+        pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE) {
         if (pl.vel.y < -4) { sfx(SFX_SPLASH); fx_spawn(OT_FX_BUBBLE, v3(pl.pos.x, pl.water_y, pl.pos.z), 1.2f); }
         if (pl.held >= 0) drop_held(0);
         pl.vel.y *= 0.3f;
@@ -1323,13 +1267,11 @@ void player_update(void)
     case ACT_GPOUND_LAND: act_gpound_land(); break;
     case ACT_HOLD_IDLE: case ACT_HOLD_WALK: act_hold(); break;
     case ACT_THROW: act_throw(); break;
-    case ACT_SPIN: act_spin(); break;
     case ACT_LEDGE_HANG: act_ledge_hang(); break;
     case ACT_LEDGE_CLIMB: act_ledge_climb(); break;
     case ACT_POLE: act_pole(); break;
-    case ACT_CANNON: act_cannon(); break;
     case ACT_JUMP: case ACT_DJUMP: case ACT_TJUMP: case ACT_BACKFLIP: case ACT_SIDEFLIP:
-    case ACT_FALL: case ACT_WALLKICK: case ACT_ROLLOUT: case ACT_BOUNCE:
+    case ACT_FALL: case ACT_WALLKICK: case ACT_ROLLOUT: case ACT_BOUNCE: case ACT_TRAMP:
         act_jump(); break;
     case ACT_LONGJUMP: act_longjump(); break;
     case ACT_DIVE: act_dive(); break;
@@ -1337,7 +1279,6 @@ void player_update(void)
     case ACT_GPOUND: act_gpound(); break;
     case ACT_AIR_KNOCK: act_air_knock(); break;
     case ACT_BURN_JUMP: act_burn_jump(); break;
-    case ACT_SHOT: act_shot(); break;
     case ACT_HOLD_JUMP: case ACT_HOLD_FALL: act_hold_air(); break;
     case ACT_FLY: act_fly(); break;
     case ACT_SWIM: act_swim(); break;
@@ -1353,6 +1294,9 @@ void player_update(void)
         if (pl.chain_timer > 10) pl.jump_chain = 0;
     }
 
+    /* standing on a trampoline */
+    if (!player_in_air() && pl.floor && pl.floor->owner >= 0 && objs[pl.floor->owner].type == OT_TRAMPOLINE &&
+        pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE && pl.act != ACT_SWIM) tramp_bounce(&objs[pl.floor->owner]);
     /* platform we stand on */
     if (!player_in_air() && pl.floor && pl.floor->owner >= 0) pl.platform = pl.floor->owner;
     else if (pl.act != ACT_FROZEN && pl.act != ACT_STAR_DANCE) pl.platform = -1;
@@ -1367,7 +1311,7 @@ void player_update(void)
     }
     /* blizzard wind pushes Tux around, unless he shelters behind something */
     if (v3len(g_wind) > 0.01f && pl.act != ACT_SWIM && pl.act != ACT_POLE && pl.act != ACT_LEDGE_HANG &&
-        pl.act != ACT_LEDGE_CLIMB && pl.act != ACT_CANNON && pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE &&
+        pl.act != ACT_LEDGE_CLIMB && pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE &&
         pl.act != ACT_FROZEN && pl.act != ACT_DROWN && pl.act != ACT_CROUCH && !pl.no_ctrl) {
         vec3 head = v3add(pl.pos, v3(0, 1.0f, 0)), up = v3mad(head, v3norm(g_wind), -6.0f), wn;
         float t;
@@ -1446,15 +1390,17 @@ void player_draw(void)
         else { k = clampf(sinf(pl.act_t / 20.0f * PI_F), 0, 1); tp.footL = 1.4f * k; tp.body_pitch = -0.3f * k; tp.lift = 0.15f * k; }
         break;
     }
-    case ACT_BELLY_SLIDE: case ACT_DIVE: case ACT_SHOT:
+    case ACT_BELLY_SLIDE: case ACT_DIVE:
         tp.body_pitch = 1.45f;
         tp.lift = 0.25f;
         tp.head_pitch = -1.0f;
         tp.flipL_z = tp.flipR_z = 1.2f;
         tp.flipL_x = tp.flipR_x = 0.6f;
         tp.footL = tp.footR = -0.9f;
-        if (pl.act == ACT_SHOT) { tp.flipL_z = tp.flipR_z = 0.2f; tp.flipL_x = tp.flipR_x = -2.6f; tp.lift = 0.6f; tp.body_pitch = 1.2f; }
         break;
+    case ACT_TRAMP:
+        if (pl.tramp_combo >= 2 && pl.vel.y > 0) { tp.flipL_z = tp.flipR_z = 2.9f; tp.footL = tp.footR = 0; break; }
+        /* fall through */
     case ACT_JUMP: case ACT_DJUMP: case ACT_BOUNCE: case ACT_HOLD_JUMP: case ACT_HOLD_FALL: case ACT_FALL: {
         float up = clampf(pl.vel.y / 15.0f, -1, 1);
         if (pl.act == ACT_FALL && pl.act_s == 1) {
@@ -1524,10 +1470,6 @@ void player_draw(void)
         tp.body_pitch = 0.3f * k;
         break;
     }
-    case ACT_SPIN:
-        tp.flipL_x = tp.flipR_x = -1.5f; tp.flipL_z = tp.flipR_z = 0.1f;
-        tp.body_pitch = -0.35f; tp.footL = 0.5f; tp.footR = -0.5f;
-        break;
     case ACT_LEDGE_HANG:
         tp.flipL_z = tp.flipR_z = 2.9f; tp.flipL_x = tp.flipR_x = -0.3f;
         tp.footL = sinf(g_frame * 0.1f) * 0.2f; tp.footR = -tp.footL;
@@ -1580,15 +1522,18 @@ void player_draw(void)
         tp.flipL_z = tp.flipR_z = 0.15f;
         break;
     case ACT_FLY:
-        tp.body_pitch = 1.5f - pl.pitch;
+        /* riding the rocket: leaning into the flight direction, flippers back */
+        tp.body_pitch = 1.1f - pl.pitch * 0.9f;
         tp.body_roll = -pl.roll;
-        tp.lift = 0.5f;
-        tp.head_pitch = -1.1f;
-        tp.flipL_z = tp.flipR_z = 1.55f + sinf(g_frame * 0.15f) * 0.08f;
-        tp.footL = tp.footR = -1.0f;
+        tp.lift = 0.4f;
+        tp.head_pitch = -0.8f;
+        tp.flipL_z = tp.flipR_z = 0.5f;
+        tp.flipL_x = tp.flipR_x = 0.9f + sinf(g_frame * 0.4f) * 0.05f;
+        tp.footL = tp.footR = -0.5f;
         break;
     }
-    tp.cap = pl.cap_t > 0 && (pl.cap_t > 180 || (pl.cap_t / 6) % 2);
+    tp.rocket = pl.rocket_t > 0 && (pl.rocket_t > 180 || (pl.rocket_t / 6) % 2);
+    if (pl.rocket_t > 0 && player_rocket_firing()) tp.rocket = 2;
     if (pl.act == ACT_JUMP || pl.act == ACT_DJUMP) tp.lift += 0;
     draw_tux_model(v3(pl.pos.x, pl.pos.y - pl.sink, pl.pos.z), pl.yaw, &tp, 1.0f, TUXV_TUX);
 }

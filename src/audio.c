@@ -127,7 +127,7 @@ static void gen_sfx(void)
     s_alloc(SFX_POUND, 0.35f);
     tone(0, 0.35f, 140, 40, W_SINE, 0.8f, 0.01f, 0);
     tone(0, 0.2f, 2000, 200, W_NOISE, 0.5f, 0.01f, 0);
-    s_alloc(SFX_CANNON, 1.0f);
+    s_alloc(SFX_BLAST, 1.0f);
     tone(0, 1.0f, 1800, 100, W_NOISE, 0.9f, 0.01f, 0);
     tone(0, 0.6f, 70, 30, W_SINE, 0.8f, 0.01f, 0);
     s_alloc(SFX_DOOR, 0.6f);

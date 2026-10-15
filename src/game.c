@@ -45,11 +45,11 @@ const CourseInfo courses[CRS_COUNT] = {
                            "Crusher Bridge Crossing", "Behind the Watchdog's Gate", "100 Fish of the Peak" }, LV_PEAK },
     { "BITSTREAM BAY", 6, { "Treasure of the Sunken Ship", "Red Fish of the Reef", "Climb the Lighthouse",
                             "The Clam's Secret", "Swim Through the Rings", "100 Fish of the Bay" }, LV_BAY },
-    { "BLIZZARD FORTRESS", 6, { "Top of the Fortress", "Mama Penguin's Lost Baby", "Red Fish on the Sliding Platforms",
+    { "BLIZZARD FORTRESS", 6, { "Top of the Fortress", "The Orphaned Child Process", "Red Fish on the Sliding Platforms",
                                  "Push the Ice Brute", "Atop the Frozen Pillar", "100 Fish of the Fortress" }, LV_FORT },
     { "SECRET ICE SLIDE", 2, { "Ice Slide Finish", "Ice Slide Under 21 Seconds" }, LV_SLIDE },
     { "SEGFAULT'S LAIR", 0, { 0 }, LV_LAIR },
-    { "CASTLE SECRETS", 2, { "Wing Flight to the Castle Roof", "The Penguin's Gift" }, -1 },
+    { "CASTLE SECRETS", 2, { "Rocket Ride to the Castle Roof", "The Penguin's Gift" }, -1 },
     { "DAEMON DRIFTS", 5, { "Top of the Ice Pyramid", "Red Fish of the Hot Spring", "Light the Four Ice Obelisks",
                             "Powder Snow Crossing", "100 Fish of the Drifts" }, LV_DRIFTS },
     { "ZOMBIE PROCESS MANOR", 5, { "Zombie King's Hall", "Red Fish in the Library", "Star on the Rooftop",
@@ -275,7 +275,7 @@ void dialog_open(const char *text)
     dlg_chars = 0;
     dlg_page_start = 0;
     dlg_t = 0;
-    if (pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE && gstate == GS_PLAY && pl.act != ACT_CANNON &&
+    if (pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE && gstate == GS_PLAY &&
         pl.act != ACT_SWIM && !player_in_air())
         player_set_act(ACT_FROZEN);
 }
@@ -421,7 +421,7 @@ void game_add_coins(int n, vec3 p)
     if (g_coin_star_idx >= 0 && pl.coins >= 100 && !coin_star_spawned) {
         coin_star_spawned = 1;
         star_spawn(v3add(pl.pos, v3(0, 3.5f, 0)), g_coin_star_idx, 1, pl.pos);
-        hud_message("100 FISH! A Power Star appeared!", 150);
+        hud_message("100 FISH! A Kernel Star appeared!", 150);
     }
 }
 
@@ -447,7 +447,7 @@ void game_red_coin(vec3 p)
         for (i = 0; i < nobj; i++) {
             if (objs[i].active && objs[i].type == OT_STARMARKER) {
                 star_spawn(objs[i].pos, objs[i].param, 1, p);
-                hud_message("All 8 red fish! A Power Star appeared!", 150);
+                hud_message("All 8 red fish! A Kernel Star appeared!", 150);
                 break;
             }
         }
@@ -524,9 +524,9 @@ static void start_new_file(int slot)
         dialog_open("Dear Tux,\n"
                     "The Glitch King SEGFAULT has invaded Kernel\n"
                     "Castle! He corrupted the castle and scattered\n"
-                    "its Power Stars across the portal worlds.\n"
+                    "its Kernel Stars across the portal worlds.\n"
                     "Without the stars the kernel cannot boot...\n"
-                    "Please recover the Power Stars and defeat\n"
+                    "Please recover the Kernel Stars and defeat\n"
                     "Segfault in his lair beneath the castle!\n"
                     "              - The Penguins of Kernel Castle\n"
                     "TIP: Walk up to signs and penguins and\npress B to read or talk.");
@@ -631,7 +631,7 @@ static void play_update(void)
         } else if (pl.act_t > 200) {
             static char msg[256];
             if (pl.act_t == 201) {
-                snprintf(msg, sizeof msg, tr("You got a Power Star!\n\"%s\""),
+                snprintf(msg, sizeof msg, tr("You got a Kernel Star!\n\"%s\""),
                          tr(courses[star_course()].star_names[g_star_dance_star]));
                 dialog_open(msg);
                 pl.act_t = 202;
@@ -1007,17 +1007,32 @@ static void draw_hud(void)
         if (pl.health <= 2) { r = 1.0f; g = 0.15f; b = 0.1f; }
         else if (pl.health <= 4) { r = 1.0f; g = 0.85f; b = 0.1f; }
         else if (pl.health <= 6) { r = 0.2f; g = 0.85f; b = 0.3f; }
-        gfx_pie2d(g_vw * 0.5f + 40, 46, 30, pl.health, 8, r, g, b);
+        /* battery gauge with 8 cells */
+        {
+            float bx = g_vw * 0.5f - 10, by = 28;
+            int k;
+            gfx_rect(bx - 3, by - 3, 96, 38, 0.05f, 0.05f, 0.08f, 0.85f);
+            gfx_rect(bx + 93, by + 8, 8, 16, 0.05f, 0.05f, 0.08f, 0.85f);
+            gfx_rect(bx - 1, by - 1, 92, 34, 0.85f, 0.88f, 0.95f, 1);
+            gfx_rect(bx + 93, by + 10, 6, 12, 0.85f, 0.88f, 0.95f, 1);
+            gfx_rect(bx + 2, by + 2, 86, 28, 0.08f, 0.09f, 0.12f, 1);
+            for (k = 0; k < 8; k++) {
+                if (k < pl.health) gfx_rect(bx + 4 + k * 10.6f, by + 4, 9, 24, r, g, b, 1);
+                else gfx_rect(bx + 4 + k * 10.6f, by + 4, 9, 24, 0.18f, 0.19f, 0.24f, 1);
+            }
+        }
         if (pl.act == ACT_SWIM && pl.pos.y + 1.4f < pl.water_y)
             gfx_text_center(g_vw * 0.5f + 40, 82, 1.5f, tr("AIR"), 0.7f, 0.9f, 1, 1);
     }
-    /* feather cap timer */
-    if (pl.cap_t > 0) {
+    /* rocket fuel */
+    if (pl.rocket_t > 0) {
         float x = g_vw - 120, y = 440;
-        gfx_circle2d(x, y, 13, 0.9f, 0.12f, 0.12f, 1);
-        gfx_rect(x - 22, y - 10, 9, 4, 1, 1, 1, 1);
-        gfx_rect(x + 13, y - 10, 9, 4, 1, 1, 1, 1);
-        snprintf(buf, sizeof buf, "%d", (pl.cap_t + 59) / 60);
+        gfx_rect(x - 6, y - 14, 12, 24, 0.9f, 0.15f, 0.12f, 1);
+        gfx_rect(x - 3, y - 20, 6, 6, 1, 1, 1, 1);
+        gfx_rect(x - 11, y + 2, 5, 9, 0.95f, 0.8f, 0.2f, 1);
+        gfx_rect(x + 6, y + 2, 5, 9, 0.95f, 0.8f, 0.2f, 1);
+        if (player_rocket_firing()) gfx_rect(x - 4, y + 10, 8, 6 + (g_frame % 3) * 3, 1, 0.6f, 0.1f, 1);
+        snprintf(buf, sizeof buf, "%d", (pl.rocket_t + 59) / 60);
         gfx_text_shadow(x + 28, y - 10, 2.5f, buf, 1, 1, 1, 1);
     }
     /* red coins */
@@ -1034,7 +1049,9 @@ static void draw_hud(void)
     /* messages */
     if (g_hud_msg_t > 0 && g_hud_msg) {
         float a = clampf(g_hud_msg_t / 20.0f, 0, 1);
-        gfx_text_center(g_vw * 0.5f, 150, 3, g_hud_msg, 1, 0.95f, 0.5f, a);
+        float sc = 3, w = gfx_text_width(g_hud_msg, 3);
+        if (w > g_vw - 40) sc = 3 * (g_vw - 40) / w;   /* long messages shrink to fit */
+        gfx_text_center(g_vw * 0.5f, 150 + (3 - sc) * 4, sc, g_hud_msg, 1, 0.95f, 0.5f, a);
     }
     if (course_intro_t > 0 && lv.course >= 0 && lv.name && !paused) {
         float a = clampf(course_intro_t / 30.0f, 0, 1);
@@ -1044,8 +1061,6 @@ static void draw_hud(void)
             gfx_text_center(g_vw * 0.5f, 240, 2.5f, buf, 1, 1, 1, a);
         }
     }
-    if (pl.act == ACT_CANNON) gfx_text_center(g_vw * 0.5f, 400, 2.2f, tr("STICK: aim    A: FIRE!"), 1, 1, 1, 1);
-    if (pl.act == ACT_SPIN) gfx_text_center(g_vw * 0.5f, 400, 2.2f, tr("Rotate the stick to spin - B to throw!"), 1, 1, 0.6f, 1);
 }
 
 static void draw_pause(void)
@@ -1246,7 +1261,7 @@ static void draw_starselect(void)
 
 static const char *ending_text =
     "THE KERNEL IS RESTORED!\n\n"
-    "Segfault has been dumped and the Power Stars\n"
+    "Segfault has been dumped and the Kernel Stars\n"
     "shine once more over the snowy Kernel Castle.\n\n"
     "The penguins cheer, the daemons go back to\n"
     "their background tasks, and Tux finally gets\n"

@@ -198,7 +198,7 @@ static void build_grounds(void)
     lb_box(-2.2f, 0, -38.2f, -1.6f, 4.2f, -37.6f, TEX_STONE, TEX_STONE, 0.8f, 0.8f, 0.85f, 0);
     lb_box(1.6f, 0, -38.2f, 2.2f, 4.2f, -37.6f, TEX_STONE, TEX_STONE, 0.8f, 0.8f, 0.85f, 0);
     lb_box(-2.2f, 3.6f, -38.2f, 2.2f, 4.2f, -37.6f, TEX_STONE, TEX_STONE, 0.8f, 0.8f, 0.85f, 0);
-    lb_painting(v3(0, 10, -38.0f), 0, 5, 5, TEX_PORTAL1);
+    lb_appwindow(v3(0, 10, -37.95f), 0, 6, 4.5f, TEX_CYDATA, 0.1f, 0.65f, 0.95f);   /* a holographic kernel window above the gate */
     /* footbridge over the frozen pond */
     lb_box(30, -0.6f, 12, 60, 0.0f, 16, TEX_PLANK, TEX_WOOD, 1, 1, 1, 0);
     finish_geometry();
@@ -208,7 +208,7 @@ static void build_grounds(void)
 
     o = obj_spawn(OT_DOOR, v3(0, 0, -37.75f), 0, 0);
     if (o) { o->param2 = LV_LOBBY; o->i[0] = 0; }
-    sign(3, 36, 5, PI_F, "KERNEL CASTLE\n\nThe castle has lost its Power Stars! Enter\n"
+    sign(3, 36, 5, PI_F, "KERNEL CASTLE\n\nThe castle has lost its Kernel Stars! Enter\n"
                        "the castle and jump into the glowing app\nwindows to reach the worlds inside.");
     sign(-6, 2, 5, 0.3f, "TUX'S MOVES:\nA (Space): jump. Jump again right after landing\n"
                          "for a double jump, and once more for a triple!\n"
@@ -218,7 +218,7 @@ static void build_grounds(void)
                          "In the air: Z = ground pound, B = kick/dive.\n"
                          "Jump into a wall, then A again: wall kick!");
     npc(9, -28, 5, PI_F * 0.8f, "PENGUIN: Segfault took over the castle! Inside\nit is all cyberspace now: the app windows\nlead to other worlds.\n"
-                               "Some doors need Power Stars to open...\nCollect as many as you can, Tux!");
+                               "Some doors need Kernel Stars to open...\nCollect as many as you can, Tux!");
     npc(26, 6, 5, -PI_F / 2, "PENGUIN: The pond froze solid - perfect for\nbelly sliding! (Run + B to dive.) There's an\n"
                              "ice-fishing hole in the middle: swim with\nA (up), Z (down) and B (dash).");
     decor(MDL_SNOWMAN, -10, 36, 5, 1.0f, 1.0f);
@@ -239,11 +239,11 @@ static void build_grounds(void)
     o = spawn_at(OT_ONEUP, -60, -60, 20, 0, 0);
     if (o) o->pos.y += 0.5f;
     coin_line(v3(-6, 0, 30), v3(6, 0, 30), 5, 1);
-    /* feather cap + secret roof star */
-    obj_spawn(OT_CAPBOX, v3(14, floor_y(14, 28, 10) + 3.0f, 28), 0, 0);
-    sign(16, 24, 10, PI_F, "FEATHER CAP BOX\nHit the red box from below (or punch it) to\nget the Feather Cap. "
-                          "Then do a TRIPLE JUMP to\ntake off! Stick forward = dive, back = climb.\n"
-                          "Something shiny sits on the castle roof...");
+    /* rocket pack + secret roof star */
+    obj_spawn(OT_ROCKETBOX, v3(14, floor_y(14, 28, 10) + 0.7f, 28), 0, 0);
+    sign(16, 24, 10, PI_F, "ROCKET CRATE\nBreak the crate (punch it or jump on it) to\nget the Rocket Pack. "
+                          "Jump, then press A in\nmid-air to ignite it. HOLD A to keep firing!\n"
+                          "Stick forward = nose down, back = climb.\nSomething shiny sits on the castle roof...");
     obj_spawn(OT_STAR, v3(14, 16.3f, -50), 0, 0);
     coin_ring(v3(-14, 16.3f, -50), 2.5f, 8, 0);
 }
@@ -450,8 +450,8 @@ static void build_lobby(void)
     }
     npc(8, -12, 2, -PI_F / 2, "PENGUIN: Psst! I heard a cold draft coming\nfrom a hole at the west end of the balcony...\n"
                               "Maybe a secret slide? Penguins LOVE slides!");
-    npc(-20, -2, 2, PI_F / 2, "PENGUIN: The window of PENGUIN PEAK is right\nhere. King Daemon sits on the summit. Grab him\n"
-                              "from behind with B and throw him!");
+    npc(-20, -2, 2, PI_F / 2, "PENGUIN: The window of PENGUIN PEAK is right\nhere. King Daemon sits on the summit, forking\n"
+                              "bombs. Pick one up with B and throw it back!");
     coin_line(v3(-20, 0.2f, -28), v3(-20, 0.2f, -36), 4, 0);
 }
 
@@ -544,8 +544,8 @@ static void build_peak(void)
     obj_spawn(OT_REDCOIN, v3(56, 22.2f, 38), 0, 0);
     obj_spawn(OT_REDCOIN, v3(48, 22.2f, 38), 0, 0);
     obj_spawn(OT_STARMARKER, v3(52, 23.0f, 34), 0, 2);
-    o = spawn_at(OT_CANNON, 40, 56, 5, 2.64f, 0);
-    obj_spawn(OT_CAPBOX, v3(30, floor_y(30, 58, 10) + 3.0f, 58), 0, 0);
+    spawn_at(OT_TRAMPOLINE, 52, 45.5f, 5, 0, 0);
+    obj_spawn(OT_ROCKETBOX, v3(30, floor_y(30, 58, 10) + 0.7f, 58), 0, 0);
     /* star 3: crusher bridge */
     for (i = 0; i < 2; i++) {
         o = obj_spawn(OT_CRUSHER, v3(i == 0 ? -31.0f : -38.5f, 6.7f, 30), PI_F / 2, i * 45);
@@ -556,8 +556,7 @@ static void build_peak(void)
     o = spawn_at(OT_POLE, -60, -50, 5, 0, 0);
     if (o) { o->height = 14; obj_spawn(OT_ONEUP, v3(o->pos.x, o->pos.y + 14.2f, o->pos.z), 0, 0); }
     /* star 4: behind the watchdog's gate */
-    spawn_at(OT_CHOMPPOST, 46, -44, 5, 0, 0);
-    spawn_at(OT_CHOMP, 49, -44, 5, 0, 0);
+    spawn_at(OT_WATCHDOG, 47, -46, 5, 0, 0);
     o = spawn_at(OT_CAGE, 53, -52, 5, 0, 0);
     if (o) obj_spawn(OT_STAR, v3(o->pos.x, o->pos.y + 0.5f, o->pos.z), 0, 4);
 
@@ -600,12 +599,12 @@ static void build_peak(void)
     /* signs */
     sign(4, 55, 5, PI_F, "WELCOME TO PENGUIN PEAK!\nKing Daemon has made the summit his throne.\n"
                          "Follow the ramps around the mountain to reach\nhim. Watch out for the rolling iron balls!");
-    sign(36, 57, 5, PI_F, "CANNON: Step into the hole to get in.\nAim with the stick and fire with A.\n"
-                          "The floating isle is up high to the north-east.\nTIP: ground pound before landing to avoid\nfall damage!");
+    sign(47, 50, 5, PI_F, "TRAMPOLINE: Jump onto it, then press A\njust before you touch the mat to bounce\n"
+                          "higher and higher. Three good bounces in a\nrow reach the floating isle above!\nTIP: a ground pound on the mat bounces extra high.");
     sign(-23, 25, 5, -PI_F / 2, "DANGER! CRUSHER BRIDGE\nRun under the crushers when they rise.");
     sign(-56, -46, 5, PI_F, "Climb the pole: jump onto it, then hold up.\nWhat is waiting at the very top?");
-    sign(38, -38, 5, PI_F * 0.8f, "BEWARE OF THE WATCHDOG!\nIt is chained to its post... A good GROUND\n"
-                                 "POUND on top of the post might set it free.");
+    sign(38, -38, 5, PI_F * 0.8f, "BEWARE OF THE WATCHDOG!\nIt guards the gate and lunges at intruders.\n"
+                                 "Right after a lunge it is out of breath...\nKICK the watchdog 3 times to reset it!");
     npc(10, 58, 5, PI_F, "PENGUIN: The Quick Gnu over there says nobody\ncan beat him up the mountain. Talk to him!");
 
     /* trees */
@@ -843,11 +842,11 @@ static void build_fort(void)
     o = obj_spawn(OT_ELEVATOR, v3(0, 8.25f, -40.45f), 0, 0);
     if (o) { obj_set_box(o, 1.5f, 0.25f, 1.5f, TEX_METAL, TEX_METAL, 0.9f, 0.85f, 0.4f); o->f[0] = 12.0f; }
     obj_spawn(OT_STAR, v3(0, 20.3f, -48), 0, 0);
-    /* star 1: baby penguin */
+    /* star 1: carry the orphaned child process back to init */
     obj_spawn(OT_BABY, v3(12, 8, -52), 0, 0);
     o = spawn_at(OT_MOTHER, 12, 28, 6, PI_F, 1);
-    if (o) o->text = "MAMA PENGUIN: Waaah! My baby wandered up to\nthe top of the fortress and can't get down!\n"
-                     "Could you carry my baby back to me?\n(Pick up with B, put down with Z)";
+    if (o) o->text = "INIT (PID 1): Oh dear! One of my child processes\nwas orphaned up on top of the fortress and\n"
+                     "can't get down! Could you carry it back to me\nso I can adopt it? (Pick up with B, put down with Z)";
     /* crushers on the fortress */
     for (i = 0; i < 2; i++) {
         o = obj_spawn(OT_CRUSHER, v3(i ? 12.0f : -12.0f, 15, -36), 0, i * 60);
@@ -953,7 +952,7 @@ static void build_slide(void)
     lb_box(-44, -1, -45, -43, 2, -1, TEX_ICE, TEX_ICE, 0.8f, 0.9f, 1, 0);
     lb_box(-69, -1, -45, -43, 2, -44, TEX_ICE, TEX_ICE, 0.8f, 0.9f, 1, 0);
     lb_box(-58, 0, -44, -54, 4.5f, -43.5f, TEX_ICE, TEX_ICE, 0.8f, 0.9f, 1, 0);
-    lb_painting(v3(-56, 2.25f, -43.5f), 0, 3.6f, 4, TEX_PORTAL4);
+    lb_appwindow(v3(-56, 2.25f, -43.45f), 0, 3.6f, 3.4f, TEX_PORTAL4, 0.2f, 0.75f, 0.9f);
     death_floor(-25, -120, -120, 120, 120);
     finish_geometry();
     lv.spawn[0] = v3(0, 100, 4); lv.spawn_yaw[0] = PI_F;
@@ -967,7 +966,7 @@ static void build_slide(void)
     warp_box(v3(-56, 0, -42.9f), 1.8f, 0.5f, 4, LV_LOBBY, 4, 0, 0);
     for (i = 2; i < n - 2; i += 2) obj_spawn(OT_COIN, v3(pts[i].x, pts[i].y + 0.4f, pts[i].z), 0, 0);
     sign(3, 6, 102, PI_F, "SECRET ICE SLIDE\nBelly-slide all the way down! Steer with the\n"
-                          "stick. Reach the bottom in under 21 seconds\nfor a bonus Power Star!\n"
+                          "stick. Reach the bottom in under 21 seconds\nfor a bonus Kernel Star!\n"
                           "The portal behind you leads back to the castle.");
 }
 
@@ -1022,7 +1021,7 @@ static void build_lair(void)
     obj_spawn(OT_SEGFAULT, v3(0, 0, -150), 0, 0);
     for (i = 0; i < 8; i++) {
         float a = TAU_F * i / 8 + PI_F / 8;
-        obj_spawn(OT_SPIKEBOMB, v3(sinf(a) * 18.3f, 0, -150 + cosf(a) * 18.3f), 0, 0);
+        obj_spawn(OT_SPIKEBOMB, v3(sinf(a) * 13.0f, 0, -150 + cosf(a) * 13.0f), 0, 0);
     }
     /* coins and help */
     coin_ring(v3(0, 0.2f, 60), 3, 6, 0);
@@ -1032,8 +1031,8 @@ static void build_lair(void)
     obj_spawn(OT_ONEUP, v3(3, 4.5f, -56), 0, 0);
     coin_ring(v3(0, 0.2f, -150), 12, 10, 0);
     sign(3, 58, 2, PI_F, "SEGFAULT'S LAIR\nA frozen void. Beyond the frost bars and the\ncrumbling ice "
-                        "platforms waits Segfault himself. Get behind\nhim, grab his tail with B, spin, and throw\n"
-                        "him into the spike mines around the arena!");
+                        "platforms waits Segfault himself. He can't be\nhurt directly... Stand behind one of the spike\n"
+                        "mines and jump aside when he charges, so he\nrams the mine instead of you!");
 }
 
 
@@ -1310,8 +1309,8 @@ static void build_manor(void)
     spawn_at(OT_CRATE, 0, 9.5f, 10.5f, 0, -1);
     o = obj_spawn(OT_HEART, v3(-12, floor_y(-12, 34, 10) + 0.8f, 34), 0, 0);
     obj_spawn(OT_ONEUP, v3(3, 9.2f, -17), 0, 0);
-    sign(3, 36, 10, PI_F, "ZOMBIE PROCESS MANOR\nZombies are shy: they hide (and can't be hurt)\n"
-                          "while you look at them. Turn your back, let\nthem come close... then spin and strike!");
+    sign(3, 36, 10, PI_F, "ZOMBIE PROCESS MANOR\nZombie processes are out of phase: attacks go\n"
+                          "right through them. GROUND POUND next to one\nto shake it into the real world, then hit it!");
     sign(20, -18, 10, PI_F, "The dead tree is as tall as the manor.\nClimb it and jump onto the roof!");
     for (i = 0; i < 12; i++) {
         float a = TAU_F * i / 12 + 0.2f, r = 50 + (i % 2) * 6;

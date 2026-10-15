@@ -71,9 +71,9 @@ enum {
     OT_BRUTE, OT_SEGFAULT, OT_FIREBALL, OT_SPIKEBOMB, OT_FLAMEBAR,
     OT_PLATFORM, OT_ROTPLAT, OT_ELEVATOR, OT_FALLPLAT,
     OT_SIGN, OT_NPC, OT_BABY, OT_MOTHER, OT_RACER, OT_RACEFLAG,
-    OT_CANNON, OT_TREE, OT_POLE, OT_WARP, OT_DOOR, OT_STARDOOR,
-    OT_CLAM, OT_RING, OT_CRATE, OT_GRANDSTAR, OT_TIMERSTART, OT_TIMERGOAL, OT_DECOR, OT_CAPBOX,
-    OT_GHOST, OT_GHOSTKING, OT_TOPSWITCH, OT_HEART, OT_CHOMP, OT_CHOMPPOST, OT_CAGE, OT_STEAM, OT_OOM, OT_MAZEEXIT,
+    OT_TRAMPOLINE, OT_TREE, OT_POLE, OT_WARP, OT_DOOR, OT_STARDOOR,
+    OT_CLAM, OT_RING, OT_CRATE, OT_GRANDSTAR, OT_TIMERSTART, OT_TIMERGOAL, OT_DECOR, OT_ROCKETBOX,
+    OT_GHOST, OT_GHOSTKING, OT_TOPSWITCH, OT_HEART, OT_WATCHDOG, OT_CAGE, OT_STEAM, OT_OOM, OT_MAZEEXIT,
     OT_FX_SPARKLE, OT_FX_SMOKE, OT_FX_EXPLODE, OT_FX_BUBBLE, OT_FX_SNOWPUFF, OT_FX_SHOCKWAVE,
     OT_COUNT
 };
@@ -128,11 +128,11 @@ Obj *star_spawn(vec3 p, int star, int from_pos, vec3 from);
 enum {
     ACT_IDLE, ACT_WALK, ACT_SKID, ACT_LANDING, ACT_CROUCH, ACT_CRAWL, ACT_CROUCH_SLIDE,
     ACT_PUNCH, ACT_BELLY_SLIDE, ACT_KNOCKBACK, ACT_DEATH, ACT_STAR_DANCE, ACT_FROZEN,
-    ACT_HOLD_IDLE, ACT_HOLD_WALK, ACT_THROW, ACT_SPIN, ACT_LEDGE_HANG, ACT_LEDGE_CLIMB,
-    ACT_POLE, ACT_CANNON, ACT_GPOUND_LAND,
+    ACT_HOLD_IDLE, ACT_HOLD_WALK, ACT_THROW, ACT_LEDGE_HANG, ACT_LEDGE_CLIMB,
+    ACT_POLE, ACT_GPOUND_LAND,
     /* airborne */
     ACT_JUMP, ACT_DJUMP, ACT_TJUMP, ACT_BACKFLIP, ACT_SIDEFLIP, ACT_LONGJUMP, ACT_FALL,
-    ACT_WALLKICK, ACT_DIVE, ACT_JUMPKICK, ACT_GPOUND, ACT_AIR_KNOCK, ACT_SHOT,
+    ACT_WALLKICK, ACT_DIVE, ACT_JUMPKICK, ACT_GPOUND, ACT_AIR_KNOCK, ACT_TRAMP,
     ACT_HOLD_JUMP, ACT_HOLD_FALL, ACT_BURN_JUMP, ACT_ROLLOUT, ACT_BOUNCE, ACT_FLY,
     /* water */
     ACT_SWIM, ACT_DROWN,
@@ -159,14 +159,13 @@ typedef struct {
     int platform;                /* object index we stand on, -1 */
     int pole;                    /* object index */
     float pole_h;
-    float spin_v, spin_ang;
     float anim;
     int punch_n;
     int kicked;                  /* used jumpkick in this jump */
     float water_y; int in_water;
     float breath_t;
-    int cannon;
-    float cannon_yaw, cannon_pitch;
+    int tramp_combo;             /* consecutive well-timed trampoline bounces */
+    int a_age;                   /* frames since A was last pressed */
     vec3 ledge_pos;
     int visible;
     int squish;
@@ -174,7 +173,7 @@ typedef struct {
     float step_t;
     float slide_snd;
     int no_ctrl;
-    int cap_t;                   /* feather cap (flight) frames left */
+    int rocket_t;                /* rocket pack fuel (frames left) */
     float sink;                  /* depth sunk into powder snow */
     int water_warm;              /* swimming in a hot spring */
 } Player;
@@ -189,10 +188,11 @@ int  player_is_attacking(void);
 int  player_in_air(void);
 void player_set_act(int act);
 void player_bounce(float vy);
+int  player_rocket_firing(void);
 float water_level_at(float x, float z, float y);
 
 /* ---------------- camera ---------------- */
-enum { CAM_FOLLOW, CAM_CANNON, CAM_DANCE, CAM_FIXED, CAM_DEATH };
+enum { CAM_FOLLOW, CAM_DANCE, CAM_FIXED, CAM_DEATH };
 typedef struct {
     vec3 pos, at;
     float yaw;                   /* yaw from camera toward player */
@@ -216,7 +216,7 @@ typedef struct {
     float flipL_x, flipL_z, flipR_x, flipR_z;
     float footL, footR;
     int eyes_closed;
-    int cap;
+    int rocket;                  /* 0 none, 1 rocket pack, 2 pack firing */
 } TuxPose;
 enum { TUXV_TUX, TUXV_BABY, TUXV_MOTHER, TUXV_NPC, TUXV_COUNT };
 void draw_tux_model(vec3 pos, float yaw, const TuxPose *tp, float scale, int variant);
@@ -224,12 +224,12 @@ GLuint model_box(float sx, float sy, float sz, int tex_top, int tex_side, float 
 GLuint model_cyl(float r, float h, int tex_top, int tex_side, float cr, float cg, float cb);
 enum {
     MDL_COIN, MDL_STAR, MDL_BUG, MDL_BOMB, MDL_BOMB_LIT, MDL_KING, MDL_CRUSHER, MDL_ROLLER,
-    MDL_PUFFER, MDL_CRAB, MDL_BRUTE, MDL_SEG_BODY, MDL_SEG_HEAD, MDL_SEG_TAIL, MDL_SPIKEBOMB,
-    MDL_SIGN, MDL_GNU, MDL_CANNON, MDL_PINE, MDL_PINE_SNOW, MDL_TREE, MDL_DOOR, MDL_STARDOOR,
+    MDL_PUFFER, MDL_CRAB, MDL_BRUTE, MDL_SEG_BODY, MDL_SEG_HEAD, MDL_SPIKEBOMB,
+    MDL_SIGN, MDL_GNU, MDL_TRAMPOLINE, MDL_PINE, MDL_PINE_SNOW, MDL_TREE, MDL_DOOR, MDL_STARDOOR,
     MDL_CLAM_BOT, MDL_CLAM_TOP, MDL_RING, MDL_CRATE, MDL_FISH, MDL_SWITCH, MDL_POLE,
     MDL_FLAG, MDL_KEY, MDL_COIN_RED, MDL_COIN_BLUE, MDL_FISH_GREEN, MDL_STAR_GHOST, MDL_CROWN,
-    MDL_SNOWMAN, MDL_ROCK, MDL_BUSH, MDL_CAPBOX, MDL_GHOST, MDL_GHOST_FADE, MDL_HEART, MDL_ICESPIRE,
-    MDL_CRYSTAL, MDL_DEADTREE, MDL_TOPSWITCH, MDL_TOPSWITCH_ON, MDL_CHOMP, MDL_LINK, MDL_POST, MDL_CAGE, MDL_MOUND, MDL_OOM, MDL_CYDOOR, MDL_CYSTARDOOR, MDL_COUNT
+    MDL_SNOWMAN, MDL_ROCK, MDL_BUSH, MDL_ROCKETBOX, MDL_GHOST, MDL_GHOST_FADE, MDL_HEART, MDL_ICESPIRE,
+    MDL_CRYSTAL, MDL_DEADTREE, MDL_TOPSWITCH, MDL_TOPSWITCH_ON, MDL_WATCHDOG, MDL_CAGE, MDL_MOUND, MDL_OOM, MDL_CYDOOR, MDL_CYSTARDOOR, MDL_CHILDPROC, MDL_INIT, MDL_COUNT
 };
 extern GLuint mdl[MDL_COUNT];
 
@@ -316,7 +316,6 @@ void lb_ramp(float x0, float z0, float x1, float z1, float y0, float y1, int axi
              int tex_side, float r, float g, float b, int flags);
 void lb_stairs(float x0, float z0, float x1, float z1, float y0, float y1, int axis, int steps, int tex,
                float r, float g, float b);
-void lb_painting(vec3 c, float yaw, float w, float h, int tex);
 void lb_appwindow(vec3 c, float yaw, float w, float h, int tex, float r, float g, float b);
 void lb_track(const vec3 *pts, int n, float width, float wall_h, int sub, int tex, float r, float g, float b, int flags);
 extern int lb_alpha_mode;

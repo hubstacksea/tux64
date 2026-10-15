@@ -5,7 +5,7 @@
 GLuint mdl[MDL_COUNT];
 
 /* Tux parts per variant */
-static GLuint tux_torso[TUXV_COUNT], tux_head[TUXV_COUNT], tux_flipper[TUXV_COUNT], tux_foot, tux_cap;
+static GLuint tux_torso[TUXV_COUNT], tux_head[TUXV_COUNT], tux_flipper[TUXV_COUNT], tux_foot, tux_cap, tux_flame;
 
 static Mesh M;
 static void begin(void) { mesh_init(&M); mb_begin(&M); }
@@ -67,23 +67,38 @@ static void build_tux(void)
     mb_color(1.0f, 0.65f, 0.08f);
     mb_ellipsoid(0, -0.11f, 0.14f, 0.17f, 0.07f, 0.27f, 12);
     tux_foot = end();
-    /* feather cap: red cap with white wings (origin at neck like the head) */
+    /* rocket pack (torso space, on Tux's back = -z): twin red rockets with fins and nozzles */
     begin();
-    mb_color(0.9f, 0.12f, 0.12f);
-    mb_push(); mb_translate(0, 0.36f, 0.0f); mb_scale(0.31f, 0.2f, 0.31f); mb_hemisphere(14, 5); mb_pop();
-    mb_ellipsoid(0, 0.37f, 0.22f, 0.2f, 0.03f, 0.14f, 10);
-    mb_color(1, 1, 1);
     {
         int side;
+        mb_color(0.35f, 0.36f, 0.4f);
+        mb_cuboid(-0.3f, 0.55f, -0.42f, 0.3f, 0.95f, -0.3f);   /* harness plate */
         for (side = -1; side <= 1; side += 2) {
-            float x = side * 0.3f;
-            vec3 a = v3(x, 0.42f, 0.05f), b = v3(x + side * 0.32f, 0.72f, -0.15f), c = v3(x + side * 0.12f, 0.45f, -0.25f);
-            vec3 d = v3(x + side * 0.3f, 0.58f, -0.3f);
-            mb_tri(a, b, c); mb_tri(a, c, b);
-            mb_tri(c, b, d); mb_tri(c, d, b);
+            float x = side * 0.19f;
+            mb_color(0.85f, 0.15f, 0.12f);
+            mb_push(); mb_translate(x, 0.35f, -0.5f); mb_scale(0.13f, 0.75f, 0.13f); mb_cylinder(12, 1); mb_pop();
+            mb_color(0.92f, 0.92f, 0.95f);
+            mb_push(); mb_translate(x, 1.1f, -0.5f); mb_scale(0.13f, 0.28f, 0.13f); mb_cone(12); mb_pop();
+            mb_color(0.25f, 0.25f, 0.28f);
+            mb_push(); mb_translate(x, 0.22f, -0.5f); mb_scale(0.1f, 0.14f, 0.1f); mb_cylinder(10, 1); mb_pop();
+            mb_color(0.95f, 0.8f, 0.2f);
+            mb_tri(v3(x + side * 0.12f, 0.6f, -0.5f), v3(x + side * 0.28f, 0.3f, -0.5f), v3(x + side * 0.12f, 0.36f, -0.5f));
+            mb_tri(v3(x + side * 0.12f, 0.6f, -0.5f), v3(x + side * 0.12f, 0.36f, -0.5f), v3(x + side * 0.28f, 0.3f, -0.5f));
         }
     }
     tux_cap = end();
+    /* rocket exhaust flames (drawn while the rocket fires) */
+    begin();
+    {
+        int side;
+        for (side = -1; side <= 1; side += 2) {
+            mb_color(1.0f, 0.55f, 0.1f);
+            mb_push(); mb_translate(side * 0.19f, 0.22f, -0.5f); mb_rotate(180, 1, 0, 0); mb_scale(0.11f, 0.7f, 0.11f); mb_cone(10); mb_pop();
+            mb_color(1.0f, 0.95f, 0.6f);
+            mb_push(); mb_translate(side * 0.19f, 0.22f, -0.5f); mb_rotate(180, 1, 0, 0); mb_scale(0.06f, 0.4f, 0.06f); mb_cone(8); mb_pop();
+        }
+    }
+    tux_flame = end();
 }
 
 void draw_tux_model(vec3 pos, float yaw, const TuxPose *tp, float s, int v)
@@ -103,13 +118,25 @@ void draw_tux_model(vec3 pos, float yaw, const TuxPose *tp, float s, int v)
     glTranslatef(0, -0.7f, 0);
     if (tp->body_squash != 0) glScalef(1 - tp->body_squash * 0.5f, 1 + tp->body_squash, 1 - tp->body_squash * 0.5f);
     glCallList(tux_torso[v]);
+    if (tp->rocket) {
+        glCallList(tux_cap);
+        if (tp->rocket == 2) {
+            glPushMatrix();
+            glTranslatef(0, 0.22f, -0.5f);
+            glScalef(1, 0.8f + 0.4f * (float)((g_frame * 7) % 5) / 4.0f, 1);
+            glTranslatef(0, -0.22f, 0.5f);
+            glDisable(GL_LIGHTING);
+            glCallList(tux_flame);
+            glEnable(GL_LIGHTING);
+            glPopMatrix();
+        }
+    }
     /* head */
     glPushMatrix();
     glTranslatef(0, 1.1f, 0);
     glRotatef(DEG(tp->head_yaw), 0, 1, 0);
     glRotatef(DEG(tp->head_pitch), 1, 0, 0);
     glCallList(tux_head[v]);
-    if (tp->cap) glCallList(tux_cap);
     glPopMatrix();
     /* flippers */
     glPushMatrix();
@@ -275,72 +302,105 @@ void models_init(void)
     mb_push(); mb_translate(-0.1f, 0.75f, 0.75f); mb_rotate(-30, 1, 0, 0); mb_rotate(20, 0, 0, 1); mb_scale(0.025f, 0.4f, 0.025f); mb_cylinder(5, 0); mb_pop();
     mdl[MDL_BUG] = end();
 
-    /* forkbomb */
+    /* fork bomb: a little process box with a screen face and a fork-shaped antenna (lit = red, about to blow) */
     for (i = 0; i < 2; i++) {
+        int k;
         begin();
-        if (i == 0) mb_color(0.12f, 0.12f, 0.16f); else mb_color(0.95f, 0.2f, 0.15f);
-        mb_ellipsoid(0, 0.7f, 0, 0.6f, 0.6f, 0.6f, 18);
-        eye_pair(0.17f, 0.8f, 0.52f, 1.2f, 0);
-        mb_color(0.8f, 0.8f, 0.75f);
-        mb_push(); mb_translate(0, 1.25f, 0); mb_scale(0.12f, 0.2f, 0.12f); mb_cylinder(8, 1); mb_pop();
-        mb_color(0.95f, 0.8f, 0.4f);
-        mb_push(); mb_translate(0, 1.42f, 0); mb_scale(0.03f, 0.15f, 0.03f); mb_cylinder(5, 1); mb_pop();
-        mb_color(0.75f, 0.75f, 0.8f);  /* wind-up key */
-        mb_push(); mb_translate(0, 0.75f, -0.62f); mb_scale(0.05f, 0.05f, 0.2f); mb_translate(0, 0, -1); mb_box(); mb_pop();
-        mb_push(); mb_translate(0, 0.75f, -0.9f); mb_scale(0.04f, 0.18f, 0.1f); mb_box(); mb_pop();
-        mb_color(0.95f, 0.75f, 0.1f);
-        mb_ellipsoid(0.25f, 0.1f, 0.08f, 0.17f, 0.1f, 0.25f, 10);
-        mb_ellipsoid(-0.25f, 0.1f, 0.08f, 0.17f, 0.1f, 0.25f, 10);
+        mb_tex(TEX_METAL); mb_uvscale(0.5f);
+        if (i == 0) mb_color(0.32f, 0.35f, 0.42f); else mb_color(0.85f, 0.2f, 0.15f);
+        mb_cuboid(-0.5f, 0.25f, -0.45f, 0.5f, 1.1f, 0.45f);
+        mb_tex(TEX_NONE);
+        mb_color(0.03f, 0.04f, 0.06f);                      /* screen */
+        mb_cuboid(-0.38f, 0.42f, 0.45f, 0.38f, 0.98f, 0.48f);
+        if (i == 0) mb_color(0.3f, 1.0f, 0.5f); else mb_color(1.0f, 0.9f, 0.2f);
+        mb_cuboid(-0.26f, 0.72f, 0.48f, -0.1f, 0.84f, 0.5f);  /* eyes */
+        mb_cuboid(0.1f, 0.72f, 0.48f, 0.26f, 0.84f, 0.5f);
+        mb_cuboid(-0.2f, 0.52f, 0.48f, 0.2f, 0.58f, 0.5f);    /* mouth */
+        mb_cuboid(-0.26f, 0.58f, 0.48f, -0.2f, 0.64f, 0.5f);
+        mb_cuboid(0.2f, 0.58f, 0.48f, 0.26f, 0.64f, 0.5f);
+        mb_color(0.7f, 0.72f, 0.78f);                        /* fork antenna */
+        mb_push(); mb_translate(0, 1.1f, 0); mb_scale(0.04f, 0.25f, 0.04f); mb_cylinder(6, 1); mb_pop();
+        mb_cuboid(-0.2f, 1.33f, -0.03f, 0.2f, 1.39f, 0.03f);
+        for (k = -1; k <= 1; k++) {
+            mb_color(0.7f, 0.72f, 0.78f);
+            mb_push(); mb_translate(k * 0.18f, 1.36f, 0); mb_scale(0.03f, 0.22f, 0.03f); mb_cylinder(5, 1); mb_pop();
+            if (i == 0) mb_color(0.3f, 1.0f, 0.5f); else mb_color(1.0f, 0.55f, 0.1f);
+            mb_ellipsoid(k * 0.18f, 1.6f, 0, 0.05f, 0.05f, 0.05f, 6);
+        }
+        mb_color(0.18f, 0.2f, 0.24f);                        /* feet */
+        mb_cuboid(0.12f, 0, -0.2f, 0.38f, 0.25f, 0.3f);
+        mb_cuboid(-0.38f, 0, -0.2f, -0.12f, 0.25f, 0.3f);
         mdl[i == 0 ? MDL_BOMB : MDL_BOMB_LIT] = end();
     }
 
-    /* King Daemon (used scaled up) */
+    /* King Daemon (used scaled up): a crowned red daemon holding a big fork */
     begin();
-    mb_color(0.14f, 0.12f, 0.2f);
-    mb_ellipsoid(0, 0.7f, 0, 0.62f, 0.6f, 0.6f, 20);
-    eye_pair(0.18f, 0.82f, 0.53f, 1.2f, 1);
-    mb_color(0.95f, 0.95f, 0.9f); /* mustache */
-    mb_ellipsoid(0.12f, 0.6f, 0.56f, 0.14f, 0.05f, 0.05f, 8);
-    mb_ellipsoid(-0.12f, 0.6f, 0.56f, 0.14f, 0.05f, 0.05f, 8);
-    mb_color(0.85f, 0.15f, 0.12f); /* horns */
-    mb_push(); mb_translate(0.35f, 1.15f, 0); mb_rotate(-30, 0, 0, 1); mb_scale(0.09f, 0.35f, 0.09f); mb_cone(8); mb_pop();
-    mb_push(); mb_translate(-0.35f, 1.15f, 0); mb_rotate(30, 0, 0, 1); mb_scale(0.09f, 0.35f, 0.09f); mb_cone(8); mb_pop();
-    mb_color(1.0f, 0.8f, 0.15f); /* crown */
-    mb_push(); mb_translate(0, 1.22f, 0); mb_scale(0.28f, 0.12f, 0.28f); mb_cylinder(12, 0); mb_pop();
-    for (i = 0; i < 6; i++) {
-        float a = TAU_F * i / 6;
-        mb_push(); mb_translate(sinf(a) * 0.26f, 1.34f, cosf(a) * 0.26f); mb_scale(0.06f, 0.12f, 0.06f); mb_cone(5); mb_pop();
+    mb_color(0.78f, 0.13f, 0.12f);
+    mb_ellipsoid(0, 0.62f, 0, 0.5f, 0.56f, 0.44f, 18);                 /* body */
+    mb_ellipsoid(0, 1.12f, 0.04f, 0.36f, 0.32f, 0.33f, 16);            /* head */
+    mb_color(0.95f, 0.6f, 0.45f);
+    mb_ellipsoid(0, 0.55f, 0.28f, 0.32f, 0.36f, 0.2f, 14);             /* belly */
+    eye_pair(0.13f, 1.18f, 0.32f, 0.9f, 1);
+    mb_color(0.25f, 0.03f, 0.03f);
+    mb_ellipsoid(0, 0.98f, 0.33f, 0.14f, 0.05f, 0.04f, 10);            /* grin */
+    mb_color(1, 1, 1);
+    mb_push(); mb_translate(0.08f, 0.97f, 0.35f); mb_rotate(180, 1, 0, 0); mb_scale(0.025f, 0.06f, 0.025f); mb_cone(5); mb_pop();
+    mb_push(); mb_translate(-0.08f, 0.97f, 0.35f); mb_rotate(180, 1, 0, 0); mb_scale(0.025f, 0.06f, 0.025f); mb_cone(5); mb_pop();
+    mb_color(0.95f, 0.92f, 0.85f);                                      /* horns */
+    mb_push(); mb_translate(0.24f, 1.3f, 0); mb_rotate(-35, 0, 0, 1); mb_scale(0.06f, 0.26f, 0.06f); mb_cone(8); mb_pop();
+    mb_push(); mb_translate(-0.24f, 1.3f, 0); mb_rotate(35, 0, 0, 1); mb_scale(0.06f, 0.26f, 0.06f); mb_cone(8); mb_pop();
+    mb_color(0.78f, 0.13f, 0.12f);                                      /* pointed ears */
+    mb_push(); mb_translate(0.36f, 1.12f, 0); mb_rotate(-80, 0, 0, 1); mb_scale(0.06f, 0.16f, 0.06f); mb_cone(6); mb_pop();
+    mb_push(); mb_translate(-0.36f, 1.12f, 0); mb_rotate(80, 0, 0, 1); mb_scale(0.06f, 0.16f, 0.06f); mb_cone(6); mb_pop();
+    mb_color(1.0f, 0.8f, 0.15f);                                        /* crown */
+    mb_push(); mb_translate(0, 1.38f, 0); mb_scale(0.2f, 0.09f, 0.2f); mb_cylinder(12, 0); mb_pop();
+    for (i = 0; i < 5; i++) {
+        float a = TAU_F * i / 5;
+        mb_push(); mb_translate(sinf(a) * 0.18f, 1.47f, cosf(a) * 0.18f); mb_scale(0.05f, 0.1f, 0.05f); mb_cone(5); mb_pop();
     }
-    mb_color(0.95f, 0.75f, 0.1f);
-    mb_ellipsoid(0.27f, 0.1f, 0.08f, 0.18f, 0.1f, 0.26f, 10);
-    mb_ellipsoid(-0.27f, 0.1f, 0.08f, 0.18f, 0.1f, 0.26f, 10);
-    mb_color(0.14f, 0.12f, 0.2f);
-    mb_ellipsoid(0.62f, 0.6f, 0.1f, 0.12f, 0.2f, 0.12f, 8);
-    mb_ellipsoid(-0.62f, 0.6f, 0.1f, 0.12f, 0.2f, 0.12f, 8);
+    mb_color(0.7f, 0.1f, 0.1f);                                         /* arms */
+    mb_ellipsoid(0.5f, 0.75f, 0.12f, 0.12f, 0.25f, 0.12f, 8);
+    mb_ellipsoid(-0.5f, 0.75f, 0.12f, 0.12f, 0.25f, 0.12f, 8);
+    mb_color(0.12f, 0.08f, 0.08f);                                      /* hooves */
+    mb_ellipsoid(0.22f, 0.07f, 0.06f, 0.15f, 0.08f, 0.2f, 8);
+    mb_ellipsoid(-0.22f, 0.07f, 0.06f, 0.15f, 0.08f, 0.2f, 8);
+    mb_color(0.78f, 0.13f, 0.12f);                                      /* tail with an arrow tip */
+    mb_push(); mb_translate(0, 0.35f, -0.4f); mb_rotate(-60, 1, 0, 0); mb_scale(0.035f, 0.45f, 0.035f); mb_cylinder(6, 0); mb_pop();
+    mb_push(); mb_translate(0, 0.58f, -0.8f); mb_rotate(-60, 1, 0, 0); mb_scale(0.09f, 0.14f, 0.04f); mb_cone(4); mb_pop();
+    mb_color(0.95f, 0.8f, 0.25f);                                       /* the fork() */
+    mb_push(); mb_translate(0.62f, 0.05f, 0.18f); mb_scale(0.03f, 1.45f, 0.03f); mb_cylinder(6, 1); mb_pop();
+    mb_cuboid(0.47f, 1.48f, 0.15f, 0.77f, 1.53f, 0.21f);
+    for (i = -1; i <= 1; i++) {
+        mb_push(); mb_translate(0.62f + i * 0.14f, 1.5f, 0.18f); mb_scale(0.025f, 0.22f, 0.025f); mb_cone(5); mb_pop();
+    }
     mdl[MDL_KING] = end();
 
-    /* crusher block: half size 1.5 x 1.7 x 1.5 centred at origin, face on +z */
+    /* crusher block: a hydraulic press head, half size 1.5 x 1.7 x 1.5 centred at origin */
     begin();
-    mb_tex(TEX_STONE); mb_uvscale(0.4f);
-    mb_color(0.65f, 0.68f, 0.75f);
-    mb_cuboid(-1.5f, -1.7f, -1.5f, 1.5f, 1.7f, 1.5f);
+    mb_tex(TEX_METAL); mb_uvscale(0.4f);
+    mb_color(0.55f, 0.58f, 0.64f);
+    mb_cuboid(-1.5f, -1.2f, -1.5f, 1.5f, 1.7f, 1.5f);
+    mb_color(0.4f, 0.42f, 0.48f);
+    mb_cuboid(-1.4f, -1.7f, -1.4f, 1.4f, -1.2f, 1.4f);             /* pressing plate */
     mb_tex(TEX_NONE);
-    mb_color(1, 1, 1);
-    mb_cuboid(-0.9f, 0.2f, 1.5f, -0.35f, 0.75f, 1.56f);
-    mb_cuboid(0.35f, 0.2f, 1.5f, 0.9f, 0.75f, 1.56f);
-    mb_color(0.9f, 0.1f, 0.1f);
-    mb_cuboid(-0.75f, 0.3f, 1.55f, -0.5f, 0.55f, 1.6f);
-    mb_cuboid(0.5f, 0.3f, 1.55f, 0.75f, 0.55f, 1.6f);
-    mb_color(0.2f, 0.2f, 0.25f);
-    mb_push(); mb_translate(-0.62f, 0.95f, 1.55f); mb_rotate(-15, 0, 0, 1); mb_scale(0.4f, 0.08f, 0.05f); mb_box(); mb_pop();
-    mb_push(); mb_translate(0.62f, 0.95f, 1.55f); mb_rotate(15, 0, 0, 1); mb_scale(0.4f, 0.08f, 0.05f); mb_box(); mb_pop();
-    mb_cuboid(-0.8f, -0.9f, 1.5f, 0.8f, -0.55f, 1.57f);
-    mb_color(1, 1, 1);
-    for (i = 0; i < 5; i++) mb_cuboid(-0.75f + i * 0.32f, -0.88f, 1.56f, -0.55f + i * 0.32f, -0.6f, 1.6f);
-    mb_color(0.55f, 0.58f, 0.65f);
-    for (i = 0; i < 4; i++) {
-        mb_push(); mb_translate(i < 2 ? -1.5f : 1.5f, (i & 1) ? 0.9f : -0.9f, 0); mb_rotate(i < 2 ? 90 : -90, 0, 0, 1); mb_scale(0.25f, 0.4f, 0.25f); mb_cone(6); mb_pop();
+    for (i = 0; i < 4; i++) {                                         /* hazard stripes around the bottom */
+        int k;
+        mb_push();
+        mb_rotate(i * 90.0f, 0, 1, 0);
+        for (k = 0; k < 6; k++) {
+            float x0 = -1.5f + k * 0.5f;
+            if (k % 2) mb_color(0.1f, 0.1f, 0.1f); else mb_color(0.95f, 0.78f, 0.1f);
+            mb_quad(v3(x0, -1.2f, 1.51f), v3(x0 + 0.5f, -1.2f, 1.51f), v3(x0 + 0.5f, -0.75f, 1.51f), v3(x0, -0.75f, 1.51f));
+        }
+        mb_color(0.3f, 0.32f, 0.36f);                                 /* bolts */
+        mb_cuboid(-1.2f, 1.25f, 1.5f, -1.0f, 1.45f, 1.56f);
+        mb_cuboid(1.0f, 1.25f, 1.5f, 1.2f, 1.45f, 1.56f);
+        mb_color(0.9f, 0.15f, 0.1f);                                  /* warning lamp */
+        mb_cuboid(-0.25f, 0.95f, 1.5f, 0.25f, 1.15f, 1.56f);
+        mb_pop();
     }
+    mb_color(0.75f, 0.78f, 0.82f);                                    /* piston rod */
+    mb_push(); mb_translate(0, 1.7f, 0); mb_scale(0.45f, 1.2f, 0.45f); mb_cylinder(12, 1); mb_pop();
     mdl[MDL_CRUSHER] = end();
 
     /* roller (iron ball), r = 1 */
@@ -385,74 +445,71 @@ void models_init(void)
     }
     mdl[MDL_CRAB] = end();
 
-    /* brute (ice bully) */
+    /* brute: a stocky ice golem made of blocks and crystal shards (faces +z) */
     begin();
     mb_tex(TEX_ICE); mb_uvscale(0.6f);
-    mb_color(0.45f, 0.65f, 0.95f);
-    mb_ellipsoid(0, 1.0f, 0, 0.95f, 0.95f, 0.95f, 18);
+    mb_color(0.55f, 0.75f, 0.98f);
+    mb_cuboid(-0.75f, 0.35f, -0.6f, 0.75f, 1.65f, 0.6f);               /* torso */
+    mb_cuboid(-0.42f, 1.65f, -0.4f, 0.42f, 2.15f, 0.42f);              /* head */
+    mb_color(0.45f, 0.65f, 0.92f);
+    mb_cuboid(-1.2f, 0.7f, -0.35f, -0.75f, 1.55f, 0.35f);              /* arms */
+    mb_cuboid(0.75f, 0.7f, -0.35f, 1.2f, 1.55f, 0.35f);
+    mb_cuboid(-1.3f, 0.3f, -0.42f, -0.7f, 0.8f, 0.42f);                /* big fists */
+    mb_cuboid(0.7f, 0.3f, -0.42f, 1.3f, 0.8f, 0.42f);
+    mb_cuboid(-0.6f, 0, -0.4f, -0.1f, 0.4f, 0.45f);                    /* feet */
+    mb_cuboid(0.1f, 0, -0.4f, 0.6f, 0.4f, 0.45f);
     mb_tex(TEX_NONE);
-    eye_pair(0.28f, 1.25f, 0.82f, 1.8f, 1);
-    mb_color(0.95f, 0.95f, 1.0f);
-    mb_push(); mb_translate(0.55f, 1.7f, 0.1f); mb_rotate(-40, 0, 0, 1); mb_scale(0.15f, 0.55f, 0.15f); mb_cone(8); mb_pop();
-    mb_push(); mb_translate(-0.55f, 1.7f, 0.1f); mb_rotate(40, 0, 0, 1); mb_scale(0.15f, 0.55f, 0.15f); mb_cone(8); mb_pop();
-    mb_color(0.2f, 0.25f, 0.4f);
-    mb_ellipsoid(0.4f, 0.12f, 0.15f, 0.28f, 0.14f, 0.4f, 10);
-    mb_ellipsoid(-0.4f, 0.12f, 0.15f, 0.28f, 0.14f, 0.4f, 10);
+    mb_color(0.2f, 0.95f, 1.0f);                                       /* glowing eyes */
+    mb_cuboid(-0.3f, 1.85f, 0.42f, -0.08f, 1.97f, 0.45f);
+    mb_cuboid(0.08f, 1.85f, 0.42f, 0.3f, 1.97f, 0.45f);
+    mb_color(0.9f, 0.97f, 1.0f);                                       /* crystal shards on the back */
+    mb_push(); mb_translate(0.35f, 1.6f, -0.45f); mb_rotate(-25, 1, 0, 0); mb_rotate(-15, 0, 0, 1); mb_scale(0.14f, 0.6f, 0.14f); mb_cone(5); mb_pop();
+    mb_push(); mb_translate(-0.35f, 1.6f, -0.45f); mb_rotate(-25, 1, 0, 0); mb_rotate(15, 0, 0, 1); mb_scale(0.14f, 0.5f, 0.14f); mb_cone(5); mb_pop();
+    mb_push(); mb_translate(0, 2.15f, -0.1f); mb_rotate(-10, 1, 0, 0); mb_scale(0.12f, 0.45f, 0.12f); mb_cone(5); mb_pop();
     mdl[MDL_BRUTE] = end();
 
-    /* Segfault: body centred at origin (feet at 0) */
+    /* Segfault: a hulking golem of corrupted memory blocks (feet at 0, faces +z) */
     begin();
-    mb_color(0.45f, 0.1f, 0.3f);
-    mb_ellipsoid(0, 2.2f, -0.2f, 2.0f, 1.8f, 2.2f, 20);
-    mb_color(0.95f, 0.85f, 0.55f);
-    mb_ellipsoid(0, 2.0f, 0.9f, 1.4f, 1.4f, 1.3f, 16);
-    mb_color(0.8f, 0.8f, 0.8f);
-    for (i = 0; i < 7; i++) {
-        float a = -1.2f + i * 0.4f;
-        mb_push(); mb_translate(sinf(a) * 1.6f, 3.4f + cosf(a) * 0.5f, -0.6f - cosf(a) * 0.9f);
-        mb_rotate(DEG(a) * 0.6f, 0, 0, -1); mb_rotate(-25, 1, 0, 0); mb_scale(0.25f, 0.8f, 0.25f); mb_cone(6); mb_pop();
-    }
-    mb_color(0.35f, 0.08f, 0.22f);
-    mb_ellipsoid(1.1f, 0.4f, 0.3f, 0.6f, 0.45f, 0.8f, 10);
-    mb_ellipsoid(-1.1f, 0.4f, 0.3f, 0.6f, 0.45f, 0.8f, 10);
-    mb_ellipsoid(1.8f, 2.2f, 0.9f, 0.4f, 0.8f, 0.4f, 10);
-    mb_ellipsoid(-1.8f, 2.2f, 0.9f, 0.4f, 0.8f, 0.4f, 10);
+    mb_color(0.16f, 0.1f, 0.22f);
+    mb_cuboid(-1.25f, 0, -0.8f, -0.35f, 1.3f, 0.7f);                    /* legs */
+    mb_cuboid(0.35f, 0, -0.8f, 1.25f, 1.3f, 0.7f);
+    mb_cuboid(-1.7f, 1.2f, -1.3f, 1.7f, 3.5f, 1.2f);                    /* torso */
+    mb_color(0.9f, 0.1f, 0.65f);                                        /* glitched, shifted slices */
+    mb_cuboid(-1.95f, 2.1f, -1.25f, 1.45f, 2.45f, 1.32f);
+    mb_cuboid(-1.5f, 2.95f, -1.35f, 1.95f, 3.15f, 1.15f);
+    mb_color(0.1f, 0.95f, 0.9f);
+    mb_cuboid(-1.72f, 1.5f, -1.0f, 1.72f, 1.62f, 1.22f);
+    mb_color(0.22f, 0.14f, 0.3f);                                       /* arms with claws */
+    mb_cuboid(-2.6f, 1.2f, -0.45f, -1.7f, 3.3f, 0.5f);
+    mb_cuboid(1.7f, 1.2f, -0.45f, 2.6f, 3.3f, 0.5f);
     mb_color(0.95f, 0.95f, 0.9f);
     for (i = 0; i < 3; i++) {
-        mb_push(); mb_translate(1.8f + (i - 1) * 0.15f, 1.35f, 1.15f); mb_rotate(160, 1, 0, 0); mb_scale(0.08f, 0.3f, 0.08f); mb_cone(5); mb_pop();
-        mb_push(); mb_translate(-1.8f + (i - 1) * 0.15f, 1.35f, 1.15f); mb_rotate(160, 1, 0, 0); mb_scale(0.08f, 0.3f, 0.08f); mb_cone(5); mb_pop();
+        mb_push(); mb_translate(2.15f + (i - 1) * 0.28f, 1.25f, 0.3f); mb_rotate(180, 1, 0, 0); mb_scale(0.1f, 0.45f, 0.1f); mb_cone(5); mb_pop();
+        mb_push(); mb_translate(-2.15f + (i - 1) * 0.28f, 1.25f, 0.3f); mb_rotate(180, 1, 0, 0); mb_scale(0.1f, 0.45f, 0.1f); mb_cone(5); mb_pop();
     }
+    mb_color(0.9f, 0.1f, 0.65f);                                        /* floating fragments on the shoulders */
+    mb_cuboid(-2.2f, 3.6f, -0.3f, -1.75f, 4.05f, 0.15f);
+    mb_cuboid(1.85f, 3.7f, -0.5f, 2.25f, 4.1f, -0.1f);
     mdl[MDL_SEG_BODY] = end();
-    begin(); /* head, origin at neck, faces +z */
-    mb_color(0.5f, 0.12f, 0.32f);
-    mb_ellipsoid(0, 0.5f, 0.5f, 0.95f, 0.8f, 1.0f, 16);
-    mb_ellipsoid(0, 0.2f, 1.3f, 0.7f, 0.45f, 0.6f, 12);
-    mb_color(0.95f, 0.85f, 0.55f);
-    mb_ellipsoid(0, -0.05f, 1.2f, 0.6f, 0.25f, 0.55f, 12);
-    mb_color(1, 1, 0.3f);
-    mb_ellipsoid(0.42f, 0.8f, 1.15f, 0.2f, 0.14f, 0.1f, 8);
-    mb_ellipsoid(-0.42f, 0.8f, 1.15f, 0.2f, 0.14f, 0.1f, 8);
-    mb_color(0.9f, 0, 0);
-    mb_ellipsoid(0.42f, 0.8f, 1.24f, 0.07f, 0.12f, 0.04f, 6);
-    mb_ellipsoid(-0.42f, 0.8f, 1.24f, 0.07f, 0.12f, 0.04f, 6);
-    mb_color(0.95f, 0.9f, 0.7f);
-    mb_push(); mb_translate(0.6f, 1.1f, 0.2f); mb_rotate(-35, 0, 0, 1); mb_rotate(-30, 1, 0, 0); mb_scale(0.18f, 0.9f, 0.18f); mb_cone(8); mb_pop();
-    mb_push(); mb_translate(-0.6f, 1.1f, 0.2f); mb_rotate(35, 0, 0, 1); mb_rotate(-30, 1, 0, 0); mb_scale(0.18f, 0.9f, 0.18f); mb_cone(8); mb_pop();
+    begin(); /* head, origin at neck, faces +z: one big red "error" eye and a jagged mouth */
+    mb_color(0.2f, 0.12f, 0.28f);
+    mb_cuboid(-0.95f, 0, -0.6f, 0.95f, 1.5f, 1.15f);
+    mb_color(0.9f, 0.1f, 0.65f);
+    mb_cuboid(-1.05f, 0.95f, -0.5f, 0.8f, 1.12f, 1.2f);
+    mb_color(0.05f, 0.02f, 0.05f);
+    mb_cuboid(-0.6f, 0.05f, 1.15f, 0.6f, 0.4f, 1.18f);
     mb_color(1, 1, 1);
-    for (i = 0; i < 4; i++) {
-        mb_push(); mb_translate(-0.36f + i * 0.24f, 0.0f, 1.75f); mb_rotate(180, 1, 0, 0); mb_scale(0.07f, 0.2f, 0.07f); mb_cone(5); mb_pop();
-    }
-    mb_color(1.0f, 0.5f, 0.1f); /* glitchy hair */
     for (i = 0; i < 5; i++) {
-        mb_push(); mb_translate(-0.4f + i * 0.2f, 1.2f, 0.2f - (i % 2) * 0.2f); mb_rotate(-20, 1, 0, 0); mb_scale(0.12f, 0.5f, 0.12f); mb_cone(5); mb_pop();
+        mb_push(); mb_translate(-0.48f + i * 0.24f, 0.4f, 1.18f); mb_rotate(180, 1, 0, 0); mb_scale(0.08f, 0.22f, 0.04f); mb_cone(4); mb_pop();
     }
+    mb_color(0.95f, 0.1f, 0.08f);
+    mb_ellipsoid(0, 0.72f, 1.16f, 0.36f, 0.26f, 0.06f, 14);
+    mb_color(1.0f, 0.9f, 0.2f);
+    mb_ellipsoid(0, 0.72f, 1.21f, 0.12f, 0.12f, 0.03f, 8);
+    mb_color(0.1f, 0.95f, 0.9f);                                        /* antenna shards */
+    mb_push(); mb_translate(0.5f, 1.5f, 0.2f); mb_rotate(-20, 0, 0, 1); mb_scale(0.12f, 0.6f, 0.12f); mb_cone(4); mb_pop();
+    mb_push(); mb_translate(-0.45f, 1.5f, 0.1f); mb_rotate(25, 0, 0, 1); mb_scale(0.1f, 0.45f, 0.1f); mb_cone(4); mb_pop();
     mdl[MDL_SEG_HEAD] = end();
-    begin(); /* tail: extends along -z from origin */
-    mb_color(0.45f, 0.1f, 0.3f);
-    for (i = 0; i < 4; i++) mb_ellipsoid(0, 0, -0.5f - i * 0.65f, 0.45f - i * 0.08f, 0.4f - i * 0.07f, 0.45f, 10);
-    mb_color(0.85f, 0.85f, 0.85f);
-    mb_push(); mb_translate(0, 0, -2.9f); mb_rotate(-90, 1, 0, 0); mb_scale(0.25f, 0.6f, 0.25f); mb_cone(6); mb_pop();
-    mdl[MDL_SEG_TAIL] = end();
 
     /* spike mine */
     begin();
@@ -500,15 +557,24 @@ void models_init(void)
     mb_cuboid(-0.34f, 0, -0.62f, -0.16f, 0.12f, -0.38f);
     mdl[MDL_GNU] = end();
 
-    /* cannon (in-ground hole with rim) */
+    /* trampoline: round frame on short legs with a springy mat (top at y 0.9, radius 1.5) */
     begin();
+    for (i = 0; i < 6; i++) {
+        float a2 = TAU_F * i / 6;
+        mb_color(0.3f, 0.32f, 0.38f);
+        mb_push(); mb_translate(sinf(a2) * 1.3f, 0, cosf(a2) * 1.3f); mb_scale(0.08f, 0.85f, 0.08f); mb_cylinder(6, 0); mb_pop();
+    }
     mb_tex(TEX_METAL); mb_uvscale(0.5f);
-    mb_color(0.35f, 0.35f, 0.4f);
-    mb_push(); mb_translate(0, 0.1f, 0); mb_torus(1.0f, 0.22f, 20, 8); mb_pop();
+    mb_color(0.2f, 0.55f, 0.95f);
+    mb_push(); mb_translate(0, 0.85f, 0); mb_torus(1.42f, 0.11f, 24, 6); mb_pop();
     mb_tex(TEX_NONE);
-    mb_color(0.02f, 0.02f, 0.03f);
-    mb_push(); mb_translate(0, 0.04f, 0); mb_disc(20); mb_pop();
-    mdl[MDL_CANNON] = end();
+    mb_color(0.06f, 0.07f, 0.12f);
+    mb_push(); mb_translate(0, 0.86f, 0); mb_disc(24); mb_pop();
+    mb_color(0.95f, 0.85f, 0.2f);
+    mb_push(); mb_translate(0, 0.87f, 0); mb_scale(0.45f, 1, 0.45f); mb_disc(16); mb_pop();
+    mb_color(0.06f, 0.07f, 0.12f);
+    mb_push(); mb_translate(0, 0.88f, 0); mb_scale(0.3f, 1, 0.3f); mb_disc(16); mb_pop();
+    mdl[MDL_TRAMPOLINE] = end();
 
     /* pine trees */
     for (i = 0; i < 2; i++) {
@@ -641,50 +707,78 @@ void models_init(void)
     mb_ellipsoid(-0.4f, 0.8f, 0.55f, 0.12f, 0.12f, 0.12f, 6);
     mdl[MDL_BUSH] = end();
 
-    /* feather cap box: red block with wing emblem, centred at origin (half size 0.7) */
+    /* rocket supply crate: steel box with hazard stripes and a rocket emblem (half size 0.7) */
     begin();
     mb_tex(TEX_METAL); mb_uvscale(0.7f);
-    mb_color(0.95f, 0.25f, 0.2f);
+    mb_color(0.62f, 0.66f, 0.72f);
     mb_cuboid(-0.7f, -0.7f, -0.7f, 0.7f, 0.7f, 0.7f);
     mb_tex(TEX_NONE);
-    mb_color(1, 1, 1);
     for (i = 0; i < 4; i++) {
+        int k;
         mb_push();
         mb_rotate(i * 90.0f, 0, 1, 0);
-        mb_tri(v3(0, -0.2f, 0.72f), v3(0.45f, 0.35f, 0.72f), v3(0.15f, 0.0f, 0.72f));
-        mb_tri(v3(0, -0.2f, 0.72f), v3(-0.15f, 0.0f, 0.72f), v3(-0.45f, 0.35f, 0.72f));
+        for (k = 0; k < 4; k++) {   /* yellow/black stripes along the bottom */
+            float x0 = -0.7f + k * 0.35f;
+            mb_color(k % 2 ? 0.1f : 0.95f, k % 2 ? 0.1f : 0.8f, k % 2 ? 0.1f : 0.1f);
+            mb_quad(v3(x0, -0.7f, 0.71f), v3(x0 + 0.35f, -0.7f, 0.71f), v3(x0 + 0.35f, -0.45f, 0.71f), v3(x0, -0.45f, 0.71f));
+        }
+        mb_color(0.9f, 0.15f, 0.12f);   /* rocket body */
+        mb_quad(v3(-0.1f, -0.3f, 0.72f), v3(0.1f, -0.3f, 0.72f), v3(0.1f, 0.3f, 0.72f), v3(-0.1f, 0.3f, 0.72f));
+        mb_color(1, 1, 1);
+        mb_tri(v3(-0.1f, 0.3f, 0.72f), v3(0.1f, 0.3f, 0.72f), v3(0, 0.5f, 0.72f));
+        mb_color(0.95f, 0.8f, 0.2f);
+        mb_tri(v3(-0.1f, -0.1f, 0.72f), v3(-0.25f, -0.35f, 0.72f), v3(-0.1f, -0.3f, 0.72f));
+        mb_tri(v3(0.1f, -0.1f, 0.72f), v3(0.1f, -0.3f, 0.72f), v3(0.25f, -0.35f, 0.72f));
+        mb_color(1.0f, 0.55f, 0.1f);
+        mb_tri(v3(-0.07f, -0.3f, 0.72f), v3(0, -0.42f, 0.72f), v3(0.07f, -0.3f, 0.72f));
         mb_pop();
     }
-    mdl[MDL_CAPBOX] = end();
+    mdl[MDL_ROCKETBOX] = end();
 
-    /* ghosts ("zombie processes"): two alpha levels */
+    /* ghosts ("zombie processes"): a hooded, ragged cloak with glowing eyes and reaching arms.
+     * Two alpha levels: materialised / out of phase */
     for (i = 0; i < 2; i++) {
-        float al = i == 0 ? 0.88f : 0.28f;
+        float al = i == 0 ? 0.92f : 0.3f;
         int k;
         begin();
-        mb_color4(0.92f, 0.95f, 1.0f, al);
-        mb_ellipsoid(0, 1.0f, 0, 0.62f, 0.6f, 0.6f, 16);
-        mb_push(); mb_translate(0, 0.95f, 0); mb_rotate(180, 1, 0, 0); mb_scale(0.6f, 0.85f, 0.6f); mb_cone(14); mb_pop();
-        mb_ellipsoid(0.62f, 0.95f, 0.15f, 0.2f, 0.12f, 0.12f, 8);
-        mb_ellipsoid(-0.62f, 0.95f, 0.15f, 0.2f, 0.12f, 0.12f, 8);
-        mb_color4(0.1f, 0.1f, 0.2f, al);
-        mb_ellipsoid(0.2f, 1.18f, 0.5f, 0.1f, 0.15f, 0.06f, 8);
-        mb_ellipsoid(-0.2f, 1.18f, 0.5f, 0.1f, 0.15f, 0.06f, 8);
-        mb_color4(0.5f, 0.05f, 0.15f, al);
-        mb_ellipsoid(0, 0.85f, 0.53f, 0.2f, 0.14f, 0.07f, 10);
-        mb_color4(1.0f, 0.4f, 0.5f, al);
-        mb_ellipsoid(0, 0.78f, 0.56f, 0.09f, 0.06f, 0.05f, 6);
-        for (k = 0; k < 3; k++) {   /* little "zzz" tufts on the head */
-            mb_color4(0.7f, 0.9f, 0.7f, al);
-            mb_ellipsoid(-0.15f + k * 0.15f, 1.6f + (k % 2) * 0.05f, -0.1f, 0.05f, 0.08f, 0.05f, 6);
+        mb_color4(0.45f, 0.55f, 0.5f, al);
+        mb_push(); mb_translate(0, 0.15f, 0); mb_scale(0.55f, 1.35f, 0.5f); mb_cone(12); mb_pop();     /* cloak */
+        for (k = 0; k < 8; k++) {                                                                      /* ragged hem */
+            float a = TAU_F * k / 8;
+            mb_push(); mb_translate(sinf(a) * 0.45f, 0.2f, cosf(a) * 0.42f); mb_rotate(180, 1, 0, 0); mb_scale(0.12f, 0.3f, 0.12f); mb_cone(5); mb_pop();
         }
+        mb_color4(0.38f, 0.47f, 0.43f, al);
+        mb_ellipsoid(0, 1.3f, 0, 0.34f, 0.36f, 0.34f, 14);                                            /* hood */
+        mb_color4(0.04f, 0.05f, 0.06f, al);
+        mb_ellipsoid(0, 1.26f, 0.2f, 0.23f, 0.25f, 0.16f, 12);                                        /* face hole */
+        mb_color4(0.5f, 1.0f, 0.4f, al);
+        mb_ellipsoid(0.09f, 1.3f, 0.34f, 0.05f, 0.035f, 0.02f, 6);                                    /* eyes */
+        mb_ellipsoid(-0.09f, 1.3f, 0.34f, 0.05f, 0.035f, 0.02f, 6);
+        mb_color4(0.45f, 0.55f, 0.5f, al);                                                             /* arms reaching forward */
+        mb_cuboid(0.22f, 0.92f, 0.05f, 0.34f, 1.04f, 0.75f);
+        mb_cuboid(-0.34f, 0.92f, 0.05f, -0.22f, 1.04f, 0.75f);
+        mb_color4(0.75f, 0.8f, 0.7f, al);
+        mb_ellipsoid(0.28f, 0.98f, 0.8f, 0.08f, 0.06f, 0.08f, 6);
+        mb_ellipsoid(-0.28f, 0.98f, 0.8f, 0.08f, 0.06f, 0.08f, 6);
+        mb_color4(0.9f, 0.85f, 0.4f, al);                                                              /* <defunct> tag */
+        mb_cuboid(-0.12f, 0.55f, 0.36f, 0.12f, 0.7f, 0.4f);
         mdl[i == 0 ? MDL_GHOST : MDL_GHOST_FADE] = end();
     }
+    /* charging station (refills the battery): a battery cell with a lightning bolt, centred at origin */
     begin();
-    mb_color(1.0f, 0.15f, 0.25f);
-    mb_ellipsoid(0.22f, 0.18f, 0, 0.3f, 0.3f, 0.2f, 12);
-    mb_ellipsoid(-0.22f, 0.18f, 0, 0.3f, 0.3f, 0.2f, 12);
-    mb_push(); mb_translate(0, 0.12f, 0); mb_rotate(180, 1, 0, 0); mb_scale(0.48f, 0.55f, 0.2f); mb_cone(12); mb_pop();
+    mb_color(0.15f, 0.8f, 0.35f);
+    mb_push(); mb_translate(0, -0.45f, 0); mb_scale(0.32f, 0.9f, 0.32f); mb_cylinder(14, 1); mb_pop();
+    mb_color(0.85f, 0.88f, 0.92f);
+    mb_push(); mb_translate(0, 0.45f, 0); mb_scale(0.14f, 0.12f, 0.14f); mb_cylinder(10, 1); mb_pop();
+    mb_push(); mb_translate(0, -0.5f, 0); mb_scale(0.33f, 0.08f, 0.33f); mb_cylinder(14, 1); mb_pop();
+    mb_color(1.0f, 0.95f, 0.3f);
+    for (i = 0; i < 2; i++) {
+        float z = i ? -0.33f : 0.33f;
+        vec3 a = v3(0.08f, 0.32f, z), b = v3(-0.12f, -0.02f, z), c = v3(0.02f, -0.02f, z);
+        vec3 d = v3(-0.08f, -0.36f, z), e = v3(0.12f, 0.06f, z), f = v3(-0.02f, 0.06f, z);
+        if (i) { mb_tri(a, c, b); mb_tri(d, f, e); mb_tri(b, c, e); mb_tri(b, e, f); }
+        else { mb_tri(a, b, c); mb_tri(d, e, f); mb_tri(b, e, c); mb_tri(b, f, e); }
+    }
     mdl[MDL_HEART] = end();
     /* ice spire (tall crystal) */
     begin();
@@ -723,35 +817,42 @@ void models_init(void)
     mb_color(0.95f, 0.97f, 1.0f);
     mb_ellipsoid(0, 3.5f, 0, 0.42f, 0.18f, 0.42f, 8);
     mdl[MDL_DEADTREE] = end();
-    /* watchdog (chain chomp): iron ball r=1 facing +z with a big mouth */
+    /* watchdog: a robot guard dog facing +z, standing on y = 0 */
     begin();
-    mb_tex(TEX_METAL); mb_uvscale(0.6f);
-    mb_color(0.15f, 0.15f, 0.2f);
-    mb_sphere(18, 12);
-    mb_tex(TEX_NONE);
-    mb_color(0.6f, 0.05f, 0.08f);
-    mb_ellipsoid(0, -0.15f, 0.72f, 0.62f, 0.38f, 0.32f, 14);
-    mb_color(1, 1, 1);
-    for (i = 0; i < 7; i++) {
-        float a = -1.0f + i * 0.33f;
-        mb_push(); mb_translate(sinf(a) * 0.6f, 0.15f, 0.75f + cosf(a) * 0.12f - 0.1f); mb_rotate(180, 1, 0, 0); mb_scale(0.07f, 0.18f, 0.07f); mb_cone(5); mb_pop();
-        mb_push(); mb_translate(sinf(a) * 0.55f, -0.45f, 0.72f + cosf(a) * 0.1f - 0.1f); mb_scale(0.06f, 0.15f, 0.06f); mb_cone(5); mb_pop();
+    {
+        int lx, lz;
+        mb_tex(TEX_METAL); mb_uvscale(0.6f);
+        mb_color(0.45f, 0.5f, 0.62f);
+        mb_cuboid(-0.5f, 0.7f, -0.85f, 0.5f, 1.35f, 0.85f);      /* body */
+        mb_cuboid(-0.42f, 1.2f, 0.75f, 0.42f, 1.9f, 1.5f);       /* head */
+        mb_tex(TEX_NONE);
+        mb_color(0.2f, 0.22f, 0.28f);
+        mb_cuboid(-0.24f, 1.2f, 1.5f, 0.24f, 1.5f, 1.95f);       /* snout */
+        mb_color(0.05f, 0.05f, 0.07f);
+        mb_cuboid(-0.1f, 1.38f, 1.95f, 0.1f, 1.5f, 2.0f);        /* nose */
+        mb_color(0.95f, 0.85f, 0.85f);
+        for (lx = 0; lx < 4; lx++) {                              /* fangs */
+            float x = -0.16f + lx * 0.106f;
+            mb_push(); mb_translate(x, 1.21f, 1.85f); mb_rotate(180, 1, 0, 0); mb_scale(0.04f, 0.12f, 0.04f); mb_cone(5); mb_pop();
+        }
+        mb_color(1.0f, 0.1f, 0.08f);
+        mb_ellipsoid(0.22f, 1.7f, 1.51f, 0.09f, 0.07f, 0.03f, 8);  /* LED eyes */
+        mb_ellipsoid(-0.22f, 1.7f, 1.51f, 0.09f, 0.07f, 0.03f, 8);
+        mb_color(0.35f, 0.38f, 0.48f);
+        mb_push(); mb_translate(0.28f, 1.88f, 0.95f); mb_scale(0.12f, 0.38f, 0.12f); mb_cone(6); mb_pop();   /* ears */
+        mb_push(); mb_translate(-0.28f, 1.88f, 0.95f); mb_scale(0.12f, 0.38f, 0.12f); mb_cone(6); mb_pop();
+        mb_color(0.3f, 0.32f, 0.4f);
+        for (lx = -1; lx <= 1; lx += 2)
+            for (lz = -1; lz <= 1; lz += 2)
+                mb_cuboid(lx * 0.36f - 0.1f, 0, lz * 0.62f - 0.1f, lx * 0.36f + 0.1f, 0.75f, lz * 0.62f + 0.1f);
+        mb_push(); mb_translate(0, 1.25f, -0.85f); mb_rotate(-35, 1, 0, 0); mb_scale(0.05f, 0.7f, 0.05f); mb_cylinder(6, 1); mb_pop();   /* antenna tail */
+        mb_color(0.2f, 1.0f, 0.4f);
+        mb_ellipsoid(0, 1.82f, -1.25f, 0.08f, 0.08f, 0.08f, 6);
+        mb_color(0.1f, 0.85f, 0.3f);                              /* status panel on the flank */
+        mb_cuboid(0.5f, 0.9f, -0.4f, 0.52f, 1.15f, 0.3f);
+        mb_cuboid(-0.52f, 0.9f, -0.4f, -0.5f, 1.15f, 0.3f);
     }
-    mb_ellipsoid(0.38f, 0.45f, 0.72f, 0.18f, 0.2f, 0.1f, 10);
-    mb_ellipsoid(-0.38f, 0.45f, 0.72f, 0.18f, 0.2f, 0.1f, 10);
-    mb_color(0, 0, 0);
-    mb_ellipsoid(0.36f, 0.43f, 0.8f, 0.07f, 0.09f, 0.04f, 8);
-    mb_ellipsoid(-0.36f, 0.43f, 0.8f, 0.07f, 0.09f, 0.04f, 8);
-    mdl[MDL_CHOMP] = end();
-    begin();
-    mb_color(0.35f, 0.35f, 0.4f);
-    mb_push(); mb_rotate(90, 0, 0, 1); mb_torus(0.22f, 0.07f, 10, 5); mb_pop();
-    mdl[MDL_LINK] = end();
-    begin();
-    mb_tex(TEX_WOOD); mb_uvscale(1.0f);
-    mb_color(0.65f, 0.45f, 0.28f);
-    mb_push(); mb_scale(0.4f, 1.5f, 0.4f); mb_cylinder(10, 1); mb_pop();
-    mdl[MDL_POST] = end();
+    mdl[MDL_WATCHDOG] = end();
     begin();
     mb_color(0.3f, 0.3f, 0.35f);
     for (i = 0; i < 16; i++) {
@@ -776,6 +877,59 @@ void models_init(void)
     mb_color(1, 1, 1);
     mb_ellipsoid(0, 0, 0, 1, 1, 1, 20);
     mdl[MDL_MOUND] = end();
+    /* an orphaned child process: a small round robot with a screen face (faces +z, ~1 tall) */
+    begin();
+    mb_color(0.55f, 0.8f, 1.0f);
+    mb_ellipsoid(0, 0.5f, 0, 0.36f, 0.4f, 0.34f, 14);
+    mb_color(0.04f, 0.06f, 0.1f);
+    mb_ellipsoid(0, 0.58f, 0.24f, 0.25f, 0.2f, 0.12f, 12);
+    mb_color(0.3f, 1.0f, 1.0f);
+    mb_ellipsoid(0.09f, 0.62f, 0.35f, 0.045f, 0.06f, 0.02f, 6);
+    mb_ellipsoid(-0.09f, 0.62f, 0.35f, 0.045f, 0.06f, 0.02f, 6);
+    mb_ellipsoid(0, 0.5f, 0.355f, 0.07f, 0.02f, 0.02f, 6);
+    mb_color(0.7f, 0.75f, 0.8f);
+    mb_push(); mb_translate(0, 0.86f, 0); mb_scale(0.025f, 0.2f, 0.025f); mb_cylinder(5, 1); mb_pop();
+    mb_color(1.0f, 0.85f, 0.2f);
+    mb_ellipsoid(0, 1.08f, 0, 0.06f, 0.06f, 0.06f, 6);
+    mb_color(0.35f, 0.5f, 0.7f);
+    mb_ellipsoid(0.16f, 0.07f, 0.05f, 0.1f, 0.07f, 0.14f, 8);
+    mb_ellipsoid(-0.16f, 0.07f, 0.05f, 0.1f, 0.07f, 0.14f, 8);
+    mdl[MDL_CHILDPROC] = end();
+    /* init (PID 1): a friendly old server rack with a screen face (faces +z, ~2.3 tall) */
+    begin();
+    mb_tex(TEX_METAL); mb_uvscale(0.5f);
+    mb_color(0.36f, 0.38f, 0.44f);
+    mb_cuboid(-0.6f, 0.1f, -0.45f, 0.6f, 2.0f, 0.45f);
+    mb_tex(TEX_NONE);
+    mb_color(0.15f, 0.16f, 0.2f);
+    mb_cuboid(-0.62f, 0, -0.47f, 0.62f, 0.12f, 0.47f);
+    for (i = 0; i < 3; i++) {   /* rack units with blinking lights */
+        float y = 0.3f + i * 0.32f;
+        mb_color(0.2f, 0.21f, 0.26f);
+        mb_cuboid(-0.5f, y, 0.45f, 0.5f, y + 0.24f, 0.48f);
+        mb_color(i == 1 ? 1.0f : 0.2f, i == 1 ? 0.7f : 1.0f, 0.3f);
+        mb_cuboid(0.3f, y + 0.08f, 0.48f, 0.38f, y + 0.16f, 0.5f);
+        mb_cuboid(0.16f, y + 0.08f, 0.48f, 0.24f, y + 0.16f, 0.5f);
+    }
+    mb_color(0.03f, 0.05f, 0.04f);   /* screen face */
+    mb_cuboid(-0.48f, 1.32f, 0.45f, 0.48f, 1.88f, 0.48f);
+    mb_color(0.4f, 1.0f, 0.5f);
+    mb_cuboid(-0.3f, 1.62f, 0.48f, -0.14f, 1.72f, 0.5f);
+    mb_cuboid(0.14f, 1.62f, 0.48f, 0.3f, 1.72f, 0.5f);
+    mb_cuboid(-0.22f, 1.44f, 0.48f, 0.22f, 1.5f, 0.5f);
+    mb_cuboid(-0.28f, 1.5f, 0.48f, -0.22f, 1.56f, 0.5f);
+    mb_cuboid(0.22f, 1.5f, 0.48f, 0.28f, 1.56f, 0.5f);
+    mb_color(0.95f, 0.95f, 0.9f);    /* bushy white "beard" of cables */
+    for (i = 0; i < 5; i++) mb_ellipsoid(-0.32f + i * 0.16f, 1.22f, 0.47f, 0.08f, 0.12f, 0.04f, 6);
+    mb_color(0.3f, 0.32f, 0.38f);    /* arms */
+    mb_cuboid(-0.85f, 0.9f, -0.12f, -0.6f, 1.6f, 0.12f);
+    mb_cuboid(0.6f, 0.9f, -0.12f, 0.85f, 1.6f, 0.12f);
+    mb_color(0.7f, 0.75f, 0.8f);
+    mb_push(); mb_translate(-0.3f, 2.0f, 0); mb_scale(0.03f, 0.3f, 0.03f); mb_cylinder(5, 1); mb_pop();
+    mb_push(); mb_translate(0.3f, 2.0f, 0); mb_scale(0.03f, 0.22f, 0.03f); mb_cylinder(5, 1); mb_pop();
+    mb_color(1.0f, 0.3f, 0.2f);
+    mb_ellipsoid(-0.3f, 2.32f, 0, 0.05f, 0.05f, 0.05f, 6);
+    mdl[MDL_INIT] = end();
     /* the OOM Killer: hulking frost giant with a dark visor (faces +z, ~3.4 tall) */
     begin();
     mb_tex(TEX_SNOW); mb_uvscale(0.7f);

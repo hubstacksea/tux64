@@ -11,6 +11,7 @@ int g_ring_next;
 static int ring_total;
 
 static int held(int b);
+extern int g_trace;
 
 #define PR 0.42f   /* player radius */
 #define PH 1.6f    /* player height */
@@ -57,24 +58,25 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_STAR: o->radius = 0.8f; o->height = 1.4f; o->flags = OF_SHADOW; break;
     case OT_BUG: o->radius = 0.7f; o->height = 1.0f; o->flags = OF_SHADOW; break;
     case OT_FORKBOMB: o->radius = 0.6f; o->height = 1.3f; o->flags = OF_SHADOW | OF_GRABBABLE; break;
-    case OT_KING: o->radius = 1.6f; o->height = 3.6f; o->flags = OF_SHADOW | OF_GRABBABLE; o->scale = 2.6f; break;
+    case OT_KING: o->radius = 1.6f; o->height = 3.6f; o->flags = OF_SHADOW; o->scale = 2.6f; break;
     case OT_CRUSHER: o->radius = 1.5f; o->height = 3.4f; o->flags = OF_SOLID | OF_SHADOW;
         o->f[5] = 1.5f; o->f[6] = 1.7f; o->f[7] = 1.5f; break;
     case OT_ROLLER: o->radius = 1.2f; o->height = 2.4f; o->flags = OF_SHADOW; break;
     case OT_PUFFER: o->radius = 0.7f; o->height = 1.2f; break;
     case OT_CRAB: o->radius = 0.8f; o->height = 0.9f; o->flags = OF_SHADOW; break;
     case OT_BRUTE: o->radius = 1.0f; o->height = 2.0f; o->flags = OF_SHADOW; break;
-    case OT_SEGFAULT: o->radius = 2.4f; o->height = 4.5f; o->flags = OF_SHADOW | OF_GRABBABLE; break;
+    case OT_SEGFAULT: o->radius = 2.4f; o->height = 4.5f; o->flags = OF_SHADOW; break;
     case OT_FIREBALL: o->radius = 0.45f; o->height = 0.8f; break;
     case OT_SPIKEBOMB: o->radius = 1.1f; o->height = 2.2f; o->flags = OF_SHADOW; break;
     case OT_PLATFORM: case OT_ROTPLAT: case OT_ELEVATOR: case OT_FALLPLAT:
         o->flags = OF_SOLID | OF_SHADOW; break;
     case OT_SIGN: o->radius = 0.6f; o->height = 1.7f; o->flags = OF_SHADOW; break;
-    case OT_NPC: case OT_MOTHER: o->radius = 0.6f; o->height = 1.6f; o->flags = OF_SHADOW; break;
+    case OT_NPC: o->radius = 0.6f; o->height = 1.6f; o->flags = OF_SHADOW; break;
+    case OT_MOTHER: o->radius = 0.8f; o->height = 2.3f; o->flags = OF_SHADOW; break;
     case OT_BABY: o->radius = 0.5f; o->height = 1.0f; o->flags = OF_SHADOW | OF_GRABBABLE; break;
     case OT_RACER: o->radius = 0.8f; o->height = 2.0f; o->flags = OF_SHADOW; break;
     case OT_RACEFLAG: o->radius = 1.5f; o->height = 4.0f; break;
-    case OT_CANNON: o->radius = 1.0f; o->height = 0.6f; break;
+    case OT_TRAMPOLINE: o->radius = 1.5f; o->height = 0.9f; o->flags = OF_SOLID | OF_SHADOW; break;
     case OT_TREE: case OT_POLE: o->radius = 0.35f; o->height = 4.0f; break;
     case OT_WARP: o->radius = 1.5f; o->height = 3.0f; break;
     case OT_DOOR: o->radius = 1.3f; o->height = 3.4f; o->flags = OF_SOLID;
@@ -93,13 +95,12 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_GHOSTKING: o->radius = 1.7f; o->height = 4.0f; o->scale = 2.5f; break;
     case OT_TOPSWITCH: o->radius = 1.2f; o->height = 1.0f; break;
     case OT_HEART: o->radius = 0.9f; o->height = 1.4f; o->flags = OF_SHADOW; break;
-    case OT_CHOMP: o->radius = 1.3f; o->height = 2.6f; o->flags = OF_SHADOW; break;
-    case OT_CHOMPPOST: o->radius = 0.45f; o->height = 3.0f; o->flags = OF_SOLID; break;
+    case OT_WATCHDOG: o->radius = 1.3f; o->height = 2.4f; o->flags = OF_SHADOW; break;
     case OT_CAGE: o->radius = 1.6f; o->height = 3.0f; o->flags = OF_SOLID; break;
     case OT_STEAM: o->radius = 0; o->height = 0; break;
     case OT_OOM: o->radius = 0.95f; o->height = 3.4f; o->flags = OF_SHADOW; break;
     case OT_MAZEEXIT: o->radius = 2.0f; o->height = 3.0f; break;
-    case OT_CAPBOX: o->radius = 0.8f; o->height = 1.4f; o->flags = OF_SOLID;
+    case OT_ROCKETBOX: o->radius = 0.8f; o->height = 1.4f; o->flags = OF_SOLID;
         o->f[5] = 0.7f; o->f[6] = 0.7f; o->f[7] = 0.7f; break;
     }
     return o;
@@ -154,7 +155,7 @@ Obj *star_spawn(vec3 p, int star, int from_pos, vec3 from)
 static int touching(Obj *o)
 {
     float dx = pl.pos.x - o->pos.x, dz = pl.pos.z - o->pos.z, r = o->radius + PR;
-    if (!pl.visible && pl.act != ACT_CANNON) return 0;
+    if (!pl.visible) return 0;
     if ((o->type == OT_WARP || o->type == OT_TIMERSTART) && o->f[5] > 0) {
         return fabsf(dx) < o->f[5] + PR && fabsf(dz) < o->f[7] + PR &&
                pl.pos.y + PH > o->pos.y && pl.pos.y < o->pos.y + o->height;
@@ -376,6 +377,7 @@ static void upd_forkbomb(Obj *o)
 {
     float d = dist_player(o);
     if (o->state == 90) {    /* respawn wait */
+        if (o->param2 == 7) { obj_kill(o); return; }   /* forked by King Daemon */
         o->timer++;
         if (o->timer > 600) { o->pos = o->home; o->state = 0; o->timer = 0; o->vel = v3(0, 0, 0); }
         return;
@@ -439,9 +441,20 @@ static void upd_forkbomb(Obj *o)
     }
 }
 
+/* King Daemon: fork()s lit bombs at Tux. Pick one up (B) and throw it back at him: 3 hits.
+ * f[0]: fork timer, hp: hits taken */
+static int count_king_bombs(void)
+{
+    int i, n = 0;
+    for (i = 0; i < nobj; i++)
+        if (objs[i].active && objs[i].type == OT_FORKBOMB && objs[i].param2 == 7 && objs[i].state != 90) n++;
+    return n;
+}
+
 static void upd_king(Obj *o)
 {
     float d = dist_player(o);
+    int i;
     if (o->state == 90) {
         o->timer++;
         o->scale = 2.6f * (1 - clampf(o->timer / 60.0f, 0, 1));
@@ -452,69 +465,74 @@ static void upd_king(Obj *o)
         }
         return;
     }
-    if (o->flags & OF_HELD) {
-        o->pos = v3add(pl.pos, v3(0, 1.8f, 0));
-        o->yaw = pl.yaw;
-        o->timer++;
-        if (o->timer > 300) {   /* wriggle free */
-            pl.held = -1; o->flags &= ~OF_HELD;
-            o->state = 101; o->timer = 0;
-            player_push(o->pos, 6);
-        }
-        return;
-    }
-    if (o->state == 100 || o->state == 101) {
-        int g = obj_physics(o, 30, 1.0f);
-        o->timer++;
-        if (g && o->timer > 3) {
-            sfx(SFX_THUD);
-            cam.shake = 0.4f;
-            if (o->state == 100 && o->pos.y > o->home.y - 1.0f) {
+    o->timer++;
+    /* hit by one of his own bombs? */
+    if (o->state == 1 || o->state == 2) {
+        for (i = 0; i < nobj; i++) {
+            Obj *b = &objs[i];
+            if (!b->active || b->type != OT_FORKBOMB || b->state != 100) continue;
+            if (v3distxz(b->pos, o->pos) < o->radius + 0.9f && b->pos.y > o->pos.y - 0.5f && b->pos.y < o->pos.y + o->height) {
+                explode_at(b->pos, 0);
+                b->state = 90; b->timer = 0; b->pos = v3(0, -1000, 0);
                 o->hp++;
                 sfx(SFX_ROAR);
+                cam.shake = 0.5f;
                 if (o->hp >= 3) {
                     o->state = 90; o->timer = 0;
-                    dialog_open("KING DAEMON: Gah! You threw me around like a\nzombie process... Fine, take the Power Star!");
+                    dialog_open("KING DAEMON: Gah! Blown up by my own child\nprocesses... Fine, take the star!");
                     music_play(lv.music);
                     return;
                 }
+                o->state = 3; o->timer = 0;
+                o->vel = v3scale(v3norm(v3sub(o->home, o->pos)), 3);
+                o->vel.y = 9;
+                hud_message(o->hp == 1 ? "KING DAEMON: Ow! That's MY bomb!" : "KING DAEMON: Grr... one more and I'm done!", 120);
+                break;
             }
-            o->state = 3; o->timer = 0;
-            o->vel = v3(0, 0, 0);
         }
-        if (o->pos.y < o->home.y - 3.0f) {
-            /* fell off the summit: jump back home */
-            o->pos = o->home;
-            o->vel = v3(0, 0, 0);
-            o->state = 3; o->timer = 0;
-            sfx(SFX_JUMP3);
-        }
-        return;
     }
-    o->timer++;
     switch (o->state) {
     case 0:   /* waiting for the player to arrive */
         if (d < 10 && pl.pos.y > o->pos.y - 0.5f && !player_in_air()) {
             o->state = 1; o->timer = 0;
             dialog_open("KING DAEMON: Who dares climb my peak?!\nI am the King of all background processes!\n"
-                        "Get behind me and grab me with B, if you can.\nThen throw me with B!");
+                        "Behold my fork()! Bombs, bombs, more bombs!\nYou'd better not grab them and throw them\nback at me...");
             music_play(MUS_BOSS);
         }
         break;
-    case 1:   /* walk toward player */
+    case 1:   /* stomp toward the player */
         o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 1.0f * DT);
-        if (d > 3.5f) {
-            o->vel.x = sinf(o->yaw) * 1.6f;
-            o->vel.z = cosf(o->yaw) * 1.6f;
+        if (d > 5.0f) {
+            o->vel.x = sinf(o->yaw) * 1.4f;
+            o->vel.z = cosf(o->yaw) * 1.4f;
         } else { o->vel.x = o->vel.z = 0; }
-        if (o->timer % 40 == 0) { sfx_ex(SFX_THUD, 0.4f, 1.5f); }
+        if (o->timer % 40 == 0) sfx_ex(SFX_THUD, 0.4f, 1.5f);
+        if (o->timer > 150 - o->hp * 30 && count_king_bombs() < 2) { o->state = 2; o->timer = 0; }
         break;
-    case 3:   /* stunned */
+    case 2:   /* fork(): spit out a lit bomb */
         o->vel.x = o->vel.z = 0;
-        if (o->timer > 70) { o->state = 1; o->timer = 0; }
+        o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 2.0f * DT);
+        if (o->timer == 30) {
+            vec3 fd = yaw_dir(o->yaw);
+            Obj *b = obj_spawn(OT_FORKBOMB, v3add(v3mad(o->pos, fd, 2.2f), v3(0, 2.5f, 0)), o->yaw, 0);
+            if (b) {
+                b->param2 = 7;
+                b->home = o->home;
+                b->state = 101;   /* falls, then starts walking with its fuse lit */
+                b->vel = v3(fd.x * 5, 6, fd.z * 5);
+                b->timer = 0;
+            }
+            sfx(SFX_POP);
+            sfx_ex(SFX_ROAR, 0.5f, 1.3f);
+        }
+        if (o->timer > 60) { o->state = 1; o->timer = 0; }
+        break;
+    case 3:   /* stunned by a blast */
+        if (o->timer > 70) { o->state = 1; o->timer = 0; o->vel = v3(0, 0, 0); }
         break;
     }
     obj_physics(o, 30, 1.2f);
+    if (o->state == 3 && o->timer > 2) { o->vel.x *= 0.9f; o->vel.z *= 0.9f; }
     if (o->pos.y < o->home.y - 3.0f) {
         o->pos = o->home;
         o->vel = v3(0, 0, 0);
@@ -526,20 +544,11 @@ static void upd_king(Obj *o)
         o->vel.x = sinf(yaw_to(o->pos, o->home)) * 2;
         o->vel.z = cosf(yaw_to(o->pos, o->home)) * 2;
     }
-    if (touching(o) && !(o->flags & OF_HELD)) {
+    if (touching(o)) {
         vec3 fd = yaw_dir(o->yaw), tp = v3norm(v3sub(pl.pos, o->pos));
         if (v3dot(fd, tp) > 0.3f && o->state == 1) player_hurt(1, o->pos);
         else push_player_out(o, o->radius);
     }
-}
-
-static int king_grab_ok(Obj *o)
-{
-    vec3 fd = yaw_dir(o->yaw), tp = v3sub(pl.pos, o->pos);
-    tp.y = 0;
-    tp = v3norm(tp);
-    if (o->state == 0 || o->state >= 90) return 0;
-    return v3dot(fd, tp) < -0.2f || o->state == 3;
 }
 
 static void upd_crusher(Obj *o)
@@ -735,29 +744,13 @@ static void upd_brute(Obj *o)
     }
 }
 
-/* -------- Segfault (final boss) -------- */
-static vec3 seg_tail(Obj *o) { return v3add(v3mad(o->pos, yaw_dir(o->yaw), -3.6f), v3(0, 1.0f, 0)); }
-
-static int seg_grab_ok(Obj *o)
-{
-    vec3 t = seg_tail(o);
-    if (o->state == 0 || o->state == 4 || o->state >= 6) return 0;
-    return v3distxz(t, pl.pos) < 2.0f && fabsf(pl.pos.y - o->pos.y) < 2.5f;
-}
-
+/* -------- Segfault (final boss) --------
+ * He can't be hurt directly. Bait his charge so he rams one of the spike mines around the arena: 3 hits. */
 static void upd_segfault(Obj *o)
 {
     float d = dist_player(o);
     vec3 center = o->home;
     int i;
-    if (o->flags & OF_HELD) {
-        o->pos = v3mad(pl.pos, yaw_dir(pl.spin_ang), 4.6f);
-        o->pos.y = pl.pos.y;
-        o->yaw = pl.spin_ang;
-        o->state = 5;
-        return;
-    }
-    if (o->state == 101) { o->state = 6; o->timer = 30; o->vel = v3(0, 0, 0); }
     o->timer++;
     switch (o->state) {
     case 0:
@@ -765,27 +758,41 @@ static void upd_segfault(Obj *o)
         if (o->timer == 1) {
             dialog_open("SEGFAULT: So the little penguin made it to the core!\n"
                         "I'll dump your core and free() your memory!\n"
-                        "...What? Grab my tail? Spin me into my own\nspike mines? Nobody would dare!");
+                        "Stand still and let me charge you down!\n...Just mind my spike mines. Ramming them\nhurts even me.");
         }
         if (o->timer == 2) music_play(MUS_BOSS);
         if (!dialog_active() && o->timer > 30) { o->state = 1; o->timer = 0; sfx(SFX_ROAR); cam.shake = 0.5f; }
         break;
-    case 1:   /* walk toward player */
+    case 1:   /* stalk the player, keeping a little distance and walking around his own mines */
+    {
+        float sp = d > 7 ? 2.0f + o->hp * 0.6f : 0.0f;
         o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 1.3f * DT);
-        o->vel.x = sinf(o->yaw) * (2.0f + o->hp * 0.6f);
-        o->vel.z = cosf(o->yaw) * (2.0f + o->hp * 0.6f);
-        if (o->timer > 120) {
-            int r = (int)(frand() * 3);
+        o->vel.x = sinf(o->yaw) * sp;
+        o->vel.z = cosf(o->yaw) * sp;
+        for (i = 0; i < nobj; i++) {
+            Obj *b = &objs[i];
+            vec3 away;
+            float bd;
+            if (!b->active || b->type != OT_SPIKEBOMB || b->state != 0) continue;
+            bd = v3distxz(b->pos, o->pos);
+            if (bd > 5.0f) continue;
+            away = v3norm(v3(o->pos.x - b->pos.x, 0, o->pos.z - b->pos.z));
+            o->vel.x += away.x * 3.0f * (5.0f - bd);
+            o->vel.z += away.z * 3.0f * (5.0f - bd);
+        }
+        if (o->timer > 100 - o->hp * 15) {
+            float r = frand();
             o->timer = 0;
-            if (r == 0 || d > 14) o->state = 2;
-            else if (r == 1) o->state = 3;
-            else { o->state = 4; o->vel.y = 18; o->vel.x = o->vel.z = 0; sfx(SFX_ROAR); }
+            if (d >= 6) o->state = r < 0.7f ? 3 : (r < 0.88f ? 2 : 4);
+            else o->state = r < 0.7f ? 4 : 2;
+            if (o->state == 4) { o->vel.y = 18; o->vel.x = o->vel.z = 0; sfx(SFX_ROAR); }
         }
         break;
+    }
     case 2:   /* fire breath */
         o->vel.x = o->vel.z = 0;
         o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 1.0f * DT);
-        if (o->timer > 30 && o->timer < 100 && o->timer % 7 == 0) {
+        if (o->timer > 30 && o->timer < 80 && o->timer % 7 == 0) {
             vec3 mouth = v3add(v3mad(o->pos, yaw_dir(o->yaw), 3.0f), v3(0, 2.6f, 0));
             Obj *f = obj_spawn(OT_FIREBALL, mouth, 0, 0);
             if (f) {
@@ -795,12 +802,46 @@ static void upd_segfault(Obj *o)
             }
             if (o->timer % 21 == 0) sfx(SFX_FIRE);
         }
-        if (o->timer > 120) { o->state = 1; o->timer = 0; }
+        if (o->timer > 100) { o->state = 1; o->timer = 0; }
         break;
-    case 3:   /* charge */
-        if (o->timer < 30) { o->vel.x = o->vel.z = 0; o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 3 * DT); }
-        else { o->vel.x = sinf(o->yaw) * 11; o->vel.z = cosf(o->yaw) * 11; if (o->timer % 10 == 0) sfx_ex(SFX_THUD, 0.5f, 1.4f); }
-        if (o->timer > 85 || v3distxz(o->pos, center) > 16) { o->state = 1; o->timer = 0; o->vel.x = o->vel.z = 0; }
+    case 3:   /* charge: aims during the wind-up, then runs straight */
+        if (o->timer < 40) {
+            o->vel.x = o->vel.z = 0;
+            o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 3 * DT);
+            if (o->timer == 1) { sfx(SFX_ROAR); hud_message("Segfault is about to charge!", 60); }
+        } else {
+            o->vel.x = sinf(o->yaw) * 12; o->vel.z = cosf(o->yaw) * 12;
+            if (o->timer % 10 == 0) sfx_ex(SFX_THUD, 0.5f, 1.4f);
+            for (i = 0; i < nobj; i++) {
+                Obj *b = &objs[i];
+                if (!b->active || b->type != OT_SPIKEBOMB || b->state != 0) continue;
+                if (v3distxz(b->pos, o->pos) < o->radius + b->radius + 0.2f) {
+                    explode_at(b->pos, 0);
+                    obj_kill(b);
+                    {   /* a fresh mine grows back later */
+                        Obj *r = obj_spawn(OT_SPIKEBOMB, v3add(b->home, v3(0, -30, 0)), 0, 0);
+                        if (r) { r->home = b->home; r->state = 1; r->timer = 0; }
+                    }
+                    o->hp++;
+                    sfx(SFX_ROAR);
+                    cam.shake = 0.7f;
+                    if (o->hp >= 3) {
+                        o->state = 7; o->timer = 0;
+                        o->pos = v3lerp(o->pos, center, 0.3f);
+                        o->pos.y = center.y;
+                        music_stop();
+                        return;
+                    }
+                    o->state = 6; o->timer = 0;
+                    o->vel = v3scale(v3norm(v3sub(center, o->pos)), 6);
+                    o->vel.y = 10;
+                    hud_message(o->hp == 1 ? "Segfault: OUCH! My own mine..." : "Segfault: Grrr! Not again...", 120);
+                    break;
+                }
+            }
+            if (o->state != 3) break;
+        }
+        if (o->timer > 100 || v3distxz(o->pos, center) > 17) { o->state = 1; o->timer = 0; o->vel.x = o->vel.z = 0; }
         break;
     case 4:   /* jump + shockwave */
         break;
@@ -838,51 +879,6 @@ static void upd_segfault(Obj *o)
         return;
     }
     }
-    if (o->state == 100) {
-        /* flying after being thrown */
-        o->vel.y -= 26 * DT;
-        o->pos = v3mad(o->pos, o->vel, DT);
-        for (i = 0; i < nobj; i++) {
-            Obj *b = &objs[i];
-            if (!b->active || b->type != OT_SPIKEBOMB) continue;
-            if (v3distxz(b->pos, o->pos) < 4.0f && fabsf(b->pos.y - o->pos.y) < 4) {
-                explode_at(b->pos, 0);
-                obj_kill(b);
-                o->hp++;
-                sfx(SFX_ROAR);
-                cam.shake = 0.7f;
-                if (o->hp >= 3) {
-                    o->state = 7; o->timer = 0;
-                    o->pos.y = center.y;
-                    o->pos = v3lerp(o->pos, center, 0.3f);
-                    music_stop();
-                    return;
-                }
-                o->state = 6; o->timer = 0;
-                o->vel = v3scale(v3norm(v3sub(center, o->pos)), 6);
-                o->vel.y = 10;
-                hud_message(o->hp == 1 ? "Segfault: OUCH! 2 more mines..." : "Segfault: Grrr! One more...", 120);
-                break;
-            }
-        }
-        if (o->state == 100) {
-            Surf *s;
-            float fy = col_floor(o->pos.x, o->pos.y + 1.0f, o->pos.z, &s);
-            if (s && o->pos.y <= fy && o->vel.y < 0) {
-                o->pos.y = fy;
-                o->state = 6; o->timer = 30;
-                o->vel = v3(0, 0, 0);
-                sfx(SFX_THUD);
-                cam.shake = 0.4f;
-            }
-            if (o->pos.y < center.y - 6) {
-                o->state = 8; o->timer = 0;
-                o->f[1] = o->pos.x; o->f[2] = o->pos.y; o->f[3] = o->pos.z;
-                sfx(SFX_ROAR);
-            }
-            return;
-        }
-    }
     /* generic physics for walking states */
     {
         int g = obj_physics(o, 30, 2.0f);
@@ -894,7 +890,7 @@ static void upd_segfault(Obj *o)
             o->state = 1; o->timer = 0;
         }
         if (o->state == 6 && g) { o->vel.x = o->vel.z = 0; }
-        if (v3distxz(o->pos, center) > 17.5f && o->state != 100) {
+        if (v3distxz(o->pos, center) > 17.5f) {
             vec3 t = v3norm(v3sub(center, o->pos));
             o->pos.x += t.x * 0.15f; o->pos.z += t.z * 0.15f;
         }
@@ -1015,7 +1011,7 @@ static void upd_baby(Obj *o)
         vec3 dd = yaw_dir(pl.yaw);
         o->pos = v3add(v3mad(pl.pos, dd, 0.55f), v3(0, 0.5f, 0));
         o->yaw = pl.yaw;
-        if (g_frame % 120 == 0) sfx_ex(SFX_SQUAWK, 0.5f, 1.8f);
+        if (g_frame % 120 == 0) sfx_ex(SFX_TEXT, 0.6f, 1.6f);
         return;
     }
     if (o->state == 50) { o->yaw += 2 * DT; return; }   /* delivered */
@@ -1046,7 +1042,7 @@ static void upd_mother(Obj *o)
             b->state = 50;
             b->pos = v3add(o->pos, v3(1.2f, 0, 0.8f));
             o->state = 1;
-            dialog_open("MAMA PENGUIN: My baby! You found my baby!\nThank you, Tux! Please take this Power Star!");
+            dialog_open("INIT: Welcome home, little process! I'll adopt\nyou, just like every orphan. Thank you, Tux!\nPlease take this Kernel Star!");
             star_spawn(v3add(o->pos, v3(0, 2.6f, 0)), o->param, 1, o->pos);
             break;
         }
@@ -1116,19 +1112,10 @@ static void upd_raceflag(Obj *o)
 }
 
 /* ---------------------------------------------------------------- level objects */
-static void upd_cannon(Obj *o)
+static void upd_trampoline(Obj *o)
 {
-    if (pl.act == ACT_CANNON || pl.act == ACT_DEATH) return;
-    if (v3distxz(o->pos, pl.pos) < 0.9f && fabsf(pl.pos.y - o->pos.y) < 0.6f && (pl.vel.y <= 0)) {
-        pl.cannon = obj_index(o);
-        pl.cannon_yaw = o->yaw;
-        pl.cannon_pitch = RAD(40);
-        player_set_act(ACT_CANNON);
-        pl.visible = 0;
-        cam.mode = CAM_CANNON;
-        sfx(SFX_DOOR);
-        hud_message("Aim with the stick, fire with A!", 150);
-    }
+    /* f[0]: squash amount (set by the player on each bounce), springs back */
+    o->f[0] = approachf(o->f[0], 0, 4.0f * DT);
 }
 
 static void upd_pole(Obj *o)
@@ -1160,7 +1147,7 @@ static void upd_warp(Obj *o)
         if (total_stars() < need) {
             static char msg[256];
             if (o->timer <= 0) {
-                snprintf(msg, sizeof msg, tr("This portal needs %d Power Stars.\nYou have %d."), need, total_stars());
+                snprintf(msg, sizeof msg, tr("This portal needs %d Kernel Stars.\nYou have %d."), need, total_stars());
                 dialog_open(msg);
                 sfx(SFX_BUZZ);
             }
@@ -1197,7 +1184,7 @@ static void upd_door(Obj *o)
             if (o->type == OT_STARDOOR && total_stars() < o->param) {
                 static char msg[256];
                 if (o->timer <= 0) {
-                    snprintf(msg, sizeof msg, tr("This star door needs %d Power Star%s.\nYou have %d."), o->param, (o->param == 1 || g_lang != LANG_EN) ? "" : "s", total_stars());
+                    snprintf(msg, sizeof msg, tr("This star door needs %d Kernel Star%s.\nYou have %d."), o->param, (o->param == 1 || g_lang != LANG_EN) ? "" : "s", total_stars());
                     dialog_open(msg);
                     sfx(SFX_BUZZ);
                 }
@@ -1270,41 +1257,46 @@ static void upd_crate(Obj *o)
     }
 }
 
-static void upd_capbox(Obj *o)
+static void upd_rocketbox(Obj *o)
 {
     float dx = fabsf(pl.pos.x - o->pos.x), dz = fabsf(pl.pos.z - o->pos.z);
     int hit = 0;
-    o->yaw += 1.0f * DT;
     if (o->state == 1) {
         if (++o->timer > 60 * 25) { o->state = 0; fx_spawn(OT_FX_SPARKLE, o->pos, 1.0f); }
         return;
     }
+    /* break the crate open: punch, kick, dive, or land / ground pound on it */
     if (dx < 1.5f && dz < 1.5f && pl.pos.y < o->pos.y + 1.2f && pl.pos.y > o->pos.y - 2.5f) {
         if (pl.act == ACT_PUNCH && pl.act_t > 2 && pl.act_t < 10) hit = 1;
         if (pl.act == ACT_DIVE || pl.act == ACT_JUMPKICK) hit = 1;
-        /* head-butt from below */
-        if (player_in_air() && pl.vel.y >= 0 && pl.pos.y + 1.6f > o->pos.y - 0.85f && pl.pos.y < o->pos.y - 0.7f && dx < 1.0f && dz < 1.0f) hit = 1;
     }
-    if (pl.act == ACT_GPOUND_LAND && pl.act_t < 3 && dx < 1.0f && dz < 1.0f && fabsf(pl.pos.y - (o->pos.y + 0.7f)) < 0.4f) hit = 1;
+    if (!player_in_air() && pl.platform == obj_index(o)) hit = 1;
     if (hit) {
         o->state = 1; o->timer = 0;
         sfx(SFX_BREAK);
         sfx(SFX_1UP);
         fx_spawn(OT_FX_SMOKE, o->pos, 1.2f);
-        pl.cap_t = 60 * 40;
-        hud_message("FEATHER CAP! Triple jump to fly!", 180);
+        pl.rocket_t = 60 * 40;
+        if (!player_in_air()) player_bounce(10);
+        hud_message("ROCKET PACK! In mid-air: press A to ignite, hold A to fly!", 200);
         if (g_race_state != 1) music_play(MUS_RACE);
     }
 }
 
-/* ---- ghosts: they hide (turn transparent and freeze) while Tux looks at them ---- */
-static int player_faces(Obj *o, float cosang)
+/* ---- ghosts ("zombie processes"): out of phase with the world, so attacks pass right through them.
+ * A GROUND POUND next to one shakes it into the real world for a few seconds: then it can be hit.
+ * f[0]: opacity, f[2]: frames left materialised ---- */
+static int ghost_shaken(Obj *o, float radius)
 {
-    vec3 d = v3sub(o->pos, pl.pos);
-    d.y = 0;
-    if (v3len(d) < 0.01f) return 1;
-    d = v3norm(d);
-    return v3dot(yaw_dir(pl.yaw), d) > cosang;
+    return pl.act == ACT_GPOUND_LAND && pl.act_t == 1 && v3distxz(o->pos, pl.pos) < radius &&
+           fabsf(o->pos.y - pl.pos.y) < 3.5f;
+}
+
+static void ghost_materialise(Obj *o, int frames)
+{
+    o->f[2] = (float)frames;
+    sfx_ex(SFX_DROWN, 0.6f, 0.7f);
+    fx_spawn(OT_FX_SPARKLE, v3add(o->pos, v3(0, 1.0f, 0)), 1.2f);
 }
 
 static int count_type(int type, int param)
@@ -1330,7 +1322,7 @@ static void ghost_float(Obj *o, vec3 target, float speed)
 static void upd_ghost(Obj *o)
 {
     float d = dist_player(o);
-    int hide;
+    int solid;
     if (o->state == 90) {
         o->timer++;
         o->scale = 1 - o->timer / 30.0f;
@@ -1349,10 +1341,12 @@ static void upd_ghost(Obj *o)
         return;
     }
     o->timer++;
-    hide = d < 20 && player_faces(o, 0.7f) && pl.act != ACT_DEATH;
-    o->f[1] = (float)hide;
-    o->f[0] = approachf(o->f[0], hide ? 0.25f : 0.9f, 2 * DT);
-    if (!hide) {
+    if (ghost_shaken(o, 6.0f)) ghost_materialise(o, 240);
+    solid = o->f[2] > 0;
+    if (solid) o->f[2] -= 1;
+    o->f[1] = (float)solid;
+    o->f[0] = approachf(o->f[0], solid ? 0.95f : 0.3f, 3 * DT);
+    if (!solid) {
         if (d < 16) {
             o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 3 * DT);
             ghost_float(o, v3add(pl.pos, v3(0, 0.3f + sinf(o->timer * 0.05f) * 0.3f, 0)), 2.2f);
@@ -1362,10 +1356,13 @@ static void upd_ghost(Obj *o)
             ghost_float(o, t, 1.2f);
         }
         if (o->timer % 140 == 0 && d < 14) sfx_ex(SFX_DROWN, 0.35f, 1.6f);
+        if (touching(o)) player_hurt(1, o->pos);
     } else {
-        o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 1 * DT);
-    }
-    if (o->f[0] > 0.6f) {
+        /* dazed in the real world: sinks to the floor and wobbles */
+        Surf *fs;
+        float fy = col_floor(o->pos.x, o->pos.y + 1.0f, o->pos.z, &fs);
+        o->yaw += 4 * DT;
+        if (fs && o->pos.y > fy + 0.2f) o->pos.y = maxf(fy + 0.2f, o->pos.y - 3 * DT);
         if (obj_hit_by_attack(o) || (touching(o) && stomped_by_player(o))) {
             if (stomped_by_player(o)) player_bounce(10);
             o->state = 90; o->timer = 0;
@@ -1374,22 +1371,21 @@ static void upd_ghost(Obj *o)
             spawn_coins_burst(o->pos, 1);
             return;
         }
-        if (!hide && touching(o)) player_hurt(1, o->pos);
     }
 }
 
 static void upd_ghostking(Obj *o)
 {
     float d = dist_player(o);
-    int hide;
+    int solid;
     o->timer++;
     switch (o->state) {
     case 0:
         if (d < 13 && fabsf(pl.pos.y - o->pos.y) < 4) {
             o->state = 2; o->timer = 0;
             dialog_open("ZOMBIE KING: Hee hee hee... Welcome to my manor!\n"
-                        "Nobody can kill a zombie process... unless\nthey sneak up behind me. But you won't dare\n"
-                        "turn your back on me, will you?");
+                        "Nobody can kill a zombie process! Your\nattacks go right through me... unless you\n"
+                        "shake me into the real world. But how?");
             music_play(MUS_BOSS);
         }
         return;
@@ -1399,7 +1395,8 @@ static void upd_ghostking(Obj *o)
         away.y = 0.2f;
         ghost_float(o, v3mad(o->pos, away, 4), 6.0f);
         if (v3distxz(o->pos, o->home) > 10) ghost_float(o, o->home, 6.0f);
-        if (o->timer > 70) { o->state = 2; o->timer = 0; }
+        o->f[0] = approachf(o->f[0], 0.3f, 2 * DT);
+        if (o->timer > 70) { o->state = 2; o->timer = 0; o->f[2] = 0; }
         return;
     }
     case 90:
@@ -1412,30 +1409,32 @@ static void upd_ghostking(Obj *o)
         }
         return;
     }
-    hide = d < 24 && player_faces(o, 0.7f);
-    o->f[1] = (float)hide;
-    o->f[0] = approachf(o->f[0], hide ? 0.25f : 0.9f, 3 * DT);
-    if (!hide) {
+    if (ghost_shaken(o, 7.0f)) ghost_materialise(o, 180 - o->hp * 30);
+    solid = o->f[2] > 0;
+    if (solid) o->f[2] -= 1;
+    o->f[1] = (float)solid;
+    o->f[0] = approachf(o->f[0], solid ? 0.95f : 0.3f, 3 * DT);
+    if (!solid) {
         o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 2 * DT);
         ghost_float(o, v3add(pl.pos, v3(0, -0.5f, 0)), 2.6f + o->hp * 0.5f);
         if (o->timer % 100 == 0) sfx_ex(SFX_ROAR, 0.4f, 1.5f);
+        if (touching(o)) player_hurt(2, o->pos);
     } else {
-        o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 1 * DT);
-    }
-    {
-        if (o->f[0] > 0.6f) {
-            if (obj_hit_by_attack(o) || (touching(o) && stomped_by_player(o))) {
-                if (stomped_by_player(o)) player_bounce(12);
-                o->hp++;
-                sfx(SFX_PUNCH);
-                sfx(SFX_ROAR);
-                if (o->hp >= 3) {
-                    o->state = 90; o->timer = 0;
-                    dialog_open("ZOMBIE KING: Nooo! I've been... reaped!\nTake your star and get out of my manor!");
-                } else { o->state = 1; o->timer = 0; hud_message(o->hp == 1 ? "Ow! 2 more hits!" : "Ouch! One more!", 120); }
-                return;
-            }
-            if (!hide && touching(o)) player_hurt(2, o->pos);
+        Surf *fs;
+        float fy = col_floor(o->pos.x, o->pos.y + 1.0f, o->pos.z, &fs);
+        o->yaw += 3 * DT;
+        if (fs && o->pos.y > fy + 0.2f) o->pos.y = maxf(fy + 0.2f, o->pos.y - 3 * DT);
+        if (obj_hit_by_attack(o) || (touching(o) && stomped_by_player(o))) {
+            if (stomped_by_player(o)) player_bounce(12);
+            o->hp++;
+            o->f[2] = 0;
+            sfx(SFX_PUNCH);
+            sfx(SFX_ROAR);
+            if (o->hp >= 3) {
+                o->state = 90; o->timer = 0;
+                dialog_open("ZOMBIE KING: Nooo! I've been... reaped!\nTake your star and get out of my manor!");
+            } else { o->state = 1; o->timer = 0; hud_message(o->hp == 1 ? "Ow! 2 more hits!" : "Ouch! One more!", 120); }
+            return;
         }
     }
     if (v3distxz(o->pos, o->home) > 12) ghost_float(o, o->home, 3.0f);
@@ -1474,7 +1473,8 @@ static void upd_heart(Obj *o)
     if (touching(o) && g_frame % 8 == 0 && pl.health < 8) { player_heal(1); sfx_ex(SFX_COIN, 0.4f, 0.8f); }
 }
 
-/* ---- watchdog (chain chomp) ---- */
+/* ---- watchdog: a robot guard dog. It lunges at intruders; right after a lunge it is out of
+ * breath and can be kicked. "Kicking the watchdog" 3 times resets it and unlocks the gate. ---- */
 static Obj *find_type(int type)
 {
     int i;
@@ -1482,126 +1482,91 @@ static Obj *find_type(int type)
     return NULL;
 }
 
-static void upd_chomp(Obj *o)
+static void upd_watchdog(Obj *o)
 {
-    Obj *post = find_type(OT_CHOMPPOST);
-    vec3 base = post ? post->pos : o->home;
+    vec3 base = o->home;
     float dp = v3distxz(pl.pos, base);
     o->timer++;
-    /* bounce */
-    if (o->state != 3) {
-        Surf *s;
-        float fy = col_floor(o->pos.x, o->pos.y + 2, o->pos.z, &s);
-        o->vel.y -= 30 * DT;
-        o->pos.y += o->vel.y * DT;
-        if (s && o->pos.y < fy) { o->pos.y = fy; o->vel.y = o->state == 1 ? 3.0f : 6.0f; }
-    }
+    obj_physics(o, 30, 1.0f);
     switch (o->state) {
-    case 0: {   /* idle around the post */
+    case 0: {   /* patrol around its spot in front of the gate */
         float a = o->timer * 0.02f;
-        vec3 t = v3add(base, v3(sinf(a) * 3.5f, 0, cosf(a) * 3.5f));
+        vec3 t = v3add(base, v3(sinf(a) * 3.0f, 0, cosf(a) * 3.0f));
         vec3 d = v3sub(t, o->pos);
         d.y = 0;
+        o->vel.x = o->vel.z = 0;
         if (v3len(d) > 0.1f) {
             vec3 n = v3norm(d);
-            o->pos.x += n.x * 2.5f * DT;
-            o->pos.z += n.z * 2.5f * DT;
+            o->vel.x = n.x * 2.5f;
+            o->vel.z = n.z * 2.5f;
         }
-        o->yaw = approach_angle(o->yaw, yaw_to(o->pos, pl.pos), 2 * DT);
-        if (dp < 11 && o->timer > 90 && fabsf(pl.pos.y - base.y) < 4) {
+        o->yaw = approach_angle(o->yaw, dp < 12 ? yaw_to(o->pos, pl.pos) : atan2f(d.x, d.z), 3 * DT);
+        if (dp < 11 && o->timer > 70 && fabsf(pl.pos.y - base.y) < 4) {
             o->state = 1; o->timer = 0;
             o->f[0] = pl.pos.x; o->f[2] = pl.pos.z;
-            sfx_ex(SFX_ROAR, 0.6f, 1.8f);
+            o->vel = v3(0, 0, 0);
+            sfx_ex(SFX_ROAR, 0.6f, 1.9f);
         }
         break;
     }
-    case 1: {   /* lunge */
-        vec3 t = v3(o->f[0], 0, o->f[2]);
-        vec3 d = v3sub(t, o->pos);
+    case 1: {   /* crouch, then lunge at where Tux was */
+        vec3 d = v3sub(v3(o->f[0], 0, o->f[2]), o->pos);
         d.y = 0;
         o->yaw = atan2f(d.x, d.z);
-        if (o->timer > 10) {
+        if (o->timer == 14) { o->vel.y = 5; sfx_ex(SFX_JUMP, 0.6f, 0.7f); }
+        if (o->timer > 14) {
             vec3 n = v3norm(d);
-            o->pos.x += n.x * 17 * DT;
-            o->pos.z += n.z * 17 * DT;
-        }
-        if (v3distxz(o->pos, base) > 7.0f) {
-            vec3 n = v3norm(v3sub(v3(o->pos.x, 0, o->pos.z), v3(base.x, 0, base.z)));
-            o->pos.x = base.x + n.x * 7.0f;
-            o->pos.z = base.z + n.z * 7.0f;
+            o->vel.x = n.x * 17;
+            o->vel.z = n.z * 17;
+        } else o->vel.x = o->vel.z = 0;
+        if ((o->timer > 14 && v3len(d) < 0.8f) || o->timer > 50 || v3distxz(o->pos, base) > 8.0f) {
             o->state = 2; o->timer = 0;
+            o->vel.x = o->vel.z = 0;
             sfx_ex(SFX_THUD, 0.6f, 1.5f);
         }
-        if (o->timer > 50) { o->state = 2; o->timer = 0; }
         break;
     }
-    case 2:     /* pulled back by the chain */
-        o->pos = v3add(o->pos, v3scale(v3sub(v3(base.x, o->pos.y, base.z), o->pos), 1.5f * DT));
-        if (o->timer > 70) { o->state = 0; o->timer = 0; }
+    case 2:     /* out of breath: kick it now! */
+        o->vel.x = o->vel.z = 0;
+        if (o->timer % 20 == 0) fx_spawn(OT_FX_SPARKLE, v3add(o->pos, v3(0, 2.4f, 0)), 0.4f);
+        if (obj_hit_by_attack(o) || (touching(o) && stomped_by_player(o))) {
+            if (stomped_by_player(o)) player_bounce(12);
+            o->hp++;
+            sfx(SFX_KICK);
+            sfx_ex(SFX_SQUAWK, 0.7f, 1.6f);
+            o->vel = v3scale(v3norm(v3sub(base, o->pos)), 8);
+            o->vel.y = 6;
+            if (o->hp >= 3) {
+                Obj *cage = find_type(OT_CAGE);
+                o->state = 4; o->timer = 0;
+                if (cage) {
+                    fx_spawn(OT_FX_SMOKE, cage->pos, 2.0f);
+                    fx_spawn(OT_FX_SMOKE, v3add(cage->pos, v3(0, 1.5f, 0)), 2.0f);
+                    obj_kill(cage);
+                }
+                sfx(SFX_STAR_APPEAR);
+                hud_message("Watchdog kicked! It resets and unlocks the gate.", 180);
+            } else {
+                o->state = 0; o->timer = 0;
+                hud_message(o->hp == 1 ? "You kicked the watchdog! (1/3)" : "You kicked the watchdog! (2/3)", 120);
+            }
+            return;
+        }
+        if (o->timer > 100) { o->state = 0; o->timer = 0; }
         break;
-    case 3: {   /* freed! smash the cage and run away */
-        Obj *cage = find_type(OT_CAGE);
-        vec3 t = cage ? cage->pos : v3add(o->home, v3(30, 0, 30));
-        vec3 d = v3sub(t, o->pos);
-        Surf *s;
-        float fy;
-        d.y = 0;
-        o->yaw = atan2f(d.x, d.z);
-        if (v3len(d) > 0.3f) {
-            vec3 n = v3norm(d);
-            o->pos.x += n.x * 9 * DT;
-            o->pos.z += n.z * 9 * DT;
-        }
-        fy = col_floor(o->pos.x, o->pos.y + 2, o->pos.z, &s);
-        o->vel.y -= 30 * DT;
-        o->pos.y += o->vel.y * DT;
-        if (s && o->pos.y < fy) { o->pos.y = fy; o->vel.y = 9.0f; }
-        if (cage && v3len(d) < 1.8f) {
-            fx_spawn(OT_FX_SMOKE, cage->pos, 2.0f);
-            fx_spawn(OT_FX_SMOKE, v3add(cage->pos, v3(0, 1.5f, 0)), 2.0f);
-            sfx(SFX_BREAK);
-            sfx(SFX_EXPLODE);
-            obj_kill(cage);
-            o->f[0] = o->pos.x + 60; o->f[2] = o->pos.z + 40;
-        }
-        if (!cage) {
-            o->state = 4; o->timer = 0;
-            sfx(SFX_STAR_APPEAR);
-            hud_message("The watchdog broke free and smashed the gate!", 150);
-        }
+    case 4:     /* reset: lies down and sleeps by the open gate */
+        o->vel.x = o->vel.z = 0;
+        if (o->timer % 50 == 0) fx_spawn(OT_FX_BUBBLE, v3add(o->pos, v3(0, 2.2f, 0)), 0.5f);
         return;
     }
-    case 4:     /* bound away and vanish */
-        o->pos.x += 9 * DT; o->pos.z += 6 * DT;
-        o->pos.y += 6 * DT;
-        o->scale = 1 - o->timer / 120.0f;
-        if (o->timer > 120) obj_kill(o);
-        return;
-    }
-    /* keep within the chain */
-    if (v3distxz(o->pos, base) > 7.0f) {
+    /* stay near its post */
+    if (v3distxz(o->pos, base) > 8.0f) {
         vec3 n = v3norm(v3sub(v3(o->pos.x, 0, o->pos.z), v3(base.x, 0, base.z)));
-        o->pos.x = base.x + n.x * 7.0f;
-        o->pos.z = base.z + n.z * 7.0f;
+        o->pos.x = base.x + n.x * 8.0f;
+        o->pos.z = base.z + n.z * 8.0f;
     }
-    if (touching(o)) player_hurt(o->state == 1 ? 2 : 1, o->pos);
-}
-
-static void upd_chomppost(Obj *o)
-{
-    /* f[0] = how far it has been pounded in (0..1.2) */
-    if (o->state < 3 && pl.act == ACT_GPOUND_LAND && pl.act_t == 1 && v3distxz(pl.pos, o->pos) < 1.0f &&
-        fabsf(pl.pos.y - (o->pos.y + 1.5f - o->f[0])) < 0.6f) {
-        o->state++;
-        o->f[0] = o->state * 0.45f;
-        sfx(SFX_THUD);
-        cam.shake = 0.3f;
-        if (o->state >= 3) {
-            Obj *c = find_type(OT_CHOMP);
-            if (c) { c->state = 3; c->timer = 0; c->vel.y = 8; }
-            sfx_ex(SFX_ROAR, 0.8f, 1.4f);
-        } else hud_message(o->state == 1 ? "The post sank a little..." : "Once more!", 90);
-    }
+    if (touching(o) && o->state != 2) player_hurt(o->state == 1 ? 2 : 1, o->pos);
+    else if (touching(o)) push_player_out(o, o->radius);
 }
 
 /* ---- the OOM Killer: an unstoppable hunter in the labyrinth ----
@@ -1725,7 +1690,7 @@ static void upd_mazeexit(Obj *o)
         star_spawn(v3add(o->pos, v3(0, 0.6f, 0)), o->param, 1, pl.pos);
         hud_message("You slipped through unseen!", 150);
     } else {
-        dialog_open("EXIT: The OOM Killer saw you on the way...\nCome back and reach this exit without being\nseen even once to earn the Power Star.");
+        dialog_open("EXIT: The OOM Killer saw you on the way...\nCome back and reach this exit without being\nseen even once to earn the Kernel Star.");
     }
 }
 
@@ -1799,17 +1764,12 @@ int objs_try_grab(void)
         vec3 d;
         float dist;
         if (!o->active || !(o->flags & OF_GRABBABLE) || (o->flags & OF_HELD)) continue;
-        if (o->type == OT_SEGFAULT) {
-            if (seg_grab_ok(o)) return i;
-            continue;
-        }
         if (o->type == OT_FORKBOMB && (o->state == 90 || o->state == 100)) continue;
         d = v3sub(o->pos, pl.pos);
         d.y = 0;
         dist = v3len(d);
         if (dist > o->radius + 1.1f || fabsf(o->pos.y - pl.pos.y) > 1.5f) continue;
         if (dist > 0.3f && v3dot(v3scale(d, 1.0f / dist), f) < 0.3f) continue;
-        if (o->type == OT_KING && !king_grab_ok(o)) continue;
         if (o->type == OT_BABY && o->state == 50) continue;
         if (dist < bd) { bd = dist; best = i; }
     }
@@ -1835,7 +1795,7 @@ int objs_try_talk(void)
         if (o->type == OT_RACER) {
             if (o->state == 0) {
                 dialog_open("QUICK GNU: Hey penguin! Let's race to the\ntop of Penguin Peak! The flag at the summit\n"
-                            "is the finish line. No cannons! Ready...");
+                            "is the finish line. No rockets! Ready...");
                 o->state = 1; o->timer = 0;
                 pl.yaw = yaw_to(pl.pos, o->pos);
                 player_set_act(ACT_FROZEN);
@@ -1849,15 +1809,15 @@ int objs_try_talk(void)
             if (o->state == 4) { dialog_open("QUICK GNU: You're fast! Want to race again\nsome other time?"); player_set_act(ACT_FROZEN); return 1; }
             return 0;
         }
-        if (o->type == OT_MOTHER && o->state == 1) dialog_open("MAMA PENGUIN: Thank you so much, Tux!");
+        if (o->type == OT_MOTHER && o->state == 1) dialog_open("INIT: Thank you so much, Tux! All my child\nprocesses are safe and sound.");
         else if (o->type == OT_NPC && o->param == 1 && !has_star(CRS_SECRET, 1)) {
             if (total_stars() >= 8 && o->state == 0) {
-                dialog_open("PENGUIN: Wow, Tux! You already found 8 Power\nStars! I found this one behind the castle\n"
+                dialog_open("PENGUIN: Wow, Tux! You already found 8 Kernel\nStars! I found this one behind the castle\n"
                             "wardrobe... it's yours! Keep going!");
                 star_spawn(v3add(o->pos, v3(0, 2.6f, 0)), 1, 1, o->pos);
                 o->state = 1;
             } else if (o->state == 0) {
-                dialog_open("PENGUIN: I've got a little secret for you...\nCome back when you have 8 Power Stars!");
+                dialog_open("PENGUIN: I've got a little secret for you...\nCome back when you have 8 Kernel Stars!");
             } else continue;
         }
         else if (o->text) dialog_open(o->text);
@@ -1913,7 +1873,7 @@ void objs_update(void)
         case OT_MOTHER: upd_mother(o); break;
         case OT_RACER: upd_racer(o); break;
         case OT_RACEFLAG: upd_raceflag(o); break;
-        case OT_CANNON: upd_cannon(o); break;
+        case OT_TRAMPOLINE: upd_trampoline(o); break;
         case OT_TREE: case OT_POLE: upd_pole(o); break;
         case OT_WARP: upd_warp(o); break;
         case OT_DOOR: case OT_STARDOOR: upd_door(o); break;
@@ -1922,12 +1882,12 @@ void objs_update(void)
         case OT_CRATE: upd_crate(o); break;
         case OT_TIMERGOAL: upd_timergoal(o); break;
         case OT_TIMERSTART: upd_timerstart(o); break;
-        case OT_CAPBOX: upd_capbox(o); break;
+        case OT_ROCKETBOX: upd_rocketbox(o); break;
         case OT_GHOST: upd_ghost(o); break;
         case OT_GHOSTKING: upd_ghostking(o); break;
         case OT_TOPSWITCH: upd_topswitch(o); break;
         case OT_HEART: upd_heart(o); break;
-        case OT_CHOMP: upd_chomp(o); break;
+        case OT_WATCHDOG: upd_watchdog(o); break;
         case OT_OOM: upd_oom(o); break;
         case OT_MAZEEXIT: upd_mazeexit(o); break;
         case OT_STEAM:   /* hot spring steam: puffs rising from a disc of radius param */
@@ -1936,7 +1896,6 @@ void objs_update(void)
                 fx_spawn(OT_FX_SMOKE, v3add(o->pos, v3(sinf(a) * r, 0.2f, cosf(a) * r)), 1.4f);
             }
             break;
-        case OT_CHOMPPOST: upd_chomppost(o); break;
         case OT_DECOR:
             if (o->radius > 0 && touching(o)) push_player_out(o, o->radius);
             break;
@@ -1981,12 +1940,12 @@ void objs_collision(void)
             continue;
         }
         if (o->type == OT_FALLPLAT && o->state == 3) continue;
-        if (o->type == OT_CAPBOX) {
-            if (o->state == 0) add_box_col(o, o->pos, 0.7f, 0.7f, 0.7f, 0);
+        if (o->type == OT_TRAMPOLINE) {
+            add_box_col(o, v3add(o->pos, v3(0, 0.45f, 0)), 1.25f, 0.45f, 1.25f, 0);
             continue;
         }
-        if (o->type == OT_CHOMPPOST) {
-            add_box_col(o, v3add(o->pos, v3(0, 0.75f - o->f[0] * 0.5f, 0)), 0.4f, 0.75f - o->f[0] * 0.5f, 0.4f, 0);
+        if (o->type == OT_ROCKETBOX) {
+            if (o->state == 0) add_box_col(o, o->pos, 0.7f, 0.7f, 0.7f, 0);
             continue;
         }
         if (o->type == OT_CAGE) {
@@ -2158,20 +2117,14 @@ static void draw_obj(Obj *o)
         glPushMatrix();
         glTranslatef(o->pos.x, o->pos.y, o->pos.z);
         glRotatef(DEG(o->yaw), 0, 1, 0);
-        if (o->state == 5) glRotatef(-25, 1, 0, 0);
         glScalef(s, s, s);
         glCallList(mdl[MDL_SEG_BODY]);
         glPushMatrix();
-        glTranslatef(0, 3.3f, 1.4f);
+        glTranslatef(0, 3.5f, 0.1f);
         if (o->state == 2) glRotatef(15, 1, 0, 0);
+        if (o->state == 3 && o->timer < 40) glTranslatef(sinf(o->timer * 1.7f) * 0.08f, 0, 0);   /* glitching before a charge */
         glRotatef(sinf(g_frame * 0.05f) * 10, 0, 1, 0);
         glCallList(mdl[MDL_SEG_HEAD]);
-        glPopMatrix();
-        glPushMatrix();
-        glTranslatef(0, 1.2f, -1.9f);
-        glRotatef(sinf(g_frame * 0.1f) * 20, 0, 1, 0);
-        glRotatef(o->state == 5 ? 0 : 15, 1, 0, 0);
-        glCallList(mdl[MDL_SEG_TAIL]);
         glPopMatrix();
         glPopMatrix();
         break;
@@ -2186,25 +2139,20 @@ static void draw_obj(Obj *o)
         break;
     case OT_SIGN: draw_model_at(mdl[MDL_SIGN], o->pos, o->yaw, 1); break;
     case OT_NPC: draw_npc_penguin(o, TUXV_NPC, 1.0f); break;
-    case OT_MOTHER: draw_npc_penguin(o, TUXV_MOTHER, 1.35f); break;
-    case OT_BABY: draw_npc_penguin(o, TUXV_BABY, 0.6f); break;
+    case OT_MOTHER: draw_model_at(mdl[MDL_INIT], o->pos, o->yaw, 1.0f); break;
+    case OT_BABY: draw_model_at(mdl[MDL_CHILDPROC], v3add(o->pos, v3(0, (o->flags & OF_HELD) ? 0 : fabsf(sinf(g_frame * 0.15f)) * 0.08f, 0)), o->yaw, 1.0f); break;
     case OT_RACER: {
         float bob = (o->state == 2) ? fabsf(sinf(o->t * 2.5f)) * 0.2f : 0;
         draw_model_at(mdl[MDL_GNU], v3add(o->pos, v3(0, bob, 0)), o->yaw, 1);
         break;
     }
     case OT_RACEFLAG: draw_model_at(mdl[MDL_FLAG], o->pos, o->yaw, 1); break;
-    case OT_CANNON:
-        draw_model_at(mdl[MDL_CANNON], o->pos, 0, 1);
-        if (pl.act == ACT_CANNON && pl.cannon == obj_index(o)) {
-            glPushMatrix();
-            glTranslatef(o->pos.x, o->pos.y, o->pos.z);
-            glRotatef(DEG(pl.cannon_yaw), 0, 1, 0);
-            glRotatef(-DEG(pl.cannon_pitch) + 90, 1, 0, 0);
-            glScalef(0.7f, 2.2f, 0.7f);
-            glCallList(mdl[MDL_POLE]);
-            glPopMatrix();
-        }
+    case OT_TRAMPOLINE:
+        glPushMatrix();
+        glTranslatef(o->pos.x, o->pos.y, o->pos.z);
+        glScalef(1, 1 - 0.3f * sinf(o->f[0] * PI_F), 1);
+        glCallList(mdl[MDL_TRAMPOLINE]);
+        glPopMatrix();
         break;
     case OT_TREE:
         draw_model_at(o->param == 1 ? mdl[MDL_PINE_SNOW] : (o->param == 2 ? mdl[MDL_TREE] : mdl[MDL_PINE]), o->pos, o->yaw, 1.0f);
@@ -2264,7 +2212,7 @@ static void draw_obj(Obj *o)
         glPopMatrix();
         break;
     case OT_CRATE: draw_model_at(mdl[MDL_CRATE], o->pos, o->yaw, 1); break;
-    case OT_CAPBOX: if (o->state == 0) draw_model_at(mdl[MDL_CAPBOX], o->pos, o->yaw, 1); break;
+    case OT_ROCKETBOX: if (o->state == 0) draw_model_at(mdl[MDL_ROCKETBOX], o->pos, o->yaw, 1); break;
     case OT_TOPSWITCH: draw_model_at(mdl[o->state ? MDL_TOPSWITCH_ON : MDL_TOPSWITCH], o->pos, 0, 1); break;
     case OT_HEART: draw_model_at(mdl[MDL_HEART], v3add(o->pos, v3(0, 0.7f, 0)), o->yaw, 1.4f); break;
     case OT_OOM: {
@@ -2284,22 +2232,16 @@ static void draw_obj(Obj *o)
         glCallList(mdl[MDL_RING]);
         glPopMatrix();
         break;
-    case OT_CHOMPPOST: draw_model_at(mdl[MDL_POST], v3add(o->pos, v3(0, -o->f[0], 0)), 0, 1); break;
     case OT_CAGE: draw_model_at(mdl[MDL_CAGE], o->pos, 0, 1); break;
-    case OT_CHOMP: {
-        Obj *post = NULL;
-        int i, k;
-        for (i = 0; i < nobj; i++) if (objs[i].active && objs[i].type == OT_CHOMPPOST) post = &objs[i];
-        draw_model_at(mdl[MDL_CHOMP], v3add(o->pos, v3(0, 1.3f * o->scale, 0)), o->yaw, 1.3f * o->scale);
-        if (post && o->state < 3) {
-            vec3 a = v3add(post->pos, v3(0, 1.3f - post->f[0], 0)), b = v3add(o->pos, v3(0, 1.0f, 0));
-            for (k = 1; k < 7; k++) {
-                float t = k / 7.0f;
-                vec3 p = v3lerp(a, b, t);
-                p.y -= sinf(t * PI_F) * maxf(0, 2.5f - v3dist(a, b) * 0.3f);
-                draw_model_at(mdl[MDL_LINK], p, yaw_to(a, b), 1.4f);
-            }
-        }
+    case OT_WATCHDOG: {
+        float lunge = o->state == 1 && o->timer < 14 ? 0.85f : 1.0f;   /* crouch before the lunge */
+        glPushMatrix();
+        glTranslatef(o->pos.x, o->pos.y, o->pos.z);
+        glRotatef(DEG(o->yaw), 0, 1, 0);
+        if (o->state == 2) glRotatef(sinf(o->timer * 0.5f) * 6, 0, 0, 1);   /* panting */
+        glScalef(1.3f, 1.3f * (o->state == 4 ? 0.6f : lunge), 1.3f);
+        glCallList(mdl[MDL_WATCHDOG]);
+        glPopMatrix();
         break;
     }
     case OT_GHOST: case OT_GHOSTKING: {

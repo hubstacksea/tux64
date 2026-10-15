@@ -1,7 +1,7 @@
 # TUX 64 — The Kernel Castle Adventure
 
 Linux のマスコット **Tux** が主人公の 3D アクションゲームです。
-「スーパーマリオ64」のゲームシステム（3Dアクション・パワースター収集・お城のハブ・絵画ワープ・ボス戦など）を、
+「スーパーマリオ64」のゲームシステム（3Dアクション・スター収集・お城のハブ・ワープ・ボス戦など）を、
 キャラクターと世界観を Linux / カーネル風に置き換えて **すべてオリジナル** で実装しています。
 世界全体が **雪と氷** のモチーフで統一されています（雪原・凍った池・氷山の浮かぶ極海・吹雪の砦・氷のピラミッド・凍てつく虚空のラストステージなど）。
 
@@ -75,13 +75,13 @@ XInput は存在すれば実行時に読み込み）。
 * **ポール/木登り**（空中で触れる → 上下で登り降り、A でジャンプ）
 * **水泳**（A: 浮上 / Z: 潜る / B: ペンギン魚雷ダッシュ、水中では体力=息が減る）
 * **持ち上げ・投げ**（B でつかむ → B で投げる / Z で置く）
-* **しっぽ回し投げ**（ラスボスのしっぽをつかみ、スティックを回して加速 → B で投げる）
-* **大砲**（穴に入る → 狙って A で発射）
-* **フェザーキャップ**（赤いボックス）→ 3段ジャンプや大砲で **飛行**（前で降下・後ろで上昇）
+* **トランポリン**: マットに触れる直前に A を押すと、うまく押せるたびに高く跳ねる（3段階。マットへのヒップドロップは一気に2段階）
+* **ロケットパック**（ロケットの木箱を壊して取得）: 空中で A で点火、**A を押し続ける間だけ噴射**して飛行
+  （スティック前で機首下げ・後ろで上昇。噴射をやめると放物線を描いて落ち、また空中で A を押せば再点火）
 * 坂・氷・すべり台での自動スライディング、極寒の水での凍えジャンプ、落下ダメージ、パウダースノー（沈む雪）
 * 吹雪の突風（壁の陰に隠れるか、しゃがんで踏ん張ると耐えられる）、温泉（浸かると回復）
 
-体力は 8 分割のパワーメーター。魚コイン（Fish）で回復します。50 匹ごとに 1UP。
+体力は 8 セルの **バッテリーゲージ**。魚コイン（Fish）や充電スタンドで回復します。50 匹ごとに 1UP。
 
 ---
 
@@ -118,18 +118,20 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | CASTLE SECRETS | 城の庭 / ロビー | – | 2 |
 | SEGFAULT'S LAIR（最終） | 1階 バルコニー下のドア | 16 | グランドスター |
 
-全 39 スター。最終ステージでラスボス **Segfault** を倒すとエンディング。
+全 39 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
+アリーナのトゲ機雷の後ろに立って突進を誘い、直前で横に避けて機雷に激突させる（3回）。
 
 ### スター一覧
 
-* **PENGUIN PEAK**: King Daemon of the Peak（ボス: 背後からつかんで投げる×3）/ Race the Quick Gnu（山頂までレース）/
-  Red Fish on the Floating Isle（大砲で浮島へ）/ Crusher Bridge Crossing / Behind the Watchdog's Gate（番犬の杭にヒップドロップ×3）/ 100 Fish
+* **PENGUIN PEAK**: King Daemon of the Peak（ボス: キングが fork() してくる爆弾を拾って投げ返す×3）/ Race the Quick Gnu（山頂までレース）/
+  Red Fish on the Floating Isle（トランポリン3段バウンスで浮島へ）/ Crusher Bridge Crossing（油圧プレスの橋）/
+  Behind the Watchdog's Gate（飛びかかってくる番犬ロボを、息切れしている隙に3回キックして「watchdog をリセット」）/ 100 Fish
 * **BITSTREAM BAY**（流氷と氷山の極海）: Treasure of the Sunken Ship / Red Fish of the Reef / Climb the Lighthouse /
   The Clam's Secret / Swim Through the Rings / 100 Fish
-* **BLIZZARD FORTRESS**（濃霧と横殴りの雪、周期的な突風）: Top of the Fortress（エレベーター）/ Mama Penguin's Lost Baby（子ペンギンを運ぶ）/
-  Red Fish on the Sliding Platforms / Push the Ice Brute（氷の湖に突き落とす）/ Atop the Frozen Pillar（壁キック）/ 100 Fish
-* **ZOMBIE PROCESS MANOR**（雪の夜の屋敷）: Zombie King's Hall（見ている間は透明になるお化けの王）/ Red Fish in the Library /
-  Star on the Rooftop（枯れ木を登る）/ Bust the Yard Zombies / 100 Fish
+* **BLIZZARD FORTRESS**（濃霧と横殴りの雪、周期的な突風）: Top of the Fortress（エレベーター）/ The Orphaned Child Process（みなしごの子プロセスを親の init まで運ぶ）/
+  Red Fish on the Sliding Platforms / Push the Ice Brute（氷のゴーレムを湖に突き落とす）/ Atop the Frozen Pillar（壁キック）/ 100 Fish
+* **ZOMBIE PROCESS MANOR**（雪の夜の屋敷）: Zombie King's Hall（位相のずれたゾンビの王。そばでヒップドロップして実体化させてから攻撃×3）/ Red Fish in the Library /
+  Star on the Rooftop（枯れ木を登る）/ Bust the Yard Zombies（ゾンビプロセスは攻撃がすり抜ける。ヒップドロップで実体化させて倒す）/ 100 Fish
 * **DAEMON DRIFTS**: Top of the Ice Pyramid / Red Fish of the Hot Spring / Light the Four Ice Obelisks / Powder Snow Crossing / 100 Fish
 * **ICICLE SPIRE**: 向かい合う氷の壁でできた「えんとつ」を **壁キック（三角跳び）だけで** 登り続ける高さ約90の塔。
   煙突の頂上の両側には雪の足場（落ちてもダメージなし）。Halfway Up the Spire / Top of the Icicle Spire /
@@ -139,7 +141,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
   見つかると追跡し、見失うと最後に見た地点へ向かって周囲を見回し、やがて巡回に戻る（床の赤い扇形が視界）。
   Heart of the Labyrinth / Red Fish in the Dead Ends / Escape Unseen（一度も見つからずに出口へ）
 * **SECRET ICE SLIDE**: ゴール到達 / 21 秒以内
-* **CASTLE SECRETS**: フェザーキャップで城の屋根へ / ロビーのペンギンの贈り物（スター8個以上で話しかける）
+* **CASTLE SECRETS**: ロケットパックで城の屋根へ / ロビーのペンギンの贈り物（スター8個以上で話しかける）
 
 ---
 
@@ -189,7 +191,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | `src/camera.c` | 追従カメラ（回転・ズーム・壁回避） |
 | `src/objects.c` | 敵・ボス・アイテム・ギミック・NPC・エフェクト |
 | `src/models.c` | Tux と全キャラクターの手続き生成 3D モデル |
-| `src/levelbuild.c` | ステージ構築ヘルパー（地形・箱・坂・円柱・水・絵画・アプリウィンドウ・すべり台） |
+| `src/levelbuild.c` | ステージ構築ヘルパー（地形・箱・坂・円柱・水・アプリウィンドウ・すべり台） |
 | `src/levels.c` | 各ステージのデザイン |
 | `src/game.c` | 画面遷移・HUD・メニュー・会話ウィンドウ・セーブ・ワープ |
 | `src/lang.c` / `src/lang.h` | 言語選択と翻訳（`tr()`）、設定ファイル |
@@ -197,7 +199,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | `src/bot.c` | 自動プレイテスト用オートパイロット |
 | `src/main.c` | エントリポイント・固定タイムステップ（60Hz）メインループ |
 | `tools/translations_ja.py` / `tools/gen_lang.py` | 日本語翻訳データと生成スクリプト |
-| `tools/regress.sh` | 自動プレイテスト（ボス撃破・レース・大砲・水泳などを --bot で検証） |
+| `tools/regress.sh` | 自動プレイテスト（ボス撃破・レース・トランポリン・ロケット・水泳などを --bot で検証） |
 
 ---
 

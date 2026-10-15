@@ -46,15 +46,6 @@ void camera_update(void)
     float follow_yaw, hd, h;
     int in_air = player_in_air();
 
-    if (cam.mode == CAM_CANNON) {
-        vec3 ad = v3(sinf(pl.cannon_yaw) * cosf(pl.cannon_pitch), sinf(pl.cannon_pitch),
-                     cosf(pl.cannon_yaw) * cosf(pl.cannon_pitch));
-        vec3 base = pl.cannon >= 0 ? objs[pl.cannon].pos : pl.pos;
-        cam.pos = v3add(v3mad(base, ad, -1.0f), v3(0, 1.4f, 0));
-        cam.at = v3mad(cam.pos, ad, 10);
-        cam.yaw = pl.cannon_yaw;
-        return;
-    }
     if (cam.mode == CAM_FIXED) {
         cam.pos = cam.fixed_pos;
         cam.at = v3add(pl.pos, v3(0, 1.0f, 0));
@@ -108,7 +99,6 @@ void camera_update(void)
             float diff = fabsf(angle_diff(pl.yaw, cam.yaw));
             if (diff < 2.0f) cam.yaw = approach_angle(cam.yaw, pl.yaw, 0.5f * (pl.fwd / 9.0f) * DT);
         }
-        if (pl.act == ACT_SPIN) cam.dist_target = 14.0f;
     }
 
     hd = cam.dist;

@@ -203,38 +203,6 @@ void lb_water(float x0, float z0, float x1, float z1, float y, float ybot)
     lb_alpha_mode = 0;
 }
 
-void lb_painting(vec3 c, float yaw, float w, float h, int tex)
-{
-    vec3 f = yaw_dir(yaw), rt = v3(f.z, 0, -f.x);
-    vec3 p = v3mad(c, f, 0.06f);
-    vec3 a = v3add(v3mad(p, rt, -w * 0.5f), v3(0, -h * 0.5f, 0));
-    vec3 b = v3add(v3mad(p, rt, w * 0.5f), v3(0, -h * 0.5f, 0));
-    vec3 cc = v3add(b, v3(0, h, 0)), d = v3add(a, v3(0, h, 0));
-    Mesh *m = &lb_mesh;
-    Vtx va, vb, vc, vd;
-    float fr = 0.3f;
-    /* frame */
-    lb_obox(v3mad(v3add(c, v3(0, h * 0.5f + fr * 0.5f, 0)), f, 0.05f), v3(w * 0.5f + fr, fr * 0.5f, 0.1f), yaw, 0, TEX_WOOD, TEX_WOOD, 0.95f, 0.75f, 0.3f, 0);
-    lb_obox(v3mad(v3add(c, v3(0, -h * 0.5f - fr * 0.5f, 0)), f, 0.05f), v3(w * 0.5f + fr, fr * 0.5f, 0.1f), yaw, 0, TEX_WOOD, TEX_WOOD, 0.95f, 0.75f, 0.3f, 0);
-    lb_obox(v3mad(v3mad(c, rt, w * 0.5f + fr * 0.5f), f, 0.05f), v3(fr * 0.5f, h * 0.5f, 0.1f), yaw, 0, TEX_WOOD, TEX_WOOD, 0.95f, 0.75f, 0.3f, 0);
-    lb_obox(v3mad(v3mad(c, rt, -w * 0.5f - fr * 0.5f), f, 0.05f), v3(fr * 0.5f, h * 0.5f, 0.1f), yaw, 0, TEX_WOOD, TEX_WOOD, 0.95f, 0.75f, 0.3f, 0);
-    /* picture with explicit uvs */
-    memset(&va, 0, sizeof va);
-    va.n[0] = f.x; va.n[1] = 0; va.n[2] = f.z;
-    va.c[0] = va.c[1] = va.c[2] = va.c[3] = 255;
-    vb = vc = vd = va;
-    va.p[0] = a.x; va.p[1] = a.y; va.p[2] = a.z; va.uv[0] = 0; va.uv[1] = 1;
-    vb.p[0] = b.x; vb.p[1] = b.y; vb.p[2] = b.z; vb.uv[0] = 1; vb.uv[1] = 1;
-    vc.p[0] = cc.x; vc.p[1] = cc.y; vc.p[2] = cc.z; vc.uv[0] = 1; vc.uv[1] = 0;
-    vd.p[0] = d.x; vd.p[1] = d.y; vd.p[2] = d.z; vd.uv[0] = 0; vd.uv[1] = 0;
-    /* winding: front faces the +f direction */
-    {
-        vec3 nn = v3cross(v3sub(b, a), v3sub(cc, a));
-        if (v3dot(nn, f) > 0) { mesh_add(m, tex, &va, &vb, &vc); mesh_add(m, tex, &va, &vc, &vd); }
-        else { mesh_add(m, tex, &va, &vc, &vb); mesh_add(m, tex, &va, &vd, &vc); }
-    }
-}
-
 /* an "application window" floating in front of a wall: the portal into a course.
  * c = centre of the content area, the title bar sits on top; (r,g,b) = title bar colour */
 void lb_appwindow(vec3 c, float yaw, float w, float h, int tex, float r, float g, float b)
