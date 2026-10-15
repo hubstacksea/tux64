@@ -1974,12 +1974,30 @@ static void seal_start(Obj *o)
     g_gate_next = 1; g_lap = 0; g_sea_power = 0; g_gate_missed = 0;
 }
 
+/* Tux skated up to the seal (or talked to it): the race begins */
+static void seal_challenge(Obj *o)
+{
+    dialog_open(g_race_time > 0 || has_star(CRS_SEA, 0)
+        ? "SELINUX SEAL: Rematch request... ALLOWED.\nTwo laps, every buoy gate in order. Ready..."
+        : "SELINUX SEAL: Halt! I am the SELinux Seal.\nMy policy: nobody passes me on this sea!\n"
+          "Race me: two laps through the buoy gates.\nEach gate you pass gives POWER (top speed),\n"
+          "missing one resets it. Ready...");
+    seal_start(o);
+}
+
 static void upd_seal(Obj *o)
 {
     o->timer++;
     o->t += DT;
     if (o->state == 0) {
         o->pos.y = o->home.y + sinf(o->t * 2) * 0.05f;
+        /* skate into the seal to challenge it (after a race, Tux has to come back to it first) */
+        if (o->i[2] > 0 && v3distxz(o->pos, pl.pos) > 6) o->i[2] = 0;
+        if (o->i[2] == 0 && v3distxz(o->pos, pl.pos) < 2.6f && fabsf(pl.pos.y - o->pos.y) < 2.0f &&
+            pl.act == ACT_SKATE && !pl.no_ctrl && g_fade <= 0) {
+            seal_challenge(o);
+            return;
+        }
         if (touching(o)) push_player_out(o, o->radius);
         return;
     }
@@ -2065,6 +2083,7 @@ static void upd_seal(Obj *o)
         o->pos = o->home;
         o->yaw = o->prev_yaw = o->f[3];
         o->state = 0;
+        o->i[2] = 1;
         fx_spawn(OT_FX_SMOKE, o->pos, 1.5f);
     } else if (o->timer > 240) o->timer = 200;
 }
@@ -2144,12 +2163,7 @@ int objs_try_talk(void)
         if (dist > 0.3f && v3dot(v3scale(d, 1.0f / dist), f) < 0.2f) continue;
         if (o->type == OT_SEAL) {
             if (o->state != 0) return 0;
-            dialog_open(g_race_time > 0 || has_star(CRS_SEA, 0)
-                ? "SELINUX SEAL: Rematch request... ALLOWED.\nTwo laps, every buoy gate in order. Ready..."
-                : "SELINUX SEAL: Halt! I am the SELinux Seal.\nMy policy: nobody passes me on this sea!\n"
-                  "Race me: two laps through the buoy gates.\nEach gate you pass gives POWER (top speed),\n"
-                  "missing one resets it. Ready...");
-            seal_start(o);
+            seal_challenge(o);
             return 1;
         }
         if (o->type == OT_RACER) {

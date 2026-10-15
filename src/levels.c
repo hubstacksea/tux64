@@ -1805,7 +1805,7 @@ static void build_sea(void)
     }
     sign(13, 108, 2, sea_dir(0) + PI_F, "AURORA SEA RALLY\nYour DASH BOOTS run on water - as long as you\n"
                                           "keep moving! Steer with left/right, pull back\nto brake, Z for a sharp carve, A to jump.\n"
-                                          "Press B in mid-air for a spin trick: land it for\na speed boost. Talk to the seal to race!");
+                                          "Press B in mid-air for a spin trick: land it for\na speed boost. Skate into the seal on this\ndock to start the race!");
 }
 
 /* ================================================================

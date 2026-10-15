@@ -386,7 +386,7 @@ void level_load(int level, int spawn)
     if (level == LV_SEA) {
         sfx(SFX_1UP);
         dialog_open("You got the DASH BOOTS!\nThey make you run so fast that you skim over\nthe water... and they won't come off on this sea!\n"
-                    "Left/right: steer   Back: brake   Z: carve\nA: jump   B in mid-air: spin trick");
+                    "Left/right: steer   Back: brake   Z: carve\nA: jump   B in mid-air: spin trick\nSkate into the seal on the dock to race it!");
     }
     {
         extern int g_trace;
