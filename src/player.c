@@ -1493,7 +1493,7 @@ static void act_spacefly(void)
         pl.yaw = wrap_angle(pl.yaw - sx * turn * DT);
         if (fabsf(sy) > 0.1f) pl.pitch = clampf(pl.pitch - sy * 1.8f * DT, -1.3f, 1.3f);
         else pl.pitch = approachf(pl.pitch, 0, 0.35f * DT);
-        pl.roll = approachf(pl.roll, sx * 0.8f, 4 * DT);
+        pl.roll = approachf(pl.roll, -sx * 0.8f, 4 * DT);   /* bank into the turn */
     }
     /* too far out: the rocket swings back toward the planet */
     {
