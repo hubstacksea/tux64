@@ -31,6 +31,15 @@ static void collide(vec3 focus, vec3 *p)
     }
 }
 
+/* highest ground or water surface under p (looking from well above it) */
+static float surface_below(vec3 p)
+{
+    Surf *s;
+    float fy = col_floor(p.x, p.y + 12.0f, p.z, &s), wy = water_level_at(p.x, p.z, p.y);
+    if (!s) fy = -1e9f;
+    return maxf(fy, wy);
+}
+
 /* how far the camera can go from target along (yaw, height ratio) before hitting a wall */
 static float free_len(vec3 target, float yaw, float hd, float h)
 {
@@ -85,6 +94,7 @@ void camera_update(void)
         float rate = in_air ? 1.5f : 5.0f;
         if (target.y < focus_y - 3.0f || target.y > focus_y + 4.0f) rate = 6.0f;
         if (pl.act == ACT_POLE || pl.act == ACT_LEDGE_HANG) rate = 4.0f;
+        if (pl.act == ACT_SKATE) rate = in_air ? 3.5f : 10.0f;   /* keep up with ramps at dash speed */
         focus_y += (target.y - focus_y) * minf(1.0f, rate * DT);
     }
     target.y = focus_y;
@@ -135,8 +145,11 @@ void camera_update(void)
         h *= 1.0f + 1.2f * high;
     }
     desired = v3add(v3mad(target, yaw_dir(cam.yaw), -hd), v3(0, h, 0));
+    if (pl.act == ACT_SKATE) desired.y = maxf(desired.y, surface_below(desired) + 1.5f);
     collide(target, &desired);
     cam.pos = v3lerp(cam.pos, desired, minf(1.0f, 10.0f * DT));
+    /* dash boots: never sink into a ramp, the whale or the sea behind Tux */
+    if (pl.act == ACT_SKATE) cam.pos.y = maxf(cam.pos.y, surface_below(cam.pos) + 1.2f);
     collide(target, &cam.pos);
     cam.at = target;
     if (cam.shake > 0) {
