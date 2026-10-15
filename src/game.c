@@ -57,6 +57,8 @@ const CourseInfo courses[CRS_COUNT] = {
     { "ICICLE SPIRE", 4, { "Halfway Up the Spire", "Top of the Icicle Spire", "Spire Climb Under 60 Seconds",
                            "Red Fish in the Chimneys" }, LV_SPIRE },
     { "WHITEOUT LABYRINTH", 3, { "Heart of the Labyrinth", "Red Fish in the Dead Ends", "Escape Unseen" }, LV_MAZE },
+    { "AURORA SEA RALLY", 5, { "Beat the SELinux Seal", "Sea Rally Under 60 Seconds", "Red Fish on the Ice Floes",
+                               "Ride the Whale's Spout", "100 Fish of the Sea" }, LV_SEA },
 };
 
 /* ======================================================================
@@ -373,6 +375,11 @@ void level_load(int level, int spawn)
     dlg_on = 0;
     g_star_dance_star = -1;
     objs_collision();
+    if (level == LV_SEA) {
+        sfx(SFX_1UP);
+        dialog_open("You got the DASH BOOTS!\nThey make you run so fast that you skim over\nthe water... and they won't come off on this sea!\n"
+                    "Left/right: steer   Back: brake   Z: carve\nA: jump   B in mid-air: spin trick");
+    }
     {
         extern int g_trace;
         if (g_trace) printf("level %d loaded: %d objects, %d collision tris\n", level, nobj, col_static_count());
@@ -804,6 +811,30 @@ static void draw_sky(void)
         }
         glEnd();
     }
+    if (lv.aurora) {
+        /* northern lights: waving curtains, bright at the bottom edge and fading upward */
+        int band;
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+        for (band = 0; band < 3; band++) {
+            float t = g_frame / 60.0f, base = 4 + band * 3, hgt = 13 + band * 3;
+            float a0 = band * 2.1f, span = 2.4f;
+            glBegin(GL_QUAD_STRIP);
+            for (i = 0; i <= 40; i++) {
+                float u = (float)i / 40, a = a0 + span * u;
+                float r = 44 - band * 2 + 3 * sinf(u * 9 + t * 0.4f + band);
+                float y = base + 3 * sinf(u * 6 + t * 0.3f + band * 1.7f);
+                float k = sinf(u * PI_F) * (0.55f + 0.45f * sinf(u * 17 + t * 1.3f + band));
+                float g = band == 1 ? 0.6f : 1.0f;
+                glColor4f(0.15f + 0.3f * (band == 2), g, 0.55f + 0.35f * (band == 1), 0.8f * k);
+                glVertex3f(sinf(a) * r, y, cosf(a) * r);
+                glColor4f(0.4f, 0.3f, 0.9f, 0);
+                glVertex3f(sinf(a) * (r + 4), y + hgt, cosf(a) * (r + 4));
+            }
+            glEnd();
+        }
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
     if (lv.clouds) {
         glEnable(GL_TEXTURE_2D);
         glEnable(GL_BLEND);
@@ -1045,6 +1076,23 @@ static void draw_hud(void)
         int t = g_course_timer;
         snprintf(buf, sizeof buf, "TIME %d'%02d\"%d", t / 3600, (t / 60) % 60, (t % 60) / 6);
         gfx_text_shadow(g_vw - 230, 66, 2.5f, buf, 1, 1, 1, 1);
+    }
+    /* AURORA SEA rally: lap, gate power and speed */
+    if (cur_level == LV_SEA && pl.boots) {
+        float x = 24, y = 400;
+        int k;
+        if (g_race_state == 1) {
+            snprintf(buf, sizeof buf, tr("LAP %d/%d"), g_lap + 1 > SEA_LAPS ? SEA_LAPS : g_lap + 1, SEA_LAPS);
+            gfx_text_shadow(g_vw - 230, 100, 2.5f, buf, 1, 1, 1, 1);
+        }
+        gfx_text_shadow(x, y - 26, 2, tr("POWER"), 0.7f, 0.95f, 1, 1);
+        for (k = 0; k < 5; k++) {
+            int on = k < g_sea_power;
+            gfx_rect(x + k * 22, y, 18, 14, 0.05f, 0.05f, 0.1f, 0.8f);
+            if (on) gfx_rect(x + k * 22 + 2, y + 2, 14, 10, 0.3f + k * 0.14f, 1.0f - k * 0.1f, 0.4f, 1);
+        }
+        snprintf(buf, sizeof buf, "%d km/h", (int)(pl.act == ACT_SKATE ? pl.fwd * 3.6f : 0));
+        gfx_text_shadow(x, y + 22, 2, buf, pl.boost_t > 0 ? 0.4f : 1, pl.boost_t > 0 ? 1 : 1, 1, 1);
     }
     /* messages */
     if (g_hud_msg_t > 0 && g_hud_msg) {

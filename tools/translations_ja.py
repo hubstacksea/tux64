@@ -128,11 +128,6 @@ JA = {
 "PENGUIN: The pond froze solid - perfect for\nbelly sliding! (Run + B to dive.) There's an\nice-fishing hole in the middle: swim with\nA (up), Z (down) and B (dash).":
     "ペンギン: 池が カチコチに こおったよ。おなかすべりに さいこう!(はしって Bで ダイブ)"
     "まん中には わかさぎつりの あなが あるよ。A(うえ)、Z(した)、B(ダッシュ)で およげるよ。",
-"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
-    "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
-    "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
-    "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
-    "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
 "PENGUIN: Psst! I heard a cold draft coming\nfrom a hole at the west end of the balcony...\nMaybe a secret slide? Penguins LOVE slides!":
     "ペンギン: ねえねえ、2階の 西のはしの あなから つめたい風が ふいてくるんだ…"
     "ひみつの すべりだいかも? ペンギンは すべりだいが だいすき!",
@@ -276,4 +271,47 @@ JA = {
     "init: おかえり、ちいさな プロセスよ! みなしごは みんな わしが ひきとるからの。ありがとう、Tux! この カーネルスターを うけとっておくれ!",
 "INIT: Thank you so much, Tux! All my child\nprocesses are safe and sound.":
     "init: 本当に ありがとう、Tux! 子プロセスたちは みんな 無事じゃよ。",
+# ---------------------------------------------------------------- AURORA SEA RALLY
+"AURORA SEA RALLY": "オーロラ海 ラリー",
+"Beat the SELinux Seal": "SELinuxアザラシに かて",
+"Sea Rally Under 60 Seconds": "ラリー 60びょういない",
+"Red Fish on the Ice Floes": "流氷の赤いさかな",
+"Ride the Whale's Spout": "クジラの しおふきに のれ",
+"100 Fish of the Sea": "オーロラ海の さかな100ぴき",
+"You got the DASH BOOTS!\nThey make you run so fast that you skim over\nthe water... and they won't come off on this sea!\nLeft/right: steer   Back: brake   Z: carve\nA: jump   B in mid-air: spin trick":
+    "ダッシュブーツを てにいれた!\nはやすぎて 水のうえを はしれる… でも この海では ぬげないぞ!\n"
+    "左右: ハンドル  うしろ: ブレーキ  Z: するどく まがる\nA: ジャンプ  空中で B: スピントリック",
+"LAP %d/%d": "ラップ %d/%d",
+"POWER": "パワー",
+"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
+    "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
+    "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
+    "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
+    "オーロラ海 ラリー(入口の 西よりの ウィンドウ): 10こ\n"
+    "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
+"AURORA SEA RALLY\nYour DASH BOOTS run on water - as long as you\nkeep moving! Steer with left/right, pull back\nto brake, Z for a sharp carve, A to jump.\nPress B in mid-air for a spin trick: land it for\na speed boost. Talk to the seal to race!":
+    "オーロラ海 ラリー\nダッシュブーツは 水のうえも はしれる… とまらなければね!\n"
+    "左右で ハンドル、うしろで ブレーキ、Zで するどく まがる、Aで ジャンプ。\n"
+    "空中で Bを おすと スピントリック。きめれば スピードアップ!\nアザラシに はなしかけると レースが はじまるよ!",
+"FINISH! TIME %d'%02d\"%d": "ゴール! タイム %d'%02d\"%d",
+"SELINUX SEAL: Access... GRANTED?! You beat me!\nMy policy says the winner gets this Kernel Star.":
+    "SELinuxアザラシ: アクセス… きょか?! まけたー!\nポリシーにより 勝者には この カーネルスターを あたえる。",
+"Finish both laps under 60 seconds for a bonus star!": "2周を 60びょういないで はしれば ボーナススター!",
+"FINAL LAP!": "ファイナルラップ!",
+"MAX POWER!": "パワー MAX!",
+"POWER UP!": "パワーアップ!",
+"Missed a gate! Power lost.": "ゲートを とばした! パワーダウン",
+"Missed the gate! Power lost.": "ゲートを はずした! パワーダウン",
+"DASH!": "ダッシュ!",
+"WHOOSH!": "ぶしゅーっ!",
+"Wipeout!": "ころんだ!",
+"TRICK! Speed boost!": "トリック せいこう! スピードアップ!",
+"SELINUX SEAL: Finish line access: DENIED!\nYour policy is too slow, penguin. Talk to me\nat the start line if you want a rematch.":
+    "SELinuxアザラシ: ゴールへの アクセスは きょひ された!\nきみの ポリシーは おそすぎる。\nリベンジなら スタートの ところで はなしかけて。",
+"SELINUX SEAL: Rematch request... ALLOWED.\nTwo laps, every buoy gate in order. Ready...":
+    "SELinuxアザラシ: リベンジ申請… きょか。\n2周、ブイの ゲートを じゅんばんに。よーい…",
+"SELINUX SEAL: Halt! I am the SELinux Seal.\nMy policy: nobody passes me on this sea!\nRace me: two laps through the buoy gates.\nEach gate you pass gives POWER (top speed),\nmissing one resets it. Ready...":
+    "SELinuxアザラシ: とまれ! わたしは SELinuxアザラシ。\nポリシー: この海で わたしを ぬくことは ゆるされない!\n"
+    "ブイの ゲートを 2周する レースで しょうぶだ。\nゲートを くぐるたびに パワー(さいこうそく)が あがり、"
+    "はずすと もとに もどる。よーい…",
 }

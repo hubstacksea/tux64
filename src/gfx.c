@@ -675,7 +675,7 @@ static void gen_textures(void)
                 }
             }
         /* course pictures */
-        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL9) {
+        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL10) {
             mip = 1;
             for (y = 0; y < w; y++)
                 for (x = 0; x < w; x++) {
@@ -689,6 +689,7 @@ static void gen_textures(void)
                     case TEX_PORTAL7: put(w, x, y, 0.12f + 0.1f * v, 0.06f + 0.06f * v, 0.2f + 0.15f * v, 1); break;
                     case TEX_PORTAL8: put(w, x, y, 0.35f + 0.4f * v, 0.55f + 0.3f * v, 0.95f, 1); break;
                     case TEX_PORTAL9: put(w, x, y, 0.88f, 0.9f, 0.95f, 1); break;
+                    case TEX_PORTAL10: put(w, x, y, 0.04f + 0.1f * v, 0.06f + 0.2f * v, 0.2f + 0.3f * v, 1); break;
                     default: put(w, x, y, 0.02f, 0.05f + 0.15f * v, 0.15f + 0.3f * v, 1); break;
                     }
                 }
@@ -792,6 +793,30 @@ static void gen_textures(void)
                 for (i = 0; i < 8; i++) if (hash2(i, 9, 3) > 0.5f) pic_rect(w, 4 + i * 7, 4 + 3 * 7 + 3, 12 + i * 7, 4 + 3 * 7 + 4, 0.88f, 0.9f, 0.95f);
                 pic_circle(w, 41, 30, 2, 1, 0.1f, 0.1f);
                 pic_circle(w, 46, 30, 2, 1, 0.1f, 0.1f);
+            }
+            if (t == TEX_PORTAL10) {   /* aurora over an icy sea: a whale, a ramp and a speeding Tux */
+                int i;
+                for (y = 4; y < 30; y++)
+                    for (x = 0; x < 64; x++) {
+                        float band = sinf(x * 0.15f + y * 0.05f) * 6 + 14 - y;
+                        float a = clampf(1.0f - fabsf(band) / 5.0f, 0, 1) * 0.8f;
+                        if (a > 0.05f) put(w, x, y, 0.2f * a + 0.04f, 0.4f + 0.55f * a, 0.35f + 0.3f * a, 1);
+                    }
+                for (i = 0; i < 25; i++) pic_circle(w, hash2(i, 5, 7) * 64, hash2(i, 6, 7) * 30, 0.6f, 1, 1, 1);
+                for (y = 38; y < 64; y++)
+                    for (x = 0; x < 64; x++) {
+                        float wv = sinf(x * 0.5f + y * 1.3f) * 0.06f;
+                        put(w, x, y, 0.08f + wv, 0.25f + wv, 0.5f + wv, 1);
+                    }
+                pic_circle(w, 18, 40, 9, 0.2f, 0.25f, 0.38f);           /* whale back */
+                pic_rect(w, 6, 40, 32, 46, 0.08f, 0.25f, 0.5f);
+                pic_rect(w, 17, 26, 19, 32, 0.8f, 0.92f, 1.0f);          /* spout */
+                pic_circle(w, 18, 26, 3, 0.85f, 0.95f, 1.0f);
+                pic_fill_tri(w, 40, 46, 56, 46, 56, 38, 0.75f, 0.9f, 1.0f);   /* ice ramp */
+                pic_circle(w, 46, 33, 2.4f, 0.1f, 0.1f, 0.12f);          /* Tux in the air */
+                pic_circle(w, 46, 34, 1.4f, 1, 1, 1);
+                pic_rect(w, 44, 35, 48, 36, 1, 0.5f, 0.1f);
+                for (i = 0; i < 5; i++) pic_rect(w, 34 + i * 2, 48 + (i & 1), 36 + i * 2, 49 + (i & 1), 0.9f, 0.97f, 1);
             }
             pic_frame(w, 0.85f, 0.7f, 0.25f);
         }

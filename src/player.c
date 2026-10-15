@@ -39,6 +39,7 @@ void player_init(vec3 pos, float yaw)
     pl.platform = -1;
     pl.pole = -1;
     pl.visible = 1;
+    pl.boots = cur_level == LV_SEA;   /* the dash boots never come off on the AURORA SEA */
     pl.act = ACT_FALL;
     pl.peak_y = pos.y;
     pl.floor_y = col_floor(pos.x, pos.y + 1.0f, pos.z, &pl.floor);
@@ -295,6 +296,7 @@ static void chain_jump(void)
 
 static int try_interact_b(void);
 static void enter_fly(void);
+static void skate_enter(int airborne);
 
 static void enter_fall(void) { player_set_act(ACT_FALL); }
 
@@ -1090,6 +1092,15 @@ static void act_swim(void)
     if (wy < -1e8f) { player_set_act(ACT_FALL); return; }
     /* surface */
     if (pl.pos.y > wy - 1.2f) {
+        if (pl.boots && pressed(BT_A)) {
+            pl.pos.y = wy;
+            pl.vel.y = 9.0f;
+            sfx(SFX_SPLASH);
+            fx_spawn(OT_FX_BUBBLE, pl.pos, 1.0f);
+            skate_enter(1);
+            pl.vel.y = 9.0f;
+            return;
+        }
         if (pressed(BT_A) && !held(BT_Z)) {
             pl.vel.y = 15.0f;
             pl.pos.y = wy - 0.9f;   /* pop out of the water */
@@ -1158,6 +1169,201 @@ static void act_swim(void)
         pl.breath_t += DT;
         if (pl.breath_t > 0.5f) { pl.breath_t = 0; if (pl.health < 8) pl.health++; }
     }
+}
+
+/* ------------------------------------------------------------------ dash boots (AURORA SEA) */
+#define SK_BASE   21.0f       /* cruising speed with no gate power */
+#define SK_POWER  1.8f        /* extra top speed per gate power level (0..5) */
+#define SK_BOOST  9.0f
+
+static float skate_max(void)
+{
+    float m = SK_BASE + SK_POWER * g_sea_power;
+    if (pl.boost_t > 0) m += SK_BOOST;
+    return m;
+}
+
+/* height Tux skims on: solid ground/ice, or the water surface (dash boots run on water) */
+static float skate_surface(float x, float y, float z, Surf **fl, int *on_water)
+{
+    float fy = col_floor(x, y + 0.9f, z, fl);
+    float wy = water_level_at(x, z, y);
+    if (!*fl) fy = -1e9f;
+    *on_water = 0;
+    if (wy > -1e8f && wy >= fy - 0.02f) { *on_water = 1; *fl = NULL; return wy; }
+    return fy;
+}
+
+static void skate_enter(int airborne)
+{
+    float hs = v3len(v3(pl.vel.x, 0, pl.vel.z));
+    int a = pl.act;
+    player_set_act(ACT_SKATE);
+    pl.act_s = airborne;
+    pl.fwd = maxf(hs, a == ACT_SWIM ? 6.0f : pl.fwd);
+    pl.ground_vy = 0;
+    pl.trick = 0;
+    pl.pitch = 0;
+}
+
+static void skate_land(void)
+{
+    if (pl.trick == 1) {          /* landed mid-spin: wipe out */
+        pl.fwd *= 0.35f;
+        sfx(SFX_THUD);
+        cam.shake = 0.25f;
+        hud_message("Wipeout!", 60);
+    } else if (pl.trick == 2) {
+        if (pl.boost_t < 75) pl.boost_t = 75;
+        sfx_ex(SFX_BLUECOIN, 0.8f, 1.2f);
+        hud_message("TRICK! Speed boost!", 60);
+    }
+    if (pl.vel.y < -16) { pl.fwd *= 0.85f; cam.shake = 0.15f; }
+    pl.trick = 0;
+    pl.act_s = 0;
+    pl.vel.y = 0;
+    pl.ground_vy = 0;
+    if (pl.water_y > -1e8f && pl.pos.y <= pl.water_y + 0.05f) {
+        sfx(SFX_SPLASH);
+        fx_spawn(OT_FX_SNOWPUFF, pl.pos, 1.2f);
+        fx_spawn(OT_FX_SNOWPUFF, v3add(pl.pos, v3(0.4f, 0, 0.3f)), 1.0f);
+    } else sfx_ex(SFX_LAND, 0.8f, 1.2f);
+}
+
+static void act_skate(void)
+{
+    float maxs = skate_max(), steer = pl.no_ctrl ? 0 : in.sx, throttle = pl.no_ctrl ? 0 : in.sy;
+    int air = pl.act_s == 1, sub, nsub, onw = 0;
+    vec3 want, start = pl.pos;
+    Surf *fl = NULL;
+    float sy = pl.pos.y;
+    pl.peak_y = pl.pos.y;
+    if (pl.no_ctrl) throttle = -1;   /* countdown / warps: hold still */
+    /* steering ("tank" style, like a jet ski): left/right turns, back brakes, Z carves */
+    if (!air) {
+        float rate = 2.5f - 0.025f * pl.fwd;
+        if (held(BT_Z)) { rate *= 1.7f; pl.fwd = approachf(pl.fwd, 0, 9 * DT); }
+        pl.yaw = wrap_angle(pl.yaw - steer * rate * DT);
+        pl.roll = approachf(pl.roll, steer * clampf(pl.fwd / 20.0f, 0, 1) * (held(BT_Z) ? 0.7f : 0.4f), 5 * DT);
+        if (pl.floor && pl.floor->n.y < 0.98f) {   /* uphill slows, downhill speeds up */
+            vec3 d = yaw_dir(pl.yaw);
+            pl.fwd += (pl.floor->n.x * d.x + pl.floor->n.z * d.z) * 10.0f * DT;
+        }
+        if (throttle < -0.4f) pl.fwd = approachf(pl.fwd, 0, 28 * DT);
+        else if (pl.fwd < maxs) pl.fwd = minf(pl.fwd + (pl.boost_t > 0 ? 40.0f : 14.0f - pl.fwd * 0.25f) * DT, maxs);
+        else pl.fwd = approachf(pl.fwd, maxs, 8 * DT);
+        if (pressed(BT_A)) {
+            pl.act_s = 1; air = 1;
+            pl.vel.y = maxf(pl.ground_vy, 0) + 11.5f;
+            sfx(SFX_JUMP);
+            fx_spawn(OT_FX_SNOWPUFF, pl.pos, 0.8f);
+        } else if (pressed(BT_B) && pl.fwd < 3.0f && try_interact_b()) return;
+    } else {
+        pl.yaw = wrap_angle(pl.yaw - steer * 1.3f * DT);
+        pl.roll = approachf(pl.roll, 0, 3 * DT);
+        if (pressed(BT_B) && pl.trick == 0 && pl.vel.y > -6.0f) {   /* mid-air spin trick */
+            pl.trick = 1; pl.trick_t = 0;
+            sfx(SFX_BACKFLIP);
+        }
+        if (pl.trick == 1) {
+            pl.trick_t += DT / 0.55f;
+            if (pl.trick_t >= 1) { pl.trick = 2; pl.trick_t = 1; }
+        }
+        if (held(BT_Z)) pl.vel.y -= 30 * DT;   /* dive back to the water */
+    }
+    /* velocity drifts toward the facing direction: grip is weaker on the water */
+    want = v3scale(yaw_dir(pl.yaw), pl.fwd);
+    {
+        float grip = air ? 4.0f : (pl.floor && (pl.floor->flags & SF_SLIPPERY) ? 30.0f : 55.0f);
+        pl.vel.x = approachf(pl.vel.x, want.x, grip * DT * maxf(1.0f, fabsf(want.x - pl.vel.x) * 0.3f));
+        pl.vel.z = approachf(pl.vel.z, want.z, grip * DT * maxf(1.0f, fabsf(want.z - pl.vel.z) * 0.3f));
+    }
+    if (air) {
+        pl.vel.y -= GRAV * 0.85f * DT;
+        if (pl.vel.y < TERM_VEL) pl.vel.y = TERM_VEL;
+    }
+    nsub = 1 + (int)(v3len(pl.vel) * DT / 0.2f);
+    for (sub = 0; sub < nsub; sub++) {
+        float dt = DT / nsub, cy;
+        vec3 np = v3(pl.pos.x + pl.vel.x * dt, pl.pos.y + (air ? pl.vel.y * dt : 0), pl.pos.z + pl.vel.z * dt);
+        vec3 w1, w2;
+        int h1 = col_walls(&np, 0.6f, RAD_T, &w1, NULL), h2 = col_walls(&np, 1.3f, RAD_T, &w2, NULL);
+        if (h1 || h2) {
+            vec3 n = h2 ? w2 : w1, hv = v3(pl.vel.x, 0, pl.vel.z);
+            float sp = v3len(hv), into = sp > 0.1f ? v3dot(v3scale(hv, 1.0f / sp), n) : 0;
+            if (into < -0.6f && sp > 12.0f) {
+                /* head-on crash: bounce back */
+                pl.vel.x = n.x * 6; pl.vel.z = n.z * 6;
+                pl.fwd = 2.0f;
+                pl.yaw = atan2f(n.x, n.z);
+                pl.boost_t = 0;
+                sfx(SFX_THUD);
+                cam.shake = 0.3f;
+                fx_spawn(OT_FX_SMOKE, v3mad(np, n, -0.4f), 0.6f);
+            } else if (into < 0) {
+                /* glance off the wall */
+                hv = v3sub(hv, v3scale(n, v3dot(hv, n)));
+                pl.vel.x = hv.x; pl.vel.z = hv.z;
+                pl.fwd *= 1.0f - 0.45f * -into;
+                if (v3len(hv) > 1) pl.yaw = approach_angle(pl.yaw, atan2f(hv.x, hv.z), 0.2f);
+            }
+        }
+        sy = skate_surface(np.x, np.y, np.z, &fl, &onw);
+        if (!air) {
+            if (sy > np.y + 0.9f || sy < -1e8f) {
+                np.x = pl.pos.x; np.z = pl.pos.z;    /* too steep to climb: stop */
+                pl.fwd *= 0.5f;
+                sy = skate_surface(np.x, np.y, np.z, &fl, &onw);
+            }
+            {
+                /* where Tux would be if he just flew on: when the surface drops away faster than
+                 * that (a ramp lip, the whale's ridge, an edge) he takes off with the slope's speed */
+                float yb = pl.pos.y + pl.ground_vy * dt - 0.5f * GRAV * 0.85f * dt * dt, rise = sy - pl.pos.y;
+                if (sy < yb - 0.06f && rise < 0.01f) {
+                    air = 1; pl.act_s = 1;
+                    pl.vel.y = pl.ground_vy > 0 ? pl.ground_vy * 1.15f : pl.ground_vy;
+                    np.y = yb;
+                    if (pl.vel.y > 4) sfx_ex(SFX_JUMP2, 0.7f, 0.9f);
+                } else {
+                    /* a small step up (floe edge) does not count as climbing a slope */
+                    pl.ground_vy = rise > 0.2f ? 0 : clampf(rise / dt, -40, 40);
+                    np.y = sy;
+                }
+            }
+        } else if (np.y <= sy && (pl.vel.y <= 0 || sy - np.y < 0.6f)) {
+            np.y = sy;
+            pl.pos = np;
+            skate_land();
+            air = 0;
+        }
+        cy = col_ceil(np.x, np.y + 0.8f, np.z, NULL);
+        if (np.y + TUX_H > cy) { np.y = maxf(cy - TUX_H, sy); if (pl.vel.y > 0) pl.vel.y = 0; }
+        pl.pos = np;
+    }
+    pl.floor = air ? NULL : fl;
+    pl.floor_y = sy;
+    if (!air) pl.vel.y = 0;
+    sea_player_moved(start, pl.pos);
+    /* sinking: dash boots only skim the water while moving */
+    if (!air && onw && pl.fwd < 2.0f && throttle < -0.4f && !pl.no_ctrl && pl.act == ACT_SKATE) {
+        pl.pos.y = pl.water_y - 1.15f;
+        pl.vel = v3(0, 0, 0);
+        sfx(SFX_SPLASH);
+        player_set_act(ACT_SWIM);
+        pl.breath_t = 0;
+        return;
+    }
+    if (pl.boost_t > 0) pl.boost_t--;
+    /* spray and sounds */
+    if (!air && pl.fwd > 6) {
+        pl.slide_snd += DT * pl.fwd;
+        if (pl.slide_snd > 9) { pl.slide_snd = 0; sfx_ex(onw ? SFX_SWIM : SFX_SLIDE, 0.35f, 0.8f + pl.fwd * 0.02f); }
+        if (onw && g_frame % 3 == 0) {
+            vec3 b = v3mad(pl.pos, yaw_dir(pl.yaw), -0.6f);
+            fx_spawn(OT_FX_SNOWPUFF, v3add(b, v3(frands() * 0.4f, 0.1f, frands() * 0.4f)), 0.35f + 0.012f * pl.fwd);
+        }
+    }
+    pl.anim += pl.fwd * DT * 0.6f + DT;
 }
 
 static void act_death(void)
@@ -1250,7 +1456,23 @@ void player_update(void)
         pl.breath_t = 0;
     }
     if (pl.act != ACT_SWIM && pl.act != ACT_DROWN && pl.act != ACT_FLY) pl.pitch = approachf(pl.pitch, 0, 4 * DT);
-    if (pl.act != ACT_FLY) pl.roll = approachf(pl.roll, 0, 4 * DT);
+    if (pl.act != ACT_FLY && pl.act != ACT_SKATE) pl.roll = approachf(pl.roll, 0, 4 * DT);
+    /* dash boots: Tux never walks, he dashes - and normal jumps land back on the water */
+    if (pl.boots) {
+        switch (pl.act) {
+        case ACT_IDLE: case ACT_WALK: case ACT_SKID: case ACT_LANDING: case ACT_CROUCH: case ACT_CRAWL:
+        case ACT_CROUCH_SLIDE: case ACT_PUNCH: case ACT_BELLY_SLIDE: case ACT_GPOUND_LAND:
+            skate_enter(0);
+            break;
+        default:
+            if (player_in_air() && pl.act != ACT_FLY && pl.vel.y <= 0 && pl.water_y > -1e8f && pl.pos.y <= pl.water_y + 0.05f) {
+                pl.pos.y = pl.water_y;
+                skate_enter(0);
+                pl.fwd = maxf(pl.fwd, 8.0f);
+                sfx(SFX_SPLASH);
+            }
+        }
+    }
 
     pl.act_t++;
     switch (pl.act) {
@@ -1282,6 +1504,7 @@ void player_update(void)
     case ACT_HOLD_JUMP: case ACT_HOLD_FALL: act_hold_air(); break;
     case ACT_FLY: act_fly(); break;
     case ACT_SWIM: act_swim(); break;
+    case ACT_SKATE: act_skate(); break;
     case ACT_DEATH: case ACT_DROWN: act_death(); break;
     case ACT_FROZEN: act_frozen(); break;
     case ACT_STAR_DANCE: act_star_dance(); break;
@@ -1521,6 +1744,25 @@ void player_draw(void)
     case ACT_FROZEN:
         tp.flipL_z = tp.flipR_z = 0.15f;
         break;
+    case ACT_SKATE: {
+        float s = sinf(t * 3.0f), k = clampf(pl.fwd / 20.0f, 0, 1);
+        tp.body_pitch = 0.35f * k;
+        tp.body_roll = -pl.roll;
+        tp.flipL_z = tp.flipR_z = 0.5f + 0.7f * k;
+        tp.flipL_x = tp.flipR_x = 0.5f * k;
+        tp.footL = s * 0.7f * k + 0.1f;
+        tp.footR = -tp.footL;
+        tp.lift = fabsf(cosf(t * 3.0f)) * 0.1f * k;
+        if (pl.act_s == 1) {
+            float up = clampf(pl.vel.y / 15.0f, -1, 1);
+            tp.footL = 0.4f; tp.footR = -0.2f;
+            tp.flipL_z = tp.flipR_z = 1.4f + up * 0.6f;
+            tp.lift = 0;
+            if (pl.trick) { tp.spin = pl.trick_t * TAU_F; tp.flipL_z = tp.flipR_z = 2.6f; }
+        }
+        if (held(BT_Z) && pl.act_s == 0) { tp.body_squash = -0.15f; tp.body_roll = -pl.roll * 1.4f; }
+        break;
+    }
     case ACT_FLY:
         /* riding the rocket: leaning into the flight direction, flippers back */
         tp.body_pitch = 1.1f - pl.pitch * 0.9f;
@@ -1534,6 +1776,7 @@ void player_draw(void)
     }
     tp.rocket = pl.rocket_t > 0 && (pl.rocket_t > 180 || (pl.rocket_t / 6) % 2);
     if (pl.rocket_t > 0 && player_rocket_firing()) tp.rocket = 2;
+    if (pl.boots) tp.boots = pl.boost_t > 0 ? 2 : 1;
     if (pl.act == ACT_JUMP || pl.act == ACT_DJUMP) tp.lift += 0;
     draw_tux_model(v3(pl.pos.x, pl.pos.y - pl.sink, pl.pos.z), pl.yaw, &tp, 1.0f, TUXV_TUX);
 }

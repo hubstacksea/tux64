@@ -37,3 +37,7 @@ run maze-wall-blocks "spotted=0" --level 10 --seed 7 --quit 200 --bot "w 3;T -21
 run maze-behind "spotted=0" --level 10 --seed 7 --quit 200 --bot "w 3;T -14 0.1 -28;O 5 0 90;w 4;V"
 run maze-catch "hp=5" --level 10 --seed 7 --quit 600 --bot "w 3;T -14 0.1 -28;O 5 0 -90;w 180;P"
 run maze-unseen-exit "act=11" --level 10 --seed 7 --quit 600 --bot "w 3;T 28 0.1 21;O 0 0 180;g 28 28 0.5;w 150;P"
+run sea-race "rally end race=2" --level 11 --quit 9000 --bot "w 30;T 14.5 0.5 101.5;w 20;k 0 -1 40;f 58;p b 3;w 5;R 7000;P"
+run sea-spout "stars=1" --level 11 --quit 1200 --bot "w 3;d;Y 0;B 19 -80 600;D 19 -80;w 300;P"
+run sea-window "lv=11" --level 1 --pos -18 0 2 0 --quit 3000 --bot "w 3;* 20;g -18 9.4 1.0;w 60;p a 3;w 60;P"
+run sea-sink-popup "act=41" --level 11 --pos 30 0 60 0 --quit 400 --bot "w 3;d;k 0 -1 90;u 39 60;w 20;p a 3;w 30;P"

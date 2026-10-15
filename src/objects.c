@@ -8,6 +8,8 @@ int nobj;
 vec3 g_race_path[40];
 int g_race_n;
 int g_ring_next;
+int g_gate_n, g_gate_next, g_lap, g_sea_power, g_gate_missed, g_race_time;
+static int gate_idx[32];
 static int ring_total;
 
 static int held(int b);
@@ -24,6 +26,7 @@ void objs_clear(void)
     nobj = 0;
     g_ring_next = 0;
     ring_total = 0;
+    g_gate_n = 0; g_gate_next = 1; g_lap = 0; g_sea_power = 0; g_gate_missed = 0;
 }
 
 void obj_kill(Obj *o)
@@ -100,6 +103,12 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_STEAM: o->radius = 0; o->height = 0; break;
     case OT_OOM: o->radius = 0.95f; o->height = 3.4f; o->flags = OF_SHADOW; break;
     case OT_MAZEEXIT: o->radius = 2.0f; o->height = 3.0f; break;
+    case OT_GATE: if (param >= 0 && param < 32) { gate_idx[param] = (int)(o - objs); if (param + 1 > g_gate_n) g_gate_n = param + 1; }
+        o->radius = 0; o->height = 6; o->f[0] = 7.0f; break;
+    case OT_ICECHUNK: o->radius = 1.35f; o->height = 1.6f; break;
+    case OT_WHALE: o->radius = 7.5f; o->height = 2.0f; o->flags = OF_SOLID | OF_NOCULL; break;
+    case OT_BOOSTPAD: o->radius = 2.0f; o->height = 1.5f; break;
+    case OT_SEAL: o->radius = 0.9f; o->height = 1.6f; o->flags = OF_SHADOW; break;
     case OT_ROCKETBOX: o->radius = 0.8f; o->height = 1.4f; o->flags = OF_SOLID;
         o->f[5] = 0.7f; o->f[6] = 0.7f; o->f[7] = 0.7f; break;
     }
@@ -1719,6 +1728,345 @@ static void upd_timergoal(Obj *o)
     }
 }
 
+/* ---------------------------------------------------------------- AURORA SEA rally */
+#define SEA_TIME_STAR 60     /* seconds for the time-attack star (both laps) */
+
+Obj *sea_gate(int k)
+{
+    if (k < 0 || k >= g_gate_n) return NULL;
+    return &objs[gate_idx[k]];
+}
+
+static void sea_finish(void)
+{
+    static char msg[256];
+    Obj *g = sea_gate(0), *seal = find_type(OT_SEAL);
+    vec3 f = yaw_dir(g->yaw), r = v3(f.z, 0, -f.x), at = v3add(v3mad(g->pos, f, 14), v3(0, 1.0f, 0));
+    int t = g_course_timer;
+    g_timer_on = 0;
+    g_race_time = t;
+    music_play(lv.music);
+    snprintf(msg, sizeof msg, tr("FINISH! TIME %d'%02d\"%d"), t / 3600, (t / 60) % 60, (t % 60) / 6);
+    hud_message(msg, 240);
+    if (g_race_state == 1) {
+        g_race_state = 2;
+        if (seal) { seal->state = 4; seal->timer = 0; }
+        dialog_open("SELINUX SEAL: Access... GRANTED?! You beat me!\nMy policy says the winner gets this Kernel Star.");
+        star_spawn(v3mad(at, r, -3), 0, 1, pl.pos);
+    }
+    if (t < SEA_TIME_STAR * 60) star_spawn(v3mad(at, r, 3), 1, 1, pl.pos);
+    else hud_message("Finish both laps under 60 seconds for a bonus star!", 240);
+}
+
+/* called by the dash-boots movement every frame: buoy gates in order give POWER (top speed),
+ * missing one resets it; gate 0 is the start / finish line */
+void sea_player_moved(vec3 from, vec3 to)
+{
+    int k;
+    if (g_gate_n < 2) return;
+    for (k = 0; k < g_gate_n; k++) {
+        Obj *g = sea_gate(k);
+        vec3 f = yaw_dir(g->yaw), r = v3(f.z, 0, -f.x);
+        float s0 = v3dot(v3sub(from, g->pos), f), s1 = v3dot(v3sub(to, g->pos), f);
+        float lat = v3dot(v3sub(to, g->pos), r);
+        int target = g_gate_next % g_gate_n;
+        if (!(s0 < 0 && s1 >= 0) || fabsf(lat) > 40 || fabsf(to.y - g->pos.y) > 12) continue;
+        if (fabsf(lat) <= g->f[0]) {
+            if (k == target) {
+                g->timer = 30;
+                if (k == 0) {
+                    g_gate_next = 1;
+                    if (g_race_state == 1) {
+                        g_lap++;
+                        if (g_lap >= SEA_LAPS) { sea_finish(); return; }
+                        hud_message("FINAL LAP!", 90);
+                    }
+                } else g_gate_next++;
+                if (g_sea_power < 5) {
+                    g_sea_power++;
+                    hud_message(g_sea_power == 5 ? "MAX POWER!" : "POWER UP!", 45);
+                }
+                sfx_ex(SFX_COIN, 0.7f, 1.0f + g_sea_power * 0.08f);
+            } else if (k != 0 && target != 0 && k > target) {
+                /* skipped some gates */
+                g_gate_missed += k - target;
+                g_gate_next = k + 1;
+                g_sea_power = 0;
+                sfx(SFX_BUZZ);
+                hud_message("Missed a gate! Power lost.", 60);
+            }
+        } else if (k == target && k != 0) {
+            g_gate_missed++;
+            g_gate_next++;
+            g_sea_power = 0;
+            sfx(SFX_BUZZ);
+            hud_message("Missed the gate! Power lost.", 60);
+        }
+    }
+}
+
+static void upd_gate(Obj *o)
+{
+    if (o->timer > 0) o->timer--;
+    o->t += DT;
+}
+
+static void upd_icechunk(Obj *o)
+{
+    o->t += DT;
+    if (o->state == 90) {   /* smashed: refreeze after a while */
+        if (++o->timer > 600) { o->state = 0; o->timer = 0; }
+        return;
+    }
+    o->pos = o->home;
+    if (o->param == 1) o->pos.x += sinf(o->t * o->f[2] + o->f[0]) * o->f[1];
+    if (o->param == 2) o->pos.z += sinf(o->t * o->f[2] + o->f[0]) * o->f[1];
+    o->pos.y = o->home.y + sinf(o->t * 1.7f + o->f[0]) * 0.12f;
+    o->yaw = o->f[0] + sinf(o->t * 0.3f) * 0.3f;
+    if (!touching(o)) return;
+    if (pl.act == ACT_SKATE && (pl.boost_t > 0 || pl.fwd > 27.0f)) {
+        int k;
+        o->state = 90; o->timer = 0;
+        sfx(SFX_BREAK);
+        for (k = 0; k < 6; k++) fx_spawn(OT_FX_SNOWPUFF, v3add(o->pos, v3(frands(), 0.5f + frand(), frands())), 1.2f);
+        { Obj *c = obj_spawn(OT_COIN, v3add(o->pos, v3(0, 0.8f, 0)), 0, 0); if (c) { c->vel = v3(0, 8, 0); c->state = 1; } }
+        return;
+    }
+    {
+        vec3 d = v3sub(pl.pos, o->pos);
+        float l;
+        d.y = 0;
+        l = v3len(d);
+        if (l < 1e-3f) d = v3(1, 0, 0); else d = v3scale(d, 1.0f / l);
+        push_player_out(o, o->radius);
+        if (pl.act == ACT_SKATE) {
+            float sp = v3len(v3(pl.vel.x, 0, pl.vel.z));
+            if (sp > 6 && v3dot(v3(pl.vel.x, 0, pl.vel.z), d) < 0) {
+                pl.vel.x = d.x * 5; pl.vel.z = d.z * 5;
+                pl.fwd *= 0.3f;
+                pl.boost_t = 0;
+                sfx(SFX_THUD);
+                cam.shake = 0.2f;
+            }
+        }
+    }
+}
+
+static void upd_boostpad(Obj *o)
+{
+    if (o->timer > 0) o->timer--;
+    o->t += DT;
+    if (pl.act == ACT_SKATE && pl.act_s == 0 && touching(o)) {
+        if (o->timer == 0) { sfx(SFX_BLAST); hud_message("DASH!", 40); }
+        o->timer = 20;
+        pl.boost_t = 110;
+        pl.fwd = maxf(pl.fwd, 26.0f);
+    }
+}
+
+/* the great whale: swims in a circle, surfaces and dives; its back is a moving ramp and
+ * its blowhole spouts Tux sky-high.  f[0],f[1] centre, f[2] radius, f[3] angular speed, f[4] phase */
+static void whale_frame(Obj *o, vec3 *head, vec3 *hole)
+{
+    vec3 f = yaw_dir(o->yaw);
+    if (head) *head = v3mad(o->pos, f, 6.5f);
+    if (hole) *hole = v3add(v3mad(o->pos, f, 3.2f), v3(0, 1.8f, 0));
+}
+
+static void upd_whale(Obj *o)
+{
+    float a, cyc, sink, depth = 0;
+    int riding = pl.platform == obj_index(o) || (pl.floor && pl.floor->owner == obj_index(o));
+    vec3 hole;
+    o->t += DT;
+    o->timer++;
+    a = o->f[4] + o->f[3] * o->t;
+    o->pos.x = o->f[0] + sinf(a) * o->f[2];
+    o->pos.z = o->f[1] + cosf(a) * o->f[2];
+    o->yaw = atan2f(cosf(a), -sinf(a)) + (o->f[3] < 0 ? PI_F : 0);
+    /* dive cycle (20 s): 14 s at the surface, then down for a while - never with Tux aboard */
+    cyc = fmodf(o->timer / 60.0f, 20.0f);
+    if (riding && cyc > 13.0f && cyc < 14.0f) o->timer -= 1;
+    if (cyc < 14) sink = 0;
+    else if (cyc < 15.5f) sink = (cyc - 14) / 1.5f;
+    else if (cyc < 18.5f) sink = 1;
+    else sink = 1 - (cyc - 18.5f) / 1.5f;
+    depth = sink * 5.0f;
+    o->pos.y = o->home.y - depth + sinf(o->t * 1.3f) * 0.12f;
+    o->state = sink > 0.6f ? 1 : 0;    /* 1 = submerged: no collision */
+    if (sink > 0.05f && sink < 0.95f && o->timer % 6 == 0) {
+        whale_frame(o, &hole, NULL);
+        fx_spawn(OT_FX_SNOWPUFF, v3(hole.x + frands() * 2, o->home.y, hole.z + frands() * 2), 1.2f);
+    }
+    /* spout: every 4 seconds while surfaced */
+    whale_frame(o, NULL, &hole);
+    if (o->state == 0 && sink < 0.05f) {
+        o->i[0]++;
+        if (o->i[0] == 200) sfx_ex(SFX_SPLASH, 0.8f, 0.6f);
+        if (o->i[0] >= 240) o->i[0] = 0;
+    } else o->i[0] = 0;
+    o->f[5] = o->i[0] >= 160 ? 1.0f : 0.0f;    /* spouting (last 80 frames of the cycle) */
+    if (o->i[0] >= 200 && o->i[0] < 236 && v3distxz(pl.pos, hole) < 1.7f && pl.pos.y > hole.y - 0.8f && pl.pos.y < hole.y + 6) {
+        /* launched by the spout! */
+        if (pl.act != ACT_TRAMP || pl.vel.y < 10) {
+            sfx(SFX_BLAST); sfx(SFX_SPLASH);
+            player_set_act(ACT_TRAMP);
+            pl.tramp_combo = 0;
+            pl.vel.y = 33.0f;
+            pl.fwd = 2.0f;
+            pl.vel.x = pl.vel.z = 0;
+            pl.pos.y = maxf(pl.pos.y, hole.y) + 0.2f;
+            pl.peak_y = pl.pos.y;
+            pl.platform = -1;
+            hud_message("WHOOSH!", 50);
+        }
+    }
+    if (o->state == 0 && pl.act != ACT_SKATE && touching(o) && pl.pos.y < o->pos.y + 0.5f) push_player_out(o, 3.0f);
+}
+
+static void whale_collision(Obj *o)
+{
+    /* a low gabled hull: slopes up from the waterline to a ridge along the back */
+    static const float L[10][3] = {
+        { 0, 1.75f, -4.5f }, { 0, 1.75f, 5.0f },                       /* ridge */
+        { -3.1f, -0.4f, -4.5f }, { 3.1f, -0.4f, -4.5f }, { -3.1f, -0.4f, 5.0f }, { 3.1f, -0.4f, 5.0f },
+        { 0, -0.4f, -8.0f }, { 0, -0.4f, 8.4f }, { 0, 0, 0 }, { 0, 0, 0 } };
+    vec3 p[8];
+    int i, idx = obj_index(o);
+    float cy = cosf(o->yaw), sy = sinf(o->yaw);
+    if (o->state != 0) return;
+    for (i = 0; i < 8; i++) {
+        vec3 l = v3(L[i][0], L[i][1], L[i][2]);
+        p[i] = v3add(o->pos, v3(l.x * cy + l.z * sy, l.y, -l.x * sy + l.z * cy));
+    }
+#define UT(a, b, c) { vec3 n_ = v3cross(v3sub(p[b], p[a]), v3sub(p[c], p[a])); \
+                      if (n_.y >= 0) col_dyn_add(p[a], p[b], p[c], SF_NOCAM, idx); else col_dyn_add(p[a], p[c], p[b], SF_NOCAM, idx); }
+    UT(0, 1, 4) UT(0, 4, 2)     /* left slope */
+    UT(0, 5, 1) UT(0, 3, 5)     /* right slope */
+    UT(0, 2, 6) UT(0, 6, 3)     /* tail */
+    UT(1, 5, 7) UT(1, 7, 4)     /* head */
+#undef UT
+}
+
+/* the SELinux Seal: rival racer that follows the gates (with a little rubber band) */
+static void seal_start(Obj *o)
+{
+    Obj *g = sea_gate(0);
+    o->state = 1; o->timer = 0;
+    o->pos = o->home;
+    o->yaw = g ? g->yaw : 0;
+    o->i[0] = 1; o->i[1] = 0;
+    o->vel = v3(0, 0, 0);
+    if (g) {
+        vec3 f = yaw_dir(g->yaw), r = v3(f.z, 0, -f.x);
+        player_init(v3add(v3mad(v3mad(g->pos, f, -6), r, 3.0f), v3(0, 0.0f, 0)), g->yaw);
+        pl.boots = 1;
+        player_set_act(ACT_SKATE);
+        pl.fwd = 0;
+        camera_reset();
+    }
+    pl.no_ctrl = 1;
+    g_race_state = 0;
+    g_timer_on = 0;
+    g_course_timer = 0;
+    g_gate_next = 1; g_lap = 0; g_sea_power = 0; g_gate_missed = 0;
+}
+
+static void upd_seal(Obj *o)
+{
+    o->timer++;
+    o->t += DT;
+    if (o->state == 0) {
+        o->pos.y = o->home.y + sinf(o->t * 2) * 0.05f;
+        if (touching(o)) push_player_out(o, o->radius);
+        return;
+    }
+    if (o->state == 1) {       /* countdown */
+        pl.no_ctrl = 1;
+        if (o->timer == 1) hud_message("3", 50);
+        if (o->timer == 60) hud_message("2", 50);
+        if (o->timer == 120) hud_message("1", 50);
+        if (o->timer % 60 == 1 && o->timer < 180) sfx(SFX_MENU_MOVE);
+        if (o->timer == 180) {
+            hud_message("GO!", 60);
+            o->state = 2; o->timer = 0;
+            g_race_state = 1;
+            g_timer_on = 1; g_course_timer = 0;
+            pl.no_ctrl = 0;
+            pl.boost_t = 40;     /* rocket start */
+            pl.fwd = 12.0f;
+            sfx(SFX_MENU_OK);
+            music_play(MUS_RACE);
+        }
+        return;
+    }
+    if (o->state == 2) {
+        Obj *g = sea_gate(o->i[0] % g_gate_n);
+        vec3 tgt, d;
+        float sp, dl, prog_s, prog_p, fy;
+        Surf *s;
+        if (!g) return;
+        /* aim through the gate centre, slightly past it so the line is smooth */
+        tgt = v3mad(g->pos, yaw_dir(g->yaw), 2.0f);
+        d = v3sub(tgt, o->pos);
+        d.y = 0;
+        dl = v3len(d);
+        prog_s = o->i[1] * g_gate_n + o->i[0];
+        prog_p = g_lap * g_gate_n + g_gate_next;
+        sp = 22.5f + clampf((prog_p - prog_s) * 1.0f, -3.0f, 2.5f);
+        if (o->timer < 90) sp *= o->timer / 90.0f + 0.2f;
+        o->f[6] = approachf(o->f[6], sp, 14 * DT);
+        o->yaw = approach_angle(o->yaw, atan2f(d.x, d.z), 2.2f * DT);
+        o->pos.x += sinf(o->yaw) * o->f[6] * DT;
+        o->pos.z += cosf(o->yaw) * o->f[6] * DT;
+        {
+            vec3 w;
+            col_walls(&o->pos, 0.6f, 0.8f, &w, NULL);
+        }
+        /* ride on the water, ramps and floes */
+        fy = col_floor(o->pos.x, o->pos.y + 0.9f, o->pos.z, &s);
+        if (!s || fy < 0) fy = 0;
+        if (o->f[7] == 0 && fy >= o->pos.y - 0.45f) { o->vel.y = (fy - o->pos.y) / DT; o->pos.y = fy; }
+        else {
+            if (o->f[7] == 0) { o->f[7] = 1; o->vel.y = maxf(o->vel.y, 0) * 1.15f; }
+            o->vel.y -= 32.0f * DT;
+            o->pos.y += o->vel.y * DT;
+            if (o->pos.y <= fy) { o->pos.y = fy; o->f[7] = 0; o->vel.y = 0; }
+        }
+        if (o->vel.y > 30) o->vel.y = 30;
+        if (g_frame % 4 == 0 && o->f[7] == 0) fx_spawn(OT_FX_SNOWPUFF, v3mad(o->pos, yaw_dir(o->yaw), -1.4f), 0.6f);
+        /* passed the gate? */
+        if (v3dot(v3sub(o->pos, g->pos), yaw_dir(g->yaw)) > 0 && dl < 20) {
+            if (o->i[0] % g_gate_n == 0 && o->i[0] > 0) {
+                o->i[1]++;
+                if (o->i[1] >= SEA_LAPS) {
+                    o->state = 3; o->timer = 0;
+                    if (g_race_state == 1) {
+                        g_race_state = 3;
+                        g_timer_on = 0;
+                        music_play(lv.music);
+                        dialog_open("SELINUX SEAL: Finish line access: DENIED!\nYour policy is too slow, penguin. Talk to me\nat the start line if you want a rematch.");
+                    }
+                }
+            }
+            o->i[0] = o->i[0] % g_gate_n + 1;
+        }
+        return;
+    }
+    /* finished (3 = seal won, 4 = Tux won): coast to a stop, then go back to the start line */
+    if (o->timer < 60) {
+        o->pos.x += sinf(o->yaw) * o->f[6] * DT * (1 - o->timer / 60.0f);
+        o->pos.z += cosf(o->yaw) * o->f[6] * DT * (1 - o->timer / 60.0f);
+    }
+    if (o->timer == 240 && v3dist(o->pos, pl.pos) > 25) {
+        fx_spawn(OT_FX_SMOKE, o->pos, 1.5f);
+        o->pos = o->home;
+        o->yaw = o->prev_yaw = o->f[3];
+        o->state = 0;
+        fx_spawn(OT_FX_SMOKE, o->pos, 1.5f);
+    } else if (o->timer > 240) o->timer = 200;
+}
+
 /* ---------------------------------------------------------------- effects */
 static void upd_fx(Obj *o)
 {
@@ -1786,12 +2134,22 @@ int objs_try_talk(void)
         vec3 d;
         float dist;
         if (!o->active) continue;
-        if (o->type != OT_SIGN && o->type != OT_NPC && o->type != OT_MOTHER && o->type != OT_RACER) continue;
+        if (o->type != OT_SIGN && o->type != OT_NPC && o->type != OT_MOTHER && o->type != OT_RACER && o->type != OT_SEAL) continue;
         d = v3sub(o->pos, pl.pos);
         d.y = 0;
         dist = v3len(d);
         if (dist > o->radius + 1.4f || fabsf(o->pos.y - pl.pos.y) > 1.5f) continue;
         if (dist > 0.3f && v3dot(v3scale(d, 1.0f / dist), f) < 0.2f) continue;
+        if (o->type == OT_SEAL) {
+            if (o->state != 0) return 0;
+            dialog_open(g_race_time > 0 || has_star(CRS_SEA, 0)
+                ? "SELINUX SEAL: Rematch request... ALLOWED.\nTwo laps, every buoy gate in order. Ready..."
+                : "SELINUX SEAL: Halt! I am the SELinux Seal.\nMy policy: nobody passes me on this sea!\n"
+                  "Race me: two laps through the buoy gates.\nEach gate you pass gives POWER (top speed),\n"
+                  "missing one resets it. Ready...");
+            seal_start(o);
+            return 1;
+        }
         if (o->type == OT_RACER) {
             if (o->state == 0) {
                 dialog_open("QUICK GNU: Hey penguin! Let's race to the\ntop of Penguin Peak! The flag at the summit\n"
@@ -1890,6 +2248,11 @@ void objs_update(void)
         case OT_WATCHDOG: upd_watchdog(o); break;
         case OT_OOM: upd_oom(o); break;
         case OT_MAZEEXIT: upd_mazeexit(o); break;
+        case OT_GATE: upd_gate(o); break;
+        case OT_ICECHUNK: upd_icechunk(o); break;
+        case OT_WHALE: upd_whale(o); break;
+        case OT_BOOSTPAD: upd_boostpad(o); break;
+        case OT_SEAL: upd_seal(o); break;
         case OT_STEAM:   /* hot spring steam: puffs rising from a disc of radius param */
             if (g_frame % 5 == 0) {
                 float a = frand() * TAU_F, r = sqrtf(frand()) * o->param;
@@ -1940,6 +2303,7 @@ void objs_collision(void)
             continue;
         }
         if (o->type == OT_FALLPLAT && o->state == 3) continue;
+        if (o->type == OT_WHALE) { whale_collision(o); continue; }
         if (o->type == OT_TRAMPOLINE) {
             add_box_col(o, v3add(o->pos, v3(0, 0.45f, 0)), 1.25f, 0.45f, 1.25f, 0);
             continue;
@@ -2233,6 +2597,39 @@ static void draw_obj(Obj *o)
         glPopMatrix();
         break;
     case OT_CAGE: draw_model_at(mdl[MDL_CAGE], o->pos, 0, 1); break;
+    case OT_GATE: {
+        vec3 f = yaw_dir(o->yaw), r = v3(f.z, 0, -f.x);
+        int next = o->param == g_gate_next % (g_gate_n > 0 ? g_gate_n : 1);
+        float bob = sinf(o->t * 2.0f + o->param) * 0.12f;
+        draw_model_at(mdl[next ? MDL_BUOY_NEXT : MDL_BUOY], v3add(v3mad(o->pos, r, o->f[0]), v3(0, bob, 0)), o->t, 1.0f);
+        draw_model_at(mdl[next ? MDL_BUOY_NEXT : MDL_BUOY], v3add(v3mad(o->pos, r, -o->f[0]), v3(0, -bob, 0)), -o->t, 1.0f);
+        break;
+    }
+    case OT_ICECHUNK: if (o->state != 90) draw_model_at(mdl[MDL_ICECHUNK], o->pos, o->yaw, o->scale); break;
+    case OT_WHALE: {
+        float sw = sinf(o->t * 1.6f);
+        glPushMatrix();
+        glTranslatef(o->pos.x, o->pos.y, o->pos.z);
+        glRotatef(DEG(o->yaw), 0, 1, 0);
+        glRotatef(sw * 3, 1, 0, 0);
+        glCallList(mdl[MDL_WHALE]);
+        glPopMatrix();
+        break;
+    }
+    case OT_BOOSTPAD:
+        glDisable(GL_LIGHTING);
+        draw_model_at(mdl[MDL_BOOSTPAD], v3add(o->pos, v3(0, 0.03f, 0)), o->yaw, 1);
+        glEnable(GL_LIGHTING);
+        break;
+    case OT_SEAL: {
+        glPushMatrix();
+        glTranslatef(o->pos.x, o->pos.y + (o->state == 2 ? fabsf(sinf(o->t * 9)) * 0.06f : 0), o->pos.z);
+        glRotatef(DEG(o->yaw), 0, 1, 0);
+        if (o->state == 2) glRotatef(clampf(o->vel.y * -0.8f, -15, 15), 1, 0, 0);
+        glCallList(mdl[MDL_SEAL]);
+        glPopMatrix();
+        break;
+    }
     case OT_WATCHDOG: {
         float lunge = o->state == 1 && o->timer < 14 ? 0.85f : 1.0f;   /* crouch before the lunge */
         glPushMatrix();
@@ -2375,6 +2772,30 @@ void objs_draw_alpha(void)
         }
         case OT_MAZEEXIT:
             draw_glow(v3add(o->pos, v3(0, 1.6f, 0)), 2.0f, 0.4f, 1.0f, 0.6f, 0.6f);
+            break;
+        case OT_GATE:
+            if (o->param == g_gate_next % (g_gate_n > 0 ? g_gate_n : 1)) {
+                vec3 f = yaw_dir(o->yaw), r = v3(f.z, 0, -f.x);
+                float a = 0.6f + 0.3f * sinf(g_frame * 0.2f);
+                draw_glow(v3add(v3mad(o->pos, r, o->f[0]), v3(0, 2.9f, 0)), 1.6f, 0.4f, 1, 0.4f, a);
+                draw_glow(v3add(v3mad(o->pos, r, -o->f[0]), v3(0, 2.9f, 0)), 1.6f, 0.4f, 1, 0.4f, a);
+            }
+            if (o->timer > 0) draw_glow(v3add(o->pos, v3(0, 1.5f, 0)), 3 + (30 - o->timer) * 0.3f, 1, 0.9f, 0.4f, o->timer / 30.0f);
+            break;
+        case OT_BOOSTPAD:
+            draw_glow(v3add(o->pos, v3(0, 0.4f, 0)), 2.6f + sinf(g_frame * 0.25f) * 0.3f, 0.3f, 0.9f, 1.0f, 0.45f);
+            break;
+        case OT_WHALE:
+            if (o->f[5] > 0 && o->state == 0) {
+                vec3 f = yaw_dir(o->yaw), h = v3add(v3mad(o->pos, f, 3.2f), v3(0, 1.8f, 0));
+                int k, n = o->i[0] >= 200 ? 14 : 3;
+                float pw = o->i[0] >= 200 ? 1.0f : (o->i[0] - 160) / 40.0f;
+                for (k = 0; k < n; k++) {
+                    float y = k * 0.75f + fmodf(g_frame * 0.15f, 0.75f);
+                    draw_glow(v3add(h, v3(sinf(k * 2.1f + g_frame * 0.1f) * 0.25f, y, cosf(k * 1.7f) * 0.25f)),
+                              0.9f + 0.05f * k, 0.75f, 0.9f, 1.0f, 0.55f * pw * (1 - k / (float)(n + 2)));
+                }
+            }
             break;
         case OT_WARP:
             if (o->i[3]) draw_glow(v3add(o->pos, v3(0, 1.6f, 0)), 2.2f + sinf(g_frame * 0.1f) * 0.3f, 0.7f, 0.3f, 1.0f, 0.8f);

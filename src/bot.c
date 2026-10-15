@@ -16,6 +16,10 @@
  *   Q N              fight the watchdog: dodge its lunge, then kick it
  *   G TYPE           walk to the nearest object of TYPE and pick it up with B
  *   M X Z N          bounce on the trampoline with good timing, then steer to (X,Z)
+ *   B X Z N          AURORA SEA: ride a whale until the spout fires, then steer to (X,Z)
+ *   Y I              AURORA SEA debug: stand on the blowhole of whale I
+ *   D X Z            AURORA SEA: drive the dash boots to (X,Z)
+ *   R N              AURORA SEA: drive the dash boots through the buoy gates until the rally ends
  *   P                print state
  */
 #include "game.h"
@@ -351,6 +355,18 @@ void bot_update(void)
         done();
         break;
     }
+    case 'C': { /* count fish in the level */
+        int i, c = 0, r = 0, b = 0;
+        for (i = 0; i < nobj; i++) {
+            if (!objs[i].active) continue;
+            if (objs[i].type == OT_COIN) c++;
+            if (objs[i].type == OT_REDCOIN) r++;
+            if (objs[i].type == OT_ICECHUNK) b++;
+        }
+        printf("BOT %d: fish=%d red=%d chunks=%d total=%d\n", stepno, c, r, b, c + r * 2 + b);
+        done();
+        break;
+    }
     case 'V':   /* print whether the OOM Killer has spotted Tux */
         printf("BOT %d: spotted=%d\n", stepno, g_maze_spotted);
         done();
@@ -370,6 +386,60 @@ void bot_update(void)
         }
         break;
     }
+    case 'B': {   /* ride a whale (brake) until its spout launches Tux, then steer to (X,Z):  B X Z N */
+        static int launched;
+        if (t == 1) launched = 0;
+        if (!launched && pl.act == ACT_TRAMP) launched = t;
+        if (!launched) { in.sx = 0; in.sy = -1; in.mag = 1; }
+        else stick_to(a[0], a[1], 1);
+        if ((launched && t - launched > 20 && !player_in_air()) || t > a[2]) {
+            printf("BOT %d: whale ride launched=%d pos=(%.2f %.2f %.2f) act=%d f%d\n", stepno, launched, pl.pos.x, pl.pos.y, pl.pos.z, pl.act, g_frame);
+            done();
+        }
+        break;
+    }
+    case 'Y': {   /* debug: stand on the blowhole of whale number I */
+        int i, n = 0;
+        for (i = 0; i < nobj; i++)
+            if (objs[i].active && objs[i].type == OT_WHALE && n++ == (int)a[0]) {
+                Obj *w = &objs[i];
+                vec3 hp = v3add(v3mad(w->pos, yaw_dir(w->yaw), 3.2f), v3(0, 2.2f, 0));
+                player_init(hp, w->yaw);
+            }
+        done();
+        break;
+    }
+    case 'D': {   /* dash boots: drive to (X,Z) */
+        float d = angle_diff(atan2f(a[0] - pl.pos.x, a[1] - pl.pos.z), pl.yaw), dist = v3distxz(pl.pos, v3(a[0], 0, a[1]));
+        in.sx = clampf(-d * 2.5f, -1, 1); in.sy = fabsf(d) > 1.5f && dist < 10 ? -0.2f : 1; in.mag = 1;
+        if (dist < 1.5f || t > 1500) { printf("BOT %d: drove to (%.1f %.1f) pos=(%.2f %.2f %.2f) f%d\n", stepno, a[0], a[1], pl.pos.x, pl.pos.y, pl.pos.z, g_frame); done(); }
+        break;
+    }
+    case 'R': {   /* dash-boots race autopilot: steer at the next gate like a jet ski */
+        Obj *g = sea_gate(g_gate_next % (g_gate_n > 0 ? g_gate_n : 1));
+        static int last_state;
+        if (t == 1) last_state = g_race_state;
+        if (g && pl.act == ACT_SKATE) {
+            vec3 tg = v3mad(g->pos, yaw_dir(g->yaw), 3.0f);
+            float d = angle_diff(atan2f(tg.x - pl.pos.x, tg.z - pl.pos.z), pl.yaw);
+            in.sx = clampf(-d * 2.5f, -1, 1);
+            in.sy = 1;
+            in.mag = 1;
+            if (fabsf(d) > 1.1f && pl.fwd > 8) h |= BT_Z;
+        } else if (pl.act == ACT_SWIM && t % 20 == 0) h |= BT_A;
+        if (g_trace && t % 60 == 0)
+        {
+            Obj *sl = find(OT_SEAL);
+            printf("R t%d pos=(%.1f %.1f %.1f) fwd=%.1f gate=%d lap=%d pow=%d race=%d act=%d seal=(%.1f %.1f) g%d l%d\n", t, pl.pos.x, pl.pos.y, pl.pos.z, pl.fwd, g_gate_next, g_lap, g_sea_power, g_race_state, pl.act,
+                   sl ? sl->pos.x : 0, sl ? sl->pos.z : 0, sl ? sl->i[0] : 0, sl ? sl->i[1] : 0);
+        }
+        if ((g_race_state >= 2 && last_state == 1) || t > a[0]) {
+            printf("BOT %d: rally end race=%d time=%d missed=%d lap=%d f%d\n", stepno, g_race_state, g_race_time, g_gate_missed, g_lap, g_frame);
+            done();
+        }
+        last_state = g_race_state;
+        break;
+    }
     case 'd':
         if (dialog_active()) { if (t % 6 == 0) h |= BT_A; }
         else if (t > 3) done();
@@ -385,14 +455,14 @@ void bot_update(void)
         done();
         break;
     case 'P':
-        printf("BOT %d: f%d act=%d pos=(%.2f %.2f %.2f) hp=%d coins=%d stars=%d lv=%d rocket=%d fwd=%.1f\n", stepno, g_frame, pl.act,
-               pl.pos.x, pl.pos.y, pl.pos.z, pl.health, pl.coins, total_stars(), cur_level, pl.rocket_t, pl.fwd);
+        printf("BOT %d: f%d act=%d pos=(%.2f %.2f %.2f) hp=%d coins=%d stars=%d lv=%d rocket=%d fwd=%.1f red=%d\n", stepno, g_frame, pl.act,
+               pl.pos.x, pl.pos.y, pl.pos.z, pl.health, pl.coins, total_stars(), cur_level, pl.rocket_t, pl.fwd, pl.red_coins);
         {
             int i;
             for (i = 0; i < nobj; i++) {
                 Obj *o = &objs[i];
                 if (!o->active) continue;
-                if (o->type == OT_KING || o->type == OT_SEGFAULT || o->type == OT_BRUTE || o->type == OT_RACER || o->type == OT_STAR || o->type == OT_BABY || o->type == OT_MOTHER || o->type == OT_GHOSTKING || (o->type == OT_GHOST && v3dist(o->pos, pl.pos) < 12) || o->type == OT_WATCHDOG || o->type == OT_CAGE || o->type == OT_OOM)
+                if (o->type == OT_KING || o->type == OT_SEGFAULT || o->type == OT_BRUTE || o->type == OT_RACER || o->type == OT_STAR || o->type == OT_BABY || o->type == OT_MOTHER || o->type == OT_GHOSTKING || (o->type == OT_GHOST && v3dist(o->pos, pl.pos) < 12) || o->type == OT_WATCHDOG || o->type == OT_CAGE || o->type == OT_OOM || o->type == OT_SEAL || o->type == OT_WHALE)
                     printf("   obj type %d state %d hp %d pos=(%.2f %.2f %.2f) param %d\n", o->type, o->state, o->hp, o->pos.x, o->pos.y, o->pos.z, o->param);
             }
         }

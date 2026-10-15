@@ -44,7 +44,7 @@ void camera_update(void)
 {
     vec3 target, desired, d;
     float follow_yaw, hd, h;
-    int in_air = player_in_air();
+    int in_air = player_in_air() || (pl.act == ACT_SKATE && pl.act_s == 1);
 
     if (cam.mode == CAM_FIXED) {
         cam.pos = cam.fixed_pos;
@@ -65,6 +65,7 @@ void camera_update(void)
         if (in.pressed & BT_R) { cam.yaw_target_off = angle_diff(pl.yaw, cam.yaw); manual_t = 40; }
         cam.dist_target = zoom_dist[cam.zoom];
         if (cur_level == LV_LOBBY) cam.dist_target *= 0.9f;
+        if (pl.act == ACT_SKATE) cam.dist_target += minf(pl.fwd * 0.12f, 3.5f);
     } else {
         cam.dist_target = 6.5f;
     }
@@ -94,6 +95,9 @@ void camera_update(void)
             follow_yaw = atan2f(d.x, d.z);
             if (manual_t == 0) cam.yaw = approach_angle(cam.yaw, follow_yaw, 3.0f * DT);
         }
+        /* dash boots: stay right behind Tux, like a racing game */
+        if (manual_t == 0 && pl.act == ACT_SKATE)
+            cam.yaw = approach_angle(cam.yaw, pl.yaw, (1.2f + pl.fwd * 0.12f) * DT);
         /* gentle auto align behind a running player */
         if (manual_t == 0 && pl.fwd > 4.0f && !in_air && pl.act == ACT_WALK) {
             float diff = fabsf(angle_diff(pl.yaw, cam.yaw));

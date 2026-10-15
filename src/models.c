@@ -1,11 +1,12 @@
 /* models.c - procedurally built character / object models */
 #include "game.h"
+#include <stdlib.h>
 #include <string.h>
 
 GLuint mdl[MDL_COUNT];
 
 /* Tux parts per variant */
-static GLuint tux_torso[TUXV_COUNT], tux_head[TUXV_COUNT], tux_flipper[TUXV_COUNT], tux_foot, tux_cap, tux_flame;
+static GLuint tux_torso[TUXV_COUNT], tux_head[TUXV_COUNT], tux_flipper[TUXV_COUNT], tux_foot, tux_cap, tux_flame, tux_boot, tux_bootjet;
 
 static Mesh M;
 static void begin(void) { mesh_init(&M); mb_begin(&M); }
@@ -67,6 +68,26 @@ static void build_tux(void)
     mb_color(1.0f, 0.65f, 0.08f);
     mb_ellipsoid(0, -0.11f, 0.14f, 0.17f, 0.07f, 0.27f, 12);
     tux_foot = end();
+    /* dash boots (foot space): chunky ice-blue boots with an orange stripe and a heel jet */
+    begin();
+    mb_color(0.55f, 0.85f, 1.0f);
+    mb_ellipsoid(0, -0.09f, 0.12f, 0.21f, 0.12f, 0.33f, 12);
+    mb_cuboid(-0.17f, -0.05f, -0.16f, 0.17f, 0.2f, 0.12f);
+    mb_color(1.0f, 0.5f, 0.1f);
+    mb_cuboid(-0.18f, 0.05f, -0.17f, 0.18f, 0.1f, 0.13f);
+    mb_color(0.2f, 0.25f, 0.35f);
+    mb_cuboid(-0.2f, -0.2f, -0.2f, 0.2f, -0.14f, 0.45f);
+    mb_color(0.85f, 0.9f, 0.95f);
+    mb_push(); mb_translate(0, 0.0f, -0.22f); mb_rotate(-90, 1, 0, 0); mb_scale(0.08f, 0.12f, 0.08f); mb_cylinder(8, 1); mb_pop();
+    mb_tri(v3(0, 0.2f, -0.12f), v3(0, 0.36f, -0.3f), v3(0, 0.05f, -0.3f));
+    mb_tri(v3(0, 0.2f, -0.12f), v3(0, 0.05f, -0.3f), v3(0, 0.36f, -0.3f));
+    tux_boot = end();
+    begin();
+    mb_color(0.4f, 0.95f, 1.0f);
+    mb_push(); mb_translate(0, 0.0f, -0.34f); mb_rotate(-90, 1, 0, 0); mb_scale(0.07f, 0.5f, 0.07f); mb_cone(8); mb_pop();
+    mb_color(0.9f, 1.0f, 1.0f);
+    mb_push(); mb_translate(0, 0.0f, -0.34f); mb_rotate(-90, 1, 0, 0); mb_scale(0.035f, 0.3f, 0.035f); mb_cone(6); mb_pop();
+    tux_bootjet = end();
     /* rocket pack (torso space, on Tux's back = -z): twin red rockets with fins and nozzles */
     begin();
     {
@@ -99,6 +120,19 @@ static void build_tux(void)
         }
     }
     tux_flame = end();
+}
+
+static void draw_boot(int mode)
+{
+    glCallList(tux_boot);
+    if (mode == 2) {
+        glPushMatrix();
+        glScalef(1, 1, 0.7f + 0.5f * (float)((g_frame * 5) % 4) / 3.0f);
+        glDisable(GL_LIGHTING);
+        glCallList(tux_bootjet);
+        glEnable(GL_LIGHTING);
+        glPopMatrix();
+    }
 }
 
 void draw_tux_model(vec3 pos, float yaw, const TuxPose *tp, float s, int v)
@@ -159,11 +193,13 @@ void draw_tux_model(vec3 pos, float yaw, const TuxPose *tp, float s, int v)
     glTranslatef(0.2f, 0.17f + 0.1f * fabsf(tp->footL), 0.02f + tp->footL * 0.3f);
     glRotatef(-DEG(tp->footL) * 0.5f, 1, 0, 0);
     glCallList(tux_foot);
+    if (tp->boots) draw_boot(tp->boots);
     glPopMatrix();
     glPushMatrix();
     glTranslatef(-0.2f, 0.17f + 0.1f * fabsf(tp->footR), 0.02f + tp->footR * 0.3f);
     glRotatef(-DEG(tp->footR) * 0.5f, 1, 0, 0);
     glCallList(tux_foot);
+    if (tp->boots) draw_boot(tp->boots);
     glPopMatrix();
     glPopMatrix();
 }
@@ -983,4 +1019,93 @@ void models_init(void)
         mdl[i ? MDL_CYSTARDOOR : MDL_CYDOOR] = end();
     }
     mdl[MDL_KEY] = mdl[MDL_STAR];
+
+    /* ---------------- AURORA SEA ---------------- */
+    /* the great whale (faces +z, waterline at y = 0, about 15 long) */
+    begin();
+    mb_color(0.22f, 0.28f, 0.42f);
+    mb_ellipsoid(0, 0.2f, 0.5f, 3.0f, 1.7f, 6.8f, 20);
+    mb_ellipsoid(0, 0.3f, 4.6f, 2.4f, 1.5f, 2.6f, 16);          /* big blunt head */
+    mb_ellipsoid(0, 0.1f, -5.6f, 1.2f, 0.8f, 2.6f, 12);          /* tail stock */
+    mb_color(0.85f, 0.88f, 0.92f);
+    mb_ellipsoid(0, -0.55f, 1.5f, 2.5f, 1.0f, 5.5f, 16);         /* pale grooved belly */
+    mb_color(0.2f, 0.26f, 0.4f);
+    mb_push(); mb_translate(0, 0.25f, -8.3f); mb_scale(3.2f, 0.18f, 1.2f); mb_sphere(14, 6); mb_pop();   /* flukes */
+    mb_push(); mb_translate(2.7f, -0.4f, 2.0f); mb_rotate(-30, 0, 0, 1); mb_scale(1.6f, 0.15f, 0.7f); mb_sphere(10, 6); mb_pop();
+    mb_push(); mb_translate(-2.7f, -0.4f, 2.0f); mb_rotate(30, 0, 0, 1); mb_scale(1.6f, 0.15f, 0.7f); mb_sphere(10, 6); mb_pop();
+    mb_color(0.18f, 0.22f, 0.35f);
+    mb_push(); mb_translate(0, 1.6f, -2.5f); mb_scale(0.25f, 0.7f, 0.9f); mb_cone(8); mb_pop();   /* small dorsal fin */
+    mb_color(0.05f, 0.05f, 0.08f);
+    mb_ellipsoid(1.95f, 0.4f, 5.6f, 0.2f, 0.22f, 0.22f, 8);
+    mb_ellipsoid(-1.95f, 0.4f, 5.6f, 0.2f, 0.22f, 0.22f, 8);
+    mb_ellipsoid(0, 1.82f, 3.2f, 0.35f, 0.08f, 0.2f, 8);           /* blowhole */
+    mb_color(0.95f, 0.95f, 0.98f);
+    for (i = 0; i < 7; i++) mb_ellipsoid(-1.6f + i * 0.55f, 0.7f + (i % 2) * 0.3f, 6.4f - abs(i - 3) * 0.3f, 0.12f, 0.1f, 0.12f, 6);   /* barnacles */
+    mdl[MDL_WHALE] = end();
+    /* gate buoys: striped floats with a light on top (the next gate's buoys glow) */
+    for (i = 0; i < 2; i++) {
+        int k;
+        begin();
+        mb_color(0.95f, 0.95f, 0.95f);
+        mb_push(); mb_translate(0, -0.6f, 0); mb_scale(0.75f, 1.0f, 0.75f); mb_cylinder(12, 1); mb_pop();
+        for (k = 0; k < 3; k++) {
+            if (i) mb_color(1.0f, 0.85f, 0.1f); else mb_color(0.9f, 0.2f, 0.15f);
+            mb_push(); mb_translate(0, 0.4f + k * 0.8f, 0); mb_scale(0.45f, 0.4f, 0.45f); mb_cylinder(10, 1); mb_pop();
+            mb_color(0.95f, 0.95f, 0.95f);
+            mb_push(); mb_translate(0, 0.8f + k * 0.8f, 0); mb_scale(0.45f, 0.4f, 0.45f); mb_cylinder(10, 1); mb_pop();
+        }
+        if (i) mb_color(0.4f, 1.0f, 0.4f); else mb_color(1.0f, 0.4f, 0.3f);
+        mb_ellipsoid(0, 2.9f, 0, 0.42f, 0.42f, 0.42f, 10);
+        mdl[i ? MDL_BUOY_NEXT : MDL_BUOY] = end();
+    }
+    /* a chunk of sea ice (~1.4 radius, floats with ~0.6 above the water) */
+    begin();
+    mb_tex(TEX_ICE); mb_uvscale(0.6f);
+    mb_color(0.75f, 0.9f, 1.0f);
+    mb_push(); mb_translate(0, -0.3f, 0); mb_rotate(20, 0, 1, 0); mb_rotate(8, 1, 0, 0); mb_scale(1.2f, 0.9f, 1.0f); mb_box(); mb_pop();
+    mb_color(0.85f, 0.95f, 1.0f);
+    mb_push(); mb_translate(0.4f, 0.4f, -0.2f); mb_rotate(-35, 0, 1, 0); mb_rotate(-12, 0, 0, 1); mb_scale(0.7f, 0.6f, 0.65f); mb_box(); mb_pop();
+    mb_push(); mb_translate(-0.5f, 0.2f, 0.4f); mb_rotate(50, 0, 1, 0); mb_scale(0.55f, 0.5f, 0.5f); mb_box(); mb_pop();
+    mb_tex(TEX_SNOW);
+    mb_color(1, 1, 1);
+    mb_push(); mb_translate(0.4f, 1.0f, -0.2f); mb_rotate(-35, 0, 1, 0); mb_scale(0.6f, 0.05f, 0.55f); mb_box(); mb_pop();
+    mdl[MDL_ICECHUNK] = end();
+    /* boost pad: glowing chevrons floating on the water (faces +z) */
+    begin();
+    mb_color(0.1f, 0.3f, 0.45f);
+    mb_cuboid(-1.8f, -0.05f, -2.2f, 1.8f, 0.05f, 2.2f);
+    for (i = 0; i < 3; i++) {
+        float z = -1.3f + i * 1.2f;
+        mb_color(0.3f + i * 0.2f, 0.95f, 1.0f);
+        mb_tri(v3(-1.4f, 0.08f, z - 0.4f), v3(0, 0.08f, z + 0.7f), v3(0, 0.08f, z + 0.2f));
+        mb_tri(v3(-1.4f, 0.08f, z - 0.4f), v3(0, 0.08f, z + 0.2f), v3(-1.4f, 0.08f, z - 0.9f));
+        mb_tri(v3(1.4f, 0.08f, z - 0.4f), v3(0, 0.08f, z + 0.2f), v3(0, 0.08f, z + 0.7f));
+        mb_tri(v3(1.4f, 0.08f, z - 0.4f), v3(1.4f, 0.08f, z - 0.9f), v3(0, 0.08f, z + 0.2f));
+    }
+    mdl[MDL_BOOSTPAD] = end();
+    /* the SELinux Seal, rival racer: a grey seal in goggles on a jet board (faces +z) */
+    begin();
+    mb_color(0.95f, 0.45f, 0.1f);
+    mb_cuboid(-0.55f, 0, -1.2f, 0.55f, 0.18f, 1.2f);               /* jet board */
+    mb_color(0.2f, 0.2f, 0.25f);
+    mb_cuboid(-0.3f, 0.02f, -1.35f, 0.3f, 0.16f, -1.2f);
+    mb_color(0.55f, 0.58f, 0.62f);
+    mb_ellipsoid(0, 0.65f, -0.1f, 0.48f, 0.5f, 0.9f, 14);          /* body */
+    mb_ellipsoid(0, 1.15f, 0.55f, 0.36f, 0.34f, 0.38f, 12);       /* head */
+    mb_color(0.75f, 0.77f, 0.8f);
+    mb_ellipsoid(0, 1.05f, 0.85f, 0.18f, 0.12f, 0.12f, 8);        /* muzzle */
+    mb_color(0.05f, 0.05f, 0.05f);
+    mb_ellipsoid(0, 1.1f, 0.97f, 0.06f, 0.05f, 0.04f, 6);
+    mb_color(0.15f, 0.15f, 0.2f);
+    mb_cuboid(-0.34f, 1.22f, 0.7f, 0.34f, 1.32f, 0.82f);          /* goggle strap */
+    mb_color(0.3f, 0.9f, 1.0f);
+    mb_ellipsoid(0.15f, 1.27f, 0.83f, 0.1f, 0.08f, 0.04f, 8);
+    mb_ellipsoid(-0.15f, 1.27f, 0.83f, 0.1f, 0.08f, 0.04f, 8);
+    mb_color(0.5f, 0.52f, 0.56f);
+    mb_ellipsoid(0.45f, 0.5f, 0.3f, 0.12f, 0.08f, 0.35f, 8);       /* flippers */
+    mb_ellipsoid(-0.45f, 0.5f, 0.3f, 0.12f, 0.08f, 0.35f, 8);
+    mb_ellipsoid(0, 0.35f, -1.0f, 0.4f, 0.08f, 0.25f, 8);
+    mb_color(0.9f, 0.15f, 0.15f);                                   /* "DENIED" racing bib */
+    mb_cuboid(-0.3f, 0.6f, 0.68f, 0.3f, 0.85f, 0.72f);
+    mdl[MDL_SEAL] = end();
 }

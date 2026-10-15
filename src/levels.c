@@ -371,6 +371,8 @@ static void build_lobby(void)
     lobby_window(v3(30.0f, 3.3f, 3.5f), -PI_F / 2, 5, 4.0f, TEX_PORTAL9, 0.75f, 0.8f, 0.85f, CRS_MAZE);
     /* drifts window on the south wall */
     lobby_window(v3(18, 3.3f, 10.0f), PI_F, 6, 4.5f, TEX_PORTAL6, 0.95f, 0.55f, 0.2f, CRS_DRIFTS);
+    /* aurora sea window on the south wall, west of the entrance */
+    lobby_window(v3(-18, 3.3f, 10.0f), PI_F, 6, 4.5f, TEX_PORTAL10, 0.25f, 0.85f, 0.6f, CRS_SEA);
     /* decoration: holographic panels, monitor wall, statue pedestal */
     {
         int k;
@@ -403,6 +405,7 @@ static void build_lobby(void)
     lv.spawn[7] = v3(18, 0, 6.5f); lv.spawn_yaw[7] = PI_F;
     lv.spawn[8] = v3(-27, 0, 3.5f); lv.spawn_yaw[8] = PI_F / 2;
     lv.spawn[9] = v3(27, 0, 3.5f); lv.spawn_yaw[9] = -PI_F / 2;
+    lv.spawn[10] = v3(-18, 0, 6.5f); lv.spawn_yaw[10] = PI_F;
 
     /* doors */
     o = obj_spawn(OT_DOOR, v3(0, 0, 9.8f), PI_F, 0);
@@ -430,6 +433,8 @@ static void build_lobby(void)
     {
         Obj *w = warp_box(v3(18, 0.0f, 9.4f), 3.0f, 0.6f, 5, LV_DRIFTS, 0, 1, 7);
         if (w) w->i[1] = 8;
+        w = warp_box(v3(-18, 0.0f, 9.4f), 3.0f, 0.6f, 5, LV_SEA, 0, 1, 10);
+        if (w) w->i[1] = 10;
     }
 
     {
@@ -442,6 +447,7 @@ static void build_lobby(void)
                         "DAEMON DRIFTS window (by the entrance): 8\n"
                         "ICICLE SPIRE window (west, by the door): 5\n"
                         "WHITEOUT LABYRINTH window (east, by the door): 7\n"
+                        "AURORA SEA RALLY window (by the entrance, west): 10\n"
                         "SEGFAULT's door (under the balcony): 16 stars\n"
                         "Jump into an app window to enter its world.");
     {
@@ -1584,6 +1590,218 @@ static void build_maze(void)
          "not through walls. Break its line of sight and\nhide. The exit is in the far corner.");
 }
 
+/* ================================================================
+ * AURORA SEA RALLY - dash boots, buoy gates, ramps and whales
+ * ================================================================ */
+static float sea_hash(int x, int y, int seed)
+{
+    unsigned h = (unsigned)x * 374761393u + (unsigned)y * 668265263u + (unsigned)seed * 2246822519u;
+    h = (h ^ (h >> 13)) * 1274126177u;
+    return (float)((h ^ (h >> 16)) & 0xffff) / 65535.0f;
+}
+
+static const float SEA_GATES[][2] = {
+    { 0, 105 }, { -55, 112 }, { -105, 80 }, { -122, 25 }, { -110, -35 }, { -75, -90 },
+    { -20, -118 }, { 40, -112 }, { 95, -85 }, { 122, -30 }, { 118, 35 }, { 75, 95 }
+};
+#define SEA_NG ((int)(sizeof SEA_GATES / sizeof SEA_GATES[0]))
+
+static vec3 sea_pt(int k) { k = (k % SEA_NG + SEA_NG) % SEA_NG; return v3(SEA_GATES[k][0], 0, SEA_GATES[k][1]); }
+static float sea_dir(int k) { vec3 d = v3sub(sea_pt(k + 1), sea_pt(k - 1)); return atan2f(d.x, d.z); }
+static float seg_yaw(int k) { vec3 d = v3sub(sea_pt(k + 1), sea_pt(k)); return atan2f(d.x, d.z); }
+/* point on the segment from gate k to k+1 at fraction t, shifted sideways by lat */
+static vec3 seg_at(int k, float t, float lat)
+{
+    vec3 a = sea_pt(k), b = sea_pt(k + 1), p = v3lerp(a, b, t), f = yaw_dir(seg_yaw(k));
+    return v3mad(p, v3(f.z, 0, -f.x), lat);
+}
+
+/* an ice ramp: low end under the water, launching toward yaw; returns the lip position */
+static vec3 sea_ramp(vec3 c, float yaw, float len, float rise, float width)
+{
+    float pitch = atanf(rise / len), hl = 0.5f * sqrtf(len * len + rise * rise);
+    vec3 f = yaw_dir(yaw);
+    /* top surface: from y = -0.4 (start) to rise - 0.4 (lip) */
+    float cy = -0.4f + rise * 0.5f - 0.5f * cosf(pitch);
+    lb_obox(v3(c.x, cy, c.z), v3(width, 0.5f, hl), yaw, pitch, TEX_ICE, TEX_ICE, 0.7f, 0.95f, 1.0f, 0);
+    /* glowing guide stripes */
+    {
+        int i;
+        for (i = 0; i < 4; i++) {
+            float t = -0.8f + i * 0.5f;
+            vec3 p = v3add(v3mad(c, f, t * hl), v3(0, cy + 0.5f / cosf(pitch) + t * hl * sinf(pitch) + 0.03f, 0));
+            lb_obox(p, v3(width * 0.15f, 0.04f, 0.6f), yaw, pitch, TEX_NONE, TEX_NONE, 1.0f, 0.55f, 0.15f, 0);
+        }
+    }
+    return v3add(v3mad(c, f, len * 0.5f), v3(0, rise - 0.4f, 0));
+}
+
+/* a point on the flight path off a ramp lip (slope rise/len) at a typical speed, d units past the lip */
+static vec3 ramp_arc(vec3 lip, float yaw, float rise, float len, float d)
+{
+    float sp = 26.0f, vy = sp * rise / len * 1.15f, t = d / sp;
+    return v3add(v3mad(lip, yaw_dir(yaw), d), v3(0, vy * t - 0.5f * 32.3f * t * t + 0.2f, 0));
+}
+
+static void sea_chunk(vec3 p, int mode, float amp, float speed, float phase)
+{
+    Obj *o = obj_spawn(OT_ICECHUNK, p, phase, mode);
+    if (!o) return;
+    o->f[0] = phase; o->f[1] = amp; o->f[2] = speed;
+}
+
+static Obj *sea_whale(float cx, float cz, float r, float w, float phase)
+{
+    Obj *o = obj_spawn(OT_WHALE, v3(cx, 0, cz), 0, 0);
+    if (!o) return NULL;
+    o->f[0] = cx; o->f[1] = cz; o->f[2] = r; o->f[3] = w; o->f[4] = phase;
+    o->home = v3(cx, 0, cz);
+    return o;
+}
+
+static void build_sea(void)
+{
+    Obj *o;
+    int i, k;
+    vec3 lip;
+    lv.name = "AURORA SEA RALLY";
+    lv.music = MUS_SEA;
+    lv.course = CRS_SEA;
+    set_sky(0.01f, 0.03f, 0.1f, 0.12f, 0.3f, 0.4f, 70, 280);
+    lv.ambient = 0.6f; lv.diffuse = 0.55f;
+    lv.death_y = -40;
+    lv.stars_sky = 1;
+    lv.aurora = 1;
+    lv.snow = 1;
+    g_coin_star_idx = 4;
+    lb_begin();
+    /* the sea and its floor */
+    lb_box(-170, -15, -170, 170, -14, 170, TEX_ROCK, TEX_ROCK, 0.25f, 0.35f, 0.5f, 0);
+    lb_water(-168, -168, 168, 168, 0, -14);
+    /* frozen cliffs all around */
+    lb_box(-172, -14, -172, 172, 12, -166, TEX_ICE, TEX_ICE, 0.7f, 0.85f, 1, 0);
+    lb_box(-172, -14, 166, 172, 12, 172, TEX_ICE, TEX_ICE, 0.7f, 0.85f, 1, 0);
+    lb_box(-172, -14, -166, -166, 12, 166, TEX_ICE, TEX_ICE, 0.7f, 0.85f, 1, 0);
+    lb_box(166, -14, -166, 172, 12, 166, TEX_ICE, TEX_ICE, 0.7f, 0.85f, 1, 0);
+    for (i = 0; i < 28; i++) {
+        float a = TAU_F * i / 28, r = 178 + 8 * sinf(i * 2.3f);
+        lb_cone(sinf(a) * r, -2, cosf(a) * r, 14 + 6 * sea_hash(i, 1, 4), 26 + 22 * sea_hash(i, 2, 4), 7, TEX_ICE, 0.75f, 0.9f, 1, 0);
+    }
+    /* glacier island in the middle (the course goes around it) */
+    lb_cone(0, -3, 0, 62, 28, 28, TEX_SNOW, 1, 1, 1, 1);
+    lb_cone(-14, 10, 10, 9, 16, 9, TEX_ICE, 0.75f, 0.9f, 1, 1);
+    lb_cone(12, 8, -8, 7, 13, 8, TEX_ICE, 0.75f, 0.9f, 1, 1);
+    /* the whale's spout peak */
+    lb_cyl(19, -14, -80, 4, 28, 16, TEX_SNOW, TEX_ICE, 0.85f, 0.95f, 1, 0);
+    /* start / finish arch at gate 0 */
+    {
+        vec3 g = sea_pt(0), f = yaw_dir(sea_dir(0)), r = v3(f.z, 0, -f.x);
+        vec3 pa = v3mad(g, r, 9.5f), pb = v3mad(g, r, -9.5f);
+        lb_cyl(pa.x, -3, pa.z, 1.0f, 10, 10, TEX_ICE, TEX_ICE, 0.8f, 0.9f, 1, 0);
+        lb_cyl(pb.x, -3, pb.z, 1.0f, 10, 10, TEX_ICE, TEX_ICE, 0.8f, 0.9f, 1, 0);
+        for (k = 0; k < 10; k++) {
+            vec3 c = v3add(v3lerp(pa, pb, (k + 0.5f) / 10), v3(0, 6.3f, 0));
+            float cc = (k & 1) ? 0.1f : 0.95f;
+            lb_obox(c, v3(0.95f, 0.6f, 0.15f), sea_dir(0) + PI_F / 2, 0, TEX_NONE, TEX_NONE, cc, cc, cc, 0);
+            lb_obox(v3add(c, v3(0, 1.2f, 0)), v3(0.95f, 0.6f, 0.15f), sea_dir(0) + PI_F / 2, 0, TEX_NONE, TEX_NONE, 1 - cc, 1 - cc, 1 - cc, 0);
+        }
+    }
+    /* start dock */
+    lb_box(10, -3, 99, 22, 0.3f, 111, TEX_SNOW, TEX_ICE, 1, 1, 1, SF_SLIPPERY);
+    /* ramps */
+    lip = sea_ramp(seg_at(2, 0.5f, 0), seg_yaw(2), 12, 4.5f, 3.5f);
+    obj_spawn(OT_REDCOIN, ramp_arc(lip, seg_yaw(2), 4.5f, 12, 9), 0, 0);
+    lip = sea_ramp(seg_at(4, 0.55f, -3), seg_yaw(4), 10, 3.5f, 3.0f);
+    obj_spawn(OT_REDCOIN, ramp_arc(lip, seg_yaw(4), 3.5f, 10, 8), 0, 0);
+    lip = sea_ramp(seg_at(9, 0.45f, 0), seg_yaw(9), 16, 7.0f, 4.0f);   /* the big one */
+    obj_spawn(OT_REDCOIN, ramp_arc(lip, seg_yaw(9), 7.0f, 16, 10.5f), 0, 0);
+    for (k = 0; k < 5; k++) obj_spawn(OT_COIN, ramp_arc(lip, seg_yaw(9), 7.0f, 16, 3.0f + k * 3.5f + (k >= 2) * 1.5f), 0, 0);
+    /* a small ramp with a wall of ice behind it on the north straight: jump it or go around */
+    lip = sea_ramp(seg_at(11, 0.45f, 3), seg_yaw(11), 8, 3.0f, 3.0f);
+    {
+        vec3 w = seg_at(11, 0.62f, 3);
+        lb_obox(v3(w.x, 0.2f, w.z), v3(4.5f, 1.4f, 1.2f), seg_yaw(11), 0, TEX_SNOW, TEX_ICE, 0.8f, 0.92f, 1, 0);
+    }
+    /* icebergs and floes along the course */
+    for (k = 0; k < SEA_NG; k++) {
+        vec3 a = seg_at(k, 0.3f, (k & 1) ? 17 : -17), b = seg_at(k, 0.75f, (k & 1) ? -19 : 19);
+        lb_cone(a.x, -6, a.z, 5 + 2 * sea_hash(k, 3, 3), 14 + 8 * sea_hash(k, 4, 3), 8, TEX_ICE, 0.75f, 0.9f, 1, 1);
+        lb_cyl(b.x, -0.6f, b.z, 3.5f + 2 * sea_hash(k, 5, 3), 0.85f, 12, TEX_SNOW, TEX_ICE, 0.95f, 0.98f, 1, SF_SLIPPERY);
+    }
+    /* icebergs in the lane on the west side: weave between them */
+    {
+        vec3 a = seg_at(3, 0.35f, 4), b = seg_at(3, 0.7f, -4);
+        lb_cone(a.x, -6, a.z, 3.2f, 12, 8, TEX_ICE, 0.75f, 0.9f, 1, 1);
+        lb_cone(b.x, -6, b.z, 3.2f, 11, 8, TEX_ICE, 0.75f, 0.9f, 1, 1);
+    }
+    /* far floes with red fish */
+    lb_cyl(-135, -0.6f, -135, 6, 0.85f, 14, TEX_SNOW, TEX_ICE, 0.95f, 0.98f, 1, SF_SLIPPERY);
+    lb_cyl(-140, -0.6f, 140, 6, 0.85f, 14, TEX_SNOW, TEX_ICE, 0.95f, 0.98f, 1, SF_SLIPPERY);
+    lb_cyl(140, -0.6f, 138, 5, 0.85f, 14, TEX_SNOW, TEX_ICE, 0.95f, 0.98f, 1, SF_SLIPPERY);
+    death_floor(-40, -200, -200, 200, 200);
+    finish_geometry();
+
+    lv.spawn[0] = v3(16, 0.3f, 105); lv.spawn_yaw[0] = sea_dir(0);
+    /* buoy gates (gate 0 = start / finish line) */
+    for (k = 0; k < SEA_NG; k++) {
+        o = obj_spawn(OT_GATE, sea_pt(k), sea_dir(k), k);
+        if (o && k == 0) o->f[0] = 9.0f;
+    }
+    /* the rival waits on the start dock */
+    o = obj_spawn(OT_SEAL, v3(12.5f, 0.3f, 101.5f), sea_dir(0), 0);
+    if (o) o->f[3] = sea_dir(0);
+    /* boost pads */
+    {
+        static const float bp[][3] = { { 0, 0.5f, 0 }, { 5, 0.5f, 3 }, { 7, 0.5f, -3 }, { 10, 0.55f, 0 }, { 1, 0.6f, -4 } };
+        for (k = 0; k < (int)(sizeof bp / sizeof bp[0]); k++)
+            obj_spawn(OT_BOOSTPAD, seg_at((int)bp[k][0], bp[k][1], bp[k][2]), seg_yaw((int)bp[k][0]), 0);
+    }
+    /* drifting ice: a slalom on the south-east stretch, and some strays */
+    for (i = 0; i < 6; i++) {
+        vec3 p = seg_at(8, 0.15f + i * 0.13f, (i & 1) ? 4.5f : -4.5f);
+        sea_chunk(v3(p.x, 0, p.z), 1 + (i % 2), 2.5f, 0.8f + 0.1f * i, i * 1.3f);
+    }
+    for (i = 0; i < 6; i++) {
+        int sg = (i * 5 + 1) % SEA_NG;
+        vec3 p = seg_at(sg, 0.6f, (i & 1) ? 8 : -8);
+        if (sg == 8 || sg == 9 || sg == 2 || sg == 4 || sg == 11) continue;
+        sea_chunk(v3(p.x, 0, p.z), 1, 6.0f, 0.5f, i * 2.0f);
+    }
+    /* the great whales: one circles the spout peak, one cruises across the southern straight */
+    sea_whale(0, -80, 12, 0.42f, 0);
+    sea_whale(10, -122, 13, -0.38f, 1.5f);
+    /* star 3 on the spout peak */
+    obj_spawn(OT_STAR, v3(19, 14.6f, -80), 0, 3);
+    /* star 2: red fish */
+    {
+        vec3 p = seg_at(8, 0.5f, 0);
+        obj_spawn(OT_REDCOIN, v3(p.x, 0.5f, p.z), 0, 0);
+    }
+    obj_spawn(OT_REDCOIN, v3(-135, 0.8f, -135), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(-140, 0.8f, 140), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(140, 0.8f, 138), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(0, 25.6f, 0), 0, 0);
+    obj_spawn(OT_STARMARKER, v3(16, 4.0f, 110), 0, 2);
+    /* fish along the course */
+    for (k = 0; k < SEA_NG; k++) {
+        if (k == 9) continue;
+        coin_line(v3add(seg_at(k, 0.2f, (k & 1) ? 3 : -3), v3(0, 0.5f, 0)), v3add(seg_at(k, 0.4f, (k & 1) ? 3 : -3), v3(0, 0.5f, 0)), 5, 0);
+        coin_line(v3add(seg_at(k, 0.7f, (k & 1) ? -5 : 5), v3(0, 0.5f, 0)), v3add(seg_at(k, 0.85f, (k & 1) ? -5 : 5), v3(0, 0.5f, 0)), 3, 0);
+    }
+    coin_ring(v3(0, 0.5f, -80), 6, 8, 0);
+    for (i = 0; i < 3; i++) coin_ring(v3(0, 6.6f + i * 7.0f, 0), 46 - i * 12.0f, 10 - i * 2, 1);
+    obj_spawn(OT_ONEUP, v3(0, 26.0f, 3), 0, 0);
+    obj_spawn(OT_HEART, v3(16, 1.0f, 101), 0, 0);
+    for (i = 0; i < 12; i++) {
+        float a = TAU_F * i / 12 + 0.2f, r = 30 + 12 * sea_hash(i, 9, 2);
+        float x = sinf(a) * r, z = cosf(a) * r;
+        decor(i % 3 ? MDL_PINE_SNOW : MDL_ICESPIRE, x, z, 30, 1.0f, 0.5f);
+    }
+    sign(13, 108, 2, sea_dir(0) + PI_F, "AURORA SEA RALLY\nYour DASH BOOTS run on water - as long as you\n"
+                                          "keep moving! Steer with left/right, pull back\nto brake, Z for a sharp carve, A to jump.\n"
+                                          "Press B in mid-air for a spin trick: land it for\na speed boost. Talk to the seal to race!");
+}
+
 void build_level(int level)
 {
     switch (level) {
@@ -1598,6 +1816,7 @@ void build_level(int level)
     case LV_MANOR: build_manor(); break;
     case LV_SPIRE: build_spire(); break;
     case LV_MAZE: build_maze(); break;
+    case LV_SEA: build_sea(); break;
     }
 }
 

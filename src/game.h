@@ -27,8 +27,8 @@ void input_update(void);
 void input_clear(void);
 
 /* ---------------- levels ---------------- */
-enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_COUNT };
-enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_COUNT };
+enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_COUNT };
+enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_COUNT };
 #define SAVE_COURSES 16   /* room in the save file for future courses */
 #define MAX_STARS 7
 
@@ -50,6 +50,7 @@ typedef struct {
     struct { vec3 p; const char *text; int course; } label[16];   /* floating window titles */
     int nlabels;
     int snow, clouds, stars_sky, dark;   /* snow: 0 none, 1 light snowfall, 2 blizzard */
+    int aurora;                          /* northern lights in the sky */
     float wind_yaw;
 } Level;
 extern Level lv;
@@ -74,6 +75,7 @@ enum {
     OT_TRAMPOLINE, OT_TREE, OT_POLE, OT_WARP, OT_DOOR, OT_STARDOOR,
     OT_CLAM, OT_RING, OT_CRATE, OT_GRANDSTAR, OT_TIMERSTART, OT_TIMERGOAL, OT_DECOR, OT_ROCKETBOX,
     OT_GHOST, OT_GHOSTKING, OT_TOPSWITCH, OT_HEART, OT_WATCHDOG, OT_CAGE, OT_STEAM, OT_OOM, OT_MAZEEXIT,
+    OT_GATE, OT_ICECHUNK, OT_WHALE, OT_BOOSTPAD, OT_SEAL,
     OT_FX_SPARKLE, OT_FX_SMOKE, OT_FX_EXPLODE, OT_FX_BUBBLE, OT_FX_SNOWPUFF, OT_FX_SHOCKWAVE,
     OT_COUNT
 };
@@ -136,6 +138,8 @@ enum {
     ACT_HOLD_JUMP, ACT_HOLD_FALL, ACT_BURN_JUMP, ACT_ROLLOUT, ACT_BOUNCE, ACT_FLY,
     /* water */
     ACT_SWIM, ACT_DROWN,
+    /* dash boots (AURORA SEA): skimming over water and ice; act_s 1 = airborne */
+    ACT_SKATE,
     ACT_COUNT
 };
 #define ACT_FIRST_AIR ACT_JUMP
@@ -176,6 +180,11 @@ typedef struct {
     int rocket_t;                /* rocket pack fuel (frames left) */
     float sink;                  /* depth sunk into powder snow */
     int water_warm;              /* swimming in a hot spring */
+    int boots;                   /* dash boots on (they never come off on the AURORA SEA) */
+    int boost_t;                 /* frames of extra dash speed left */
+    float ground_vy;             /* vertical speed while skating up/down slopes (ramps launch Tux) */
+    int trick;                   /* 0 none, 1 spinning in mid-air, 2 trick finished */
+    float trick_t;
 } Player;
 extern Player pl;
 
@@ -217,6 +226,7 @@ typedef struct {
     float footL, footR;
     int eyes_closed;
     int rocket;                  /* 0 none, 1 rocket pack, 2 pack firing */
+    int boots;                   /* 0 none, 1 dash boots, 2 boots boosting */
 } TuxPose;
 enum { TUXV_TUX, TUXV_BABY, TUXV_MOTHER, TUXV_NPC, TUXV_COUNT };
 void draw_tux_model(vec3 pos, float yaw, const TuxPose *tp, float scale, int variant);
@@ -229,7 +239,8 @@ enum {
     MDL_CLAM_BOT, MDL_CLAM_TOP, MDL_RING, MDL_CRATE, MDL_FISH, MDL_SWITCH, MDL_POLE,
     MDL_FLAG, MDL_KEY, MDL_COIN_RED, MDL_COIN_BLUE, MDL_FISH_GREEN, MDL_STAR_GHOST, MDL_CROWN,
     MDL_SNOWMAN, MDL_ROCK, MDL_BUSH, MDL_ROCKETBOX, MDL_GHOST, MDL_GHOST_FADE, MDL_HEART, MDL_ICESPIRE,
-    MDL_CRYSTAL, MDL_DEADTREE, MDL_TOPSWITCH, MDL_TOPSWITCH_ON, MDL_WATCHDOG, MDL_CAGE, MDL_MOUND, MDL_OOM, MDL_CYDOOR, MDL_CYSTARDOOR, MDL_CHILDPROC, MDL_INIT, MDL_COUNT
+    MDL_CRYSTAL, MDL_DEADTREE, MDL_TOPSWITCH, MDL_TOPSWITCH_ON, MDL_WATCHDOG, MDL_CAGE, MDL_MOUND, MDL_OOM, MDL_CYDOOR, MDL_CYSTARDOOR, MDL_CHILDPROC, MDL_INIT,
+    MDL_WHALE, MDL_BUOY, MDL_BUOY_NEXT, MDL_ICECHUNK, MDL_BOOSTPAD, MDL_SEAL, MDL_COUNT
 };
 extern GLuint mdl[MDL_COUNT];
 
@@ -287,6 +298,12 @@ extern unsigned g_maze_seed;   /* 0 = random every visit */
 int  maze_cell(vec3 p, int *cx, int *cz);
 vec3 maze_center(int cx, int cz);
 int  maze_next_step(int fx, int fz, int tx, int tz, int *nx, int *nz);
+/* AURORA SEA rally (objects.c) */
+#define SEA_LAPS 2
+extern int g_gate_n, g_gate_next, g_lap, g_sea_power, g_gate_missed;
+extern int g_race_time;          /* frames of the last finished rally */
+void sea_player_moved(vec3 from, vec3 to);   /* gate crossing checks */
+Obj *sea_gate(int k);
 extern vec3 g_wind;          /* blizzard wind velocity (u/s), zero when calm */
 extern float g_gust;         /* 0..1 gust strength */
 extern const char *g_hud_msg;

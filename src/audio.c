@@ -300,6 +300,13 @@ static const SongDef songdefs[MUS_COUNT] = {
     { 96, "Am Am Am Am F F E E",
       "a4 . . c5 . . b4 . a4 . . e5 . . d#5 . f4 . . a4 . . g#4 . e4 - - - . . . .",
       NULL, B_PULSE, D_SOFT, 0, W_TRI, 1 },
+    /* SEA: a breezy, fast rally tune */
+    { 168, "E E C#m C#m A A B B E E G#m G#m A A B B",
+      "b4 e5 g#5 b5 - g#5 e5 g#5 c#6 - b5 - g#5 - e5 - a5 - c#6 - e6 - c#6 a5 b5 - d#6 - f#6 - . . "
+      "e6 - b5 - g#5 - e5 - d#5 - f#5 - b5 - d#6 - c#6 - a5 - e5 - c#5 - d#5 - f#5 - b5 - - - . .",
+      "e4 - - - - - - - c#4 - - - - - - - a3 - - - - - - - b3 - - - - - - - "
+      "e4 - - - - - - - g#3 - - - - - - - a3 - - - - - - - b3 - - - d#4 - - -",
+      B_OCT, D_ROCK, 1, W_SQ25, 1 },
 };
 
 #define MAXSTEPS 512
