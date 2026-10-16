@@ -2,7 +2,7 @@ Name:           tux64
 Version:        %{tux_version}
 Release:        1
 Summary:        TUX 64 - The Kernel Castle Adventure, a fan-made 3D penguin platformer
-License:        Unspecified
+License:        MIT AND OFL-1.1
 BuildArch:      x86_64
 Recommends:     alsa-lib
 
@@ -20,3 +20,4 @@ cp -a %{tux_root}/. %{buildroot}/
 /usr/share/applications/tux64.desktop
 /usr/share/icons/hicolor/256x256/apps/tux64.png
 %doc /usr/share/doc/tux64/README.md
+%license /usr/share/licenses/tux64/LICENSE

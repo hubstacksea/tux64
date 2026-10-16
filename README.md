@@ -250,6 +250,13 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 
 ---
 
+## ライセンス
+
+本作のソースコードは [MIT License](LICENSE) です。
+収録している日本語フォントのビットマップ（`src/font_ja.h`）のみ SIL Open Font License 1.1 に従います。
+
+---
+
 ## クレジット
 
 * Tux the penguin: Larry Ewing（The GIMP で作成されたキャラクター）

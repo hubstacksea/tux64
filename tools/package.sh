@@ -24,7 +24,7 @@ mkdir -p "$WORK"
 WIN="$WORK/win/tux64-$VERSION"
 mkdir -p "$WIN"
 x86_64-w64-mingw32-strip -o "$WIN/tux64.exe" tux64.exe
-cp README.md "$WIN/"
+cp README.md LICENSE "$WIN/"
 rm -f "$DIST/tux64-$VERSION-windows-x64.7z"
 (cd "$WORK/win" && 7z a -t7z -mx=9 -bso0 -bsp0 "../../tux64-$VERSION-windows-x64.7z" "tux64-$VERSION")
 
@@ -34,6 +34,7 @@ install -D -m 755 -s tux64 "$ROOT/usr/bin/tux64"
 install -D -m 644 $PKG/tux64.desktop "$ROOT/usr/share/applications/tux64.desktop"
 install -D -m 644 $PKG/tux64.png "$ROOT/usr/share/icons/hicolor/256x256/apps/tux64.png"
 install -D -m 644 README.md "$ROOT/usr/share/doc/tux64/README.md"
+install -D -m 644 LICENSE "$ROOT/usr/share/licenses/tux64/LICENSE"
 
 # ---------------- .deb  (Debian policy: games live in /usr/games, docs need copyright + changelog)
 DEB="$WORK/deb"
@@ -41,6 +42,7 @@ cp -a "$ROOT" "$DEB"
 mkdir -p "$DEB/usr/games" "$DEB/DEBIAN"
 mv "$DEB/usr/bin/tux64" "$DEB/usr/games/tux64"
 rmdir "$DEB/usr/bin"
+rm -r "$DEB/usr/share/licenses"
 install -m 644 $PKG/copyright "$DEB/usr/share/doc/tux64/copyright"
 printf 'tux64 (%s) unstable; urgency=low\n\n  * Release %s.\n\n -- tux64 <343302215+hubstacksea@users.noreply.github.com>  %s\n' \
     "$VERSION" "$VERSION" "$(date -R)" | gzip -9n > "$DEB/usr/share/doc/tux64/changelog.gz"
