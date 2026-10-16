@@ -1,5 +1,24 @@
 # TUX 64 — The Kernel Castle Adventure
 
+<p align="center">
+  <img src="docs/screenshots/title.png" width="640" alt="タイトル画面">
+</p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshots/grounds.png" alt="KERNEL CASTLE GROUNDS"><br><sub>KERNEL CASTLE GROUNDS — お城の庭</sub></td>
+    <td width="50%"><img src="docs/screenshots/lobby.png" alt="KERNEL CASTLE"><br><sub>KERNEL CASTLE — サイバー空間のお城の中</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/sea.png" alt="AURORA SEA RALLY"><br><sub>AURORA SEA RALLY — ダッシュブーツで氷海ラリー</sub></td>
+    <td><img src="docs/screenshots/sky.png" alt="FROSTCLOUD SKYWAY"><br><sub>FROSTCLOUD SKYWAY — 雲海の上をロケットで飛行</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/space.png" alt="STARDUST ORBIT"><br><sub>STARDUST ORBIT — 宇宙を高速ロケットで駆けるリングラン</sub></td>
+    <td><img src="docs/screenshots/lair.png" alt="SEGFAULT'S LAIR"><br><sub>SEGFAULT'S LAIR — 最終ボスのステージ</sub></td>
+  </tr>
+</table>
+
 Linux のマスコット **Tux** が主人公の 3D アクションゲームです。
 「スーパーマリオ64」のゲームシステム（3Dアクション・スター収集・お城のハブ・ワープ・ボス戦など）を、
 キャラクターと世界観を Linux / カーネル風に置き換えて **すべてオリジナル** で実装しています。
