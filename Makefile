@@ -3,6 +3,7 @@
 #   make            -> Linux build:   ./tux64
 #   make windows    -> Windows build: ./tux64.exe  (needs x86_64-w64-mingw32-gcc)
 #   make all-platforms
+#   make package    -> dist/: Windows .7z, Linux .deb and .rpm  (tools/package.sh)
 #   On Windows with MinGW/MSYS2:  mingw32-make   (auto-detects Windows_NT)
 
 SRC_COMMON = src/main.c src/game.c src/player.c src/camera.c src/objects.c src/levels.c \
@@ -31,7 +32,11 @@ tux64.exe: $(SRC_COMMON) src/plat_win32.c src/*.h
 all-platforms: tux64 tux64.exe
 endif
 
+package:
+	tools/package.sh
+
 clean:
 	rm -f tux64 tux64.exe
+	rm -rf dist
 
-.PHONY: all windows all-platforms clean
+.PHONY: all windows all-platforms package clean

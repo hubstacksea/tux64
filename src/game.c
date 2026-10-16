@@ -170,7 +170,7 @@ void input_update(void)
  * ====================================================================== */
 #define SAVE_MAGIC 0x54555838u
 #define SAVE_MAGIC_V7 0x54555837u   /* previous format: 8 courses */
-static const char *save_name = "tux64.sav";
+#define save_name plat_user_file("tux64.sav")
 
 typedef struct {
     unsigned char exists;

@@ -1,5 +1,6 @@
 /* gfx.c - procedural textures, mesh building, display lists, 2D drawing */
 #include "gfx.h"
+#include "platform.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

@@ -3,6 +3,12 @@
 #ifndef PLATFORM_H
 #define PLATFORM_H
 
+/* glibc 2.38 added a new fmodf symbol version; bind to the old one so a Linux build
+ * also runs on older distributions (Debian 12, Ubuntu 22.04, RHEL 9 ...) */
+#if defined(__linux__) && defined(__x86_64__)
+__asm__(".symver fmodf,fmodf@GLIBC_2.2.5");
+#endif
+
 enum {
     K_UP, K_DOWN, K_LEFT, K_RIGHT,
     K_W, K_A, K_S, K_D,
@@ -41,6 +47,7 @@ void   plat_sleep_ms(int ms);
 void   plat_toggle_fullscreen(void);
 void   plat_set_title(const char *t);
 int    plat_system_lang_ja(void);     /* 1 if the OS user interface language is Japanese */
+const char *plat_user_file(const char *name);   /* where to keep the save / config file */
 
 typedef void (*AudioCallback)(short *out, int frames);  /* stereo interleaved S16 */
 int    plat_audio_init(int rate, AudioCallback cb);

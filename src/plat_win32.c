@@ -146,6 +146,9 @@ int plat_system_lang_ja(void)
     return (GetUserDefaultUILanguage() & 0x3FF) == 0x11;   /* LANG_JAPANESE */
 }
 
+/* portable: next to the game (the working directory, as when launched from Explorer) */
+const char *plat_user_file(const char *name) { return name; }
+
 void plat_shutdown(void)
 {
     plat_audio_shutdown();

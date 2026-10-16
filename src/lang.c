@@ -46,7 +46,7 @@ const char *tr(const char *en)
 
 const char *lang_name(int lang) { return lang == LANG_JA ? "\xE6\x97\xA5\xE6\x9C\xAC\xE8\xAA\x9E" : "English"; }
 
-static const char *cfg_name = "tux64.cfg";
+#define cfg_name plat_user_file("tux64.cfg")
 
 void lang_load(void)
 {

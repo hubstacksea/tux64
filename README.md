@@ -44,6 +44,23 @@ build.bat
 生成される `tux64.exe` は単体で動作します（opengl32 / gdi32 / winmm / user32 のみ使用、
 XInput は存在すれば実行時に読み込み）。
 
+### 配布パッケージ
+
+```sh
+make package          # または tools/package.sh 1.2.3（バージョン指定、既定は 1.0.0）
+```
+
+`dist/` に次の 3 つが作られます（`7z`, `dpkg-deb`, `rpmbuild`, MinGW が必要。Ubuntu なら `sudo apt install p7zip-full rpm`）。
+
+| ファイル | 内容 |
+|---|---|
+| `tux64-VERSION-windows-x64.7z` | `tux64.exe` と README。展開した場所でそのまま実行 |
+| `tux64_VERSION_amd64.deb` | Debian / Ubuntu 用（`/usr/games/tux64`、メニュー登録・アイコン付き） |
+| `tux64-VERSION-1.x86_64.rpm` | Fedora / RHEL / openSUSE 用（`/usr/bin/tux64`、メニュー登録・アイコン付き） |
+
+Linux パッケージは glibc 2.34 以降（Debian 12、Ubuntu 22.04、RHEL 9 以降）で動作します。
+依存は OpenGL / X11 のみで、ALSA（libasound2 / alsa-lib）は推奨扱いです。
+
 ---
 
 ## 操作方法
@@ -172,7 +189,11 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 ## セーブ
 
 3 つのファイルスロット（ERASE で消去可能）。スター取得時に自動保存されます。
-保存先はカレントディレクトリの `tux64.sav`（言語設定は `tux64.cfg`）です。
+保存先は `tux64.sav`（言語設定は `tux64.cfg`）で、場所は次のとおりです。
+
+* Windows、またはビルドしたフォルダ・展開したフォルダから起動した Linux 版: カレントディレクトリ
+* .deb / .rpm でインストールした Linux 版（実行ファイルの場所に書き込めない場合）:
+  `$XDG_DATA_HOME/tux64/`（通常は `~/.local/share/tux64/`）
 
 ---
 

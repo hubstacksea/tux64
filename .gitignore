@@ -5,3 +5,4 @@ tux64.exe
 tux64.sav
 tux64.cfg
 __pycache__/
+dist/

@@ -17,9 +17,38 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <linux/joystick.h>
+#include <sys/stat.h>
+#include <limits.h>
 
 unsigned char plat_keys[K_COUNT];
 Gamepad plat_pad;
+
+/* A copy run from a writable folder (a build tree, an unpacked archive) keeps its files in the
+ * working directory as before. An installed copy (/usr/games, read-only) uses
+ * $XDG_DATA_HOME/tux64 (~/.local/share/tux64). */
+const char *plat_user_file(const char *name)
+{
+    static char paths[4][PATH_MAX + 32];
+    static int n;
+    char exe[PATH_MAX], dir[PATH_MAX], *slash, *p;
+    const char *base = getenv("XDG_DATA_HOME"), *home = getenv("HOME");
+    ssize_t len = readlink("/proc/self/exe", exe, sizeof exe - 1);
+    if (len > 0) {
+        exe[len] = 0;
+        slash = strrchr(exe, '/');
+        if (slash) *slash = 0;
+        if (access(exe, W_OK) == 0) return name;
+    }
+    if (base && base[0]) snprintf(dir, sizeof dir, "%s/tux64", base);
+    else if (home && home[0]) snprintf(dir, sizeof dir, "%s/.local/share/tux64", home);
+    else return name;
+    for (p = dir + 1; *p; p++)   /* mkdir -p */
+        if (*p == '/') { *p = 0; mkdir(dir, 0755); *p = '/'; }
+    mkdir(dir, 0755);
+    p = paths[n++ & 3];
+    snprintf(p, PATH_MAX + 32, "%s/%s", dir, name);
+    return p;
+}
 
 static Display *dpy;
 static Window win;

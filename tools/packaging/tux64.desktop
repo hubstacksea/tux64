@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=TUX 64
+Name[ja]=TUX 64
+GenericName=3D Platformer
+GenericName[ja]=3Dアクションゲーム
+Comment=The Kernel Castle Adventure - a fan-made penguin platformer
+Comment[ja]=カーネル城の だいぼうけん - Tux が主人公の 3D アクション
+Exec=tux64
+Icon=tux64
+Terminal=false
+Categories=Game;ActionGame;
+Keywords=tux;penguin;platformer;3d;
