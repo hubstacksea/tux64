@@ -12,14 +12,16 @@ CFLAGS ?= -O2
 CFLAGS += -std=gnu99 -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers
 
 MINGW ?= x86_64-w64-mingw32-gcc
+WINDRES ?= x86_64-w64-mingw32-windres
 WIN_LIBS = -lopengl32 -lgdi32 -lwinmm -luser32 -mwindows -static-libgcc
 
 ifeq ($(OS),Windows_NT)
 # native MinGW on Windows
 CC ?= gcc
+WINDRES = windres
 all: tux64.exe
-tux64.exe: $(SRC_COMMON) src/plat_win32.c src/*.h
-	$(CC) $(CFLAGS) -o $@ $(SRC_COMMON) src/plat_win32.c $(WIN_LIBS) -lm
+tux64.exe: $(SRC_COMMON) src/plat_win32.c src/*.h tux64_res.o
+	$(CC) $(CFLAGS) -o $@ $(SRC_COMMON) src/plat_win32.c tux64_res.o $(WIN_LIBS) -lm
 else
 CC ?= gcc
 LINUX_LIBS = -lGL -lX11 -lpthread -ldl -lm
@@ -27,16 +29,20 @@ all: tux64
 tux64: $(SRC_COMMON) src/plat_x11.c src/*.h
 	$(CC) $(CFLAGS) -o $@ $(SRC_COMMON) src/plat_x11.c $(LINUX_LIBS)
 windows: tux64.exe
-tux64.exe: $(SRC_COMMON) src/plat_win32.c src/*.h
-	$(MINGW) $(CFLAGS) -o $@ $(SRC_COMMON) src/plat_win32.c $(WIN_LIBS) -lm
+tux64.exe: $(SRC_COMMON) src/plat_win32.c src/*.h tux64_res.o
+	$(MINGW) $(CFLAGS) -o $@ $(SRC_COMMON) src/plat_win32.c tux64_res.o $(WIN_LIBS) -lm
 all-platforms: tux64 tux64.exe
 endif
 
 package:
 	tools/package.sh
 
+# application icon (Windows resource)
+tux64_res.o: src/tux64.rc src/tux64.ico
+	$(WINDRES) -O coff -o $@ src/tux64.rc
+
 clean:
-	rm -f tux64 tux64.exe
+	rm -f tux64 tux64.exe tux64_res.o
 	rm -rf dist
 
 .PHONY: all windows all-platforms package clean

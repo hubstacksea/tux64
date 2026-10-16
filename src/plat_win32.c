@@ -99,7 +99,8 @@ int plat_init(const char *title, int w, int h)
     wc.lpfnWndProc = wnd_proc;
     wc.hInstance = hinst;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    wc.hIcon = LoadIconA(hinst, MAKEINTRESOURCEA(1));   /* src/tux64.rc */
+    if (!wc.hIcon) wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     wc.lpszClassName = "Tux64Window";
     if (!RegisterClassA(&wc)) return 0;
     r.left = 0; r.top = 0; r.right = w; r.bottom = h;

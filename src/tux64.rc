@@ -1,0 +1,2 @@
+/* tux64.rc - Windows resources: application icon (id 1, also used for the window) */
+1 ICON "tux64.ico"
