@@ -390,6 +390,9 @@ static void build_lobby(void)
         lobby_window(v3(16, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL11, 0.95f, 0.75f, 0.3f, CRS_SKY);
         /* STARDUST ORBIT window on the balcony, north wall (west side) */
         lobby_window(v3(-16, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL12, 0.6f, 0.4f, 1.0f, CRS_SPACE);
+        /* NANO VILLAGE (west wall) and HUGEPAGE HOUSE (east wall), deep in the hall */
+        lobby_window(v3(-30.0f, 3.3f, -24), PI_F / 2, 5, 4.0f, TEX_PORTAL13, 0.4f, 0.85f, 0.35f, CRS_NANO);
+        lobby_window(v3(30.0f, 3.3f, -24), -PI_F / 2, 5, 4.0f, TEX_PORTAL14, 0.85f, 0.55f, 0.3f, CRS_HUGE);
         for (k = 0; k < 5; k++) {   /* a wall of monitors above the balcony */
             float x = -20 + k * 10;
             lb_appwindow(v3(x, 12.2f, -40.0f), 0, 3.6f, 2.4f, TEX_CYDATA, 0.15f, 0.35f, 0.6f);
@@ -412,6 +415,8 @@ static void build_lobby(void)
     lv.spawn[10] = v3(-18, 0, 6.5f); lv.spawn_yaw[10] = PI_F;
     lv.spawn[11] = v3(16, 6, -36.5f); lv.spawn_yaw[11] = 0;
     lv.spawn[12] = v3(-16, 6, -36.5f); lv.spawn_yaw[12] = 0;
+    lv.spawn[13] = v3(-27, 0, -24); lv.spawn_yaw[13] = PI_F / 2;
+    lv.spawn[14] = v3(27, 0, -24); lv.spawn_yaw[14] = -PI_F / 2;
 
     /* doors */
     o = obj_spawn(OT_DOOR, v3(0, 0, 9.8f), PI_F, 0);
@@ -445,6 +450,10 @@ static void build_lobby(void)
         if (w) w->i[1] = 12;
         w = warp_box(v3(-16, 6.0f, -39.4f), 2.5f, 0.6f, 4, LV_SPACE, 0, 1, 12);
         if (w) w->i[1] = 14;
+        w = warp_box(v3(-29.4f, 0.0f, -24), 0.6f, 2.5f, 4.5f, LV_NANO, 0, 1, 13);
+        if (w) w->i[1] = 18;
+        w = warp_box(v3(29.4f, 0.0f, -24), 0.6f, 2.5f, 4.5f, LV_HUGE, 0, 1, 14);
+        if (w) w->i[1] = 20;
     }
 
     {
@@ -460,6 +469,8 @@ static void build_lobby(void)
                         "AURORA SEA RALLY window (by the entrance, west): 10\n"
                         "FROSTCLOUD SKYWAY window (balcony, north): 12\n"
                         "STARDUST ORBIT window (balcony, north-west): 14\n"
+                        "NANO VILLAGE window (west, deep in the hall): 18\n"
+                        "HUGEPAGE HOUSE window (east, deep in the hall): 20\n"
                         "SEGFAULT's door (under the balcony): 16 stars\n"
                         "Jump into an app window to enter its world.");
     {
@@ -2074,6 +2085,654 @@ static void build_space(void)
     space_boost_ring(v3(-150, 20, 120), v3(1, 0, 0.2f));
 }
 
+/* ================================================================
+ * NANO VILLAGE - a kingdom of tiny penguins; Tux is a giant here
+ * ================================================================ */
+#define NANO_BAY_Z 25.0f
+static vec3 nano_track_pts[160];
+
+static float nano_road_dist(float x, float z)
+{
+    static const float seg[][4] = {
+        { 16, -18, 16, -6 }, { 16, -6, 4, 7 }, { 2, 10, -10, 18 }, { -10, 18, -22, 26 },
+        { 2, 10, -12, 8 }, { -12, 8, -27, 14 }, { 2, 10, 22, 4 }, { 22, 4, 34, -6 }
+    };
+    float best = 1e9f;
+    int i;
+    for (i = 0; i < (int)(sizeof seg / sizeof seg[0]); i++) {
+        float ax = seg[i][0], az = seg[i][1], bx = seg[i][2], bz = seg[i][3];
+        float dx = bx - ax, dz = bz - az, t = clampf(((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz), 0, 1);
+        float px = ax + dx * t - x, pz = az + dz * t - z;
+        best = minf(best, sqrtf(px * px + pz * pz));
+    }
+    return best;
+}
+
+static float nano_track_dist(float x, float z)
+{
+    float best = 1e9f;
+    int i;
+    for (i = 0; i < 160; i++) best = minf(best, v3distxz(nano_track_pts[i], v3(x, 0, z)));
+    return best;
+}
+
+static float nano_h(float x, float z)
+{
+    float h = 0.3f + 0.18f * sinf(x * 0.17f) * sinf(z * 0.13f) + 0.1f * sinf(x * 0.07f + z * 0.05f);
+    float d, t;
+    /* snowy mountains in the north-west */
+    d = sqrtf((x + 44) * (x + 44) + (z + 40) * (z + 40));
+    if (d < 26) { t = 1 - d / 26; h += 8.0f * t * t; }
+    d = sqrtf((x + 24) * (x + 24) + (z + 54) * (z + 54));
+    if (d < 14) { t = 1 - d / 14; h += 5.0f * t * t; }
+    /* the windmill hill */
+    d = sqrtf((x + 30) * (x + 30) + (z - 16) * (z - 16));
+    h += 1.6f * sstep(0, 1, 1 - d / 7);
+    /* the royal castle on a plateau, ringed by its moat */
+    if (rect_inside(x, z, 8, -34, 24, -18) > 0) h = 0.6f;
+    else if (rect_inside(x, z, 5.5f, -36.5f, 26.5f, -15.5f) > 0) h = -0.35f;
+    /* the river from the mountains down to the bay */
+    if (z > -42 && z < NANO_BAY_Z + 2) {
+        float rd = fabsf(x + 12);
+        if (rd < 1.4f) h = -0.3f;
+        else if (rd < 2.6f) h = lerpf(-0.3f, h, sstep(1.4f, 2.6f, rd));
+    }
+    /* the shallow bay in the south, Blefuscu island and a rock */
+    h = lerpf(h, -0.8f, sstep(NANO_BAY_Z, NANO_BAY_Z + 6, z));
+    d = sqrtf((x - 28) * (x - 28) + (z - 56) * (z - 56));
+    h = maxf(h, 0.45f - maxf(0, d - 5) * 0.5f);
+    d = sqrtf((x - 5) * (x - 5) + (z - 40) * (z - 40));
+    h = maxf(h, 0.25f - maxf(0, d - 0.8f) * 1.2f);
+    h += boundary(x, z, 58, 1.2f);
+    return h;
+}
+
+static void nano_style(float x, float y, float z, vec3 n, int *tex, float *col, int *flags)
+{
+    float v = 0.92f + 0.08f * sinf(x * 0.9f) * cosf(z * 0.7f);
+    if (y < 0.08f) { *tex = TEX_SAND; col[0] = 0.95f; col[1] = 0.88f; col[2] = 0.7f; return; }
+    if (n.y < 0.72f) { *tex = TEX_ROCK; col[0] = 0.7f; col[1] = 0.7f; col[2] = 0.75f; return; }
+    if (y > 4.2f) { *tex = TEX_SNOW; return; }
+    if (rect_inside(x, z, 8, -34, 24, -18) > 0) { *tex = TEX_STONE; col[0] = 0.85f; col[1] = 0.85f; col[2] = 0.8f; return; }
+    if (nano_road_dist(x, z) < 0.55f) { *tex = TEX_DIRT; col[0] = 0.85f; col[1] = 0.72f; col[2] = 0.55f; return; }
+    *tex = TEX_GRASS;
+    if (x > 18 && x < 56 && z > -12 && z < 22) {   /* a patchwork of fields */
+        int cx = (int)floorf(x / 4.5f), cz = (int)floorf(z / 3.5f);
+        unsigned hsh = (unsigned)(cx * 73856093) ^ (unsigned)(cz * 19349663);
+        switch ((hsh >> 3) % 4) {
+        case 0: col[0] = 1.0f; col[1] = 0.9f; col[2] = 0.45f; *tex = TEX_DIRT; break;   /* wheat */
+        case 1: col[0] = 0.62f; col[1] = 0.88f; col[2] = 0.42f; break;
+        case 2: col[0] = 0.62f; col[1] = 0.45f; col[2] = 0.3f; *tex = TEX_DIRT; break;  /* ploughed */
+        default: *tex = TEX_SNOW; break;                                                 /* snowy */
+        }
+        return;
+    }
+    col[0] = 0.7f * v; col[1] = 0.92f * v; col[2] = 0.55f * v;
+}
+
+/* trees too small to bump into: Tux wades through the forest */
+static void nano_tree(float x, float z, float s)
+{
+    float y = nano_h(x, z) - 0.02f;
+    float g = 0.8f + 0.2f * frand();
+    lb_cone(x, y, z, 0.2f * s, 0.55f * s, 6, TEX_NONE, 0.15f * g, 0.45f * g, 0.2f * g, 0);
+    if (y > 2.5f) lb_cone(x, y + 0.3f * s, z, 0.12f * s, 0.3f * s, 6, TEX_NONE, 0.95f, 0.97f, 1.0f, 0);
+    else lb_cone(x, y + 0.25f * s, z, 0.14f * s, 0.38f * s, 6, TEX_NONE, 0.2f * g, 0.55f * g, 0.25f * g, 0);
+}
+
+/* a tiny house, low enough for the giant to step over */
+static void nano_house(float x, float z, float w, float d, int blue)
+{
+    static const float wallc[4][3] = { { 1, 0.96f, 0.88f }, { 0.95f, 0.88f, 0.78f }, { 0.9f, 0.93f, 1 }, { 1, 0.9f, 0.85f } };
+    static const float roofc[4][3] = { { 0.85f, 0.25f, 0.2f }, { 0.55f, 0.32f, 0.2f }, { 0.3f, 0.5f, 0.3f }, { 0.75f, 0.4f, 0.2f } };
+    int k = (int)(frand() * 4) & 3, rk = blue ? 0 : (int)(frand() * 4) & 3;
+    float y0 = nano_h(x, z) - 0.12f, yw = y0 + 0.12f + 0.22f + frand() * 0.06f, yp = yw + 0.12f + frand() * 0.04f;
+    float x0 = x - w / 2, x1 = x + w / 2, z0 = z - d / 2, z1 = z + d / 2, ov = 0.05f;
+    float rr = blue ? 0.25f : roofc[rk][0], rg = blue ? 0.4f : roofc[rk][1], rb = blue ? 0.85f : roofc[rk][2];
+    int front = frand() < 0.5f;
+    float fz = front ? z0 - 0.004f : z1 + 0.004f;
+    lb_box(x0, y0, z0, x1, yw, z1, TEX_NONE, TEX_NONE, wallc[k][0], wallc[k][1], wallc[k][2], 0);
+    lb_ramp(x0 - ov, z0 - ov, x1 + ov, z, yw, yp, 1, 0.03f, TEX_ROOF, TEX_ROOF, rr, rg, rb, 0);
+    lb_ramp(x0 - ov, z, x1 + ov, z1 + ov, yp, yw, 1, 0.03f, TEX_ROOF, TEX_ROOF, rr, rg, rb, 0);
+    /* gable ends */
+    lb_tri(TEX_NONE, v3(x0, yw, z0), v3(x0, yw, z1), v3(x0, yp, z), wallc[k][0] * 0.85f, wallc[k][1] * 0.85f, wallc[k][2] * 0.85f, 0, 0);
+    lb_tri(TEX_NONE, v3(x1, yw, z1), v3(x1, yw, z0), v3(x1, yp, z), wallc[k][0] * 0.85f, wallc[k][1] * 0.85f, wallc[k][2] * 0.85f, 0, 0);
+    /* door and windows on the front */
+    {
+        float dy = y0 + 0.12f, s = front ? 1.0f : -1.0f;
+        vec3 a = v3(x - 0.04f * s, dy, fz), b = v3(x + 0.04f * s, dy, fz);
+        lb_quad(TEX_NONE, a, b, v3(b.x, dy + 0.13f, fz), v3(a.x, dy + 0.13f, fz), 0.35f, 0.22f, 0.12f, 0, 0);
+        if (w > 0.55f) {
+            float wx;
+            for (wx = -1; wx <= 1; wx += 2) {
+                float cx = x + wx * w * 0.3f;
+                vec3 c0 = v3(cx - 0.035f * s, dy + 0.08f, fz), c1 = v3(cx + 0.035f * s, dy + 0.08f, fz);
+                lb_quad(TEX_NONE, c0, c1, v3(c1.x, dy + 0.15f, fz), v3(c0.x, dy + 0.15f, fz), 1.0f, 0.85f, 0.4f, 0, 0);
+            }
+        }
+    }
+    if (frand() < 0.4f) lb_box(x1 - 0.12f, yw, z - 0.05f, x1 - 0.05f, yp + 0.06f, z + 0.03f, TEX_BRICK, TEX_BRICK, 0.7f, 0.4f, 0.35f, 0);
+}
+
+static int nano_house_ok(float x, float z, const vec3 *placed, int n, float near_track)
+{
+    int i;
+    float h = nano_h(x, z);
+    if (h < 0.15f || h > 3.5f) return 0;
+    if (fabsf(nano_h(x + 0.5f, z) - h) > 0.25f || fabsf(nano_h(x, z + 0.5f) - h) > 0.25f) return 0;
+    if (nano_road_dist(x, z) < 1.0f) return 0;
+    if (fabsf(x + 12) < 3.2f && z < NANO_BAY_Z + 2) return 0;
+    if (nano_track_dist(x, z) < near_track) return 0;
+    if (rect_inside(x, z, 4, -38, 28, -13) > 0) return 0;
+    if (sqrtf((x - 2) * (x - 2) + (z - 10) * (z - 10)) < 3.8f) return 0;
+    if (sqrtf((x + 30) * (x + 30) + (z - 16) * (z - 16)) < 2.5f) return 0;
+    if (sqrtf((x - 8) * (x - 8) + (z - 15) * (z - 15)) < 1.8f) return 0;
+    if (x > 33 && z < -10) return 0;
+    for (i = 0; i < n; i++) if (v3distxz(placed[i], v3(x, 0, z)) < 1.25f) return 0;
+    return 1;
+}
+
+static Obj *nano_folk(float x, float z, float wander, const char *text)
+{
+    Obj *o = obj_spawn(OT_NANOFOLK, v3(x, nano_h(x, z), z), frand() * TAU_F, (int)(frand() * 1000));
+    if (o) { o->f[0] = wander; o->text = text; o->f[1] = o->yaw; }
+    return o;
+}
+
+static void build_nano(void)
+{
+    static vec3 placed[140];
+    int np = 0, i, k;
+    Obj *o;
+    lv.name = "NANO VILLAGE";
+    lv.music = MUS_NANO;
+    lv.course = CRS_NANO;
+    lv.scale_world = 1;
+    set_sky(0.32f, 0.58f, 0.95f, 0.78f, 0.88f, 1.0f, 45, 140);
+    lv.ambient = 0.58f; lv.diffuse = 0.66f;
+    lv.death_y = -8;
+    lv.clouds = 1;
+    g_coin_star_idx = 4;
+    for (i = 0; i < 160; i++) nano_track_pts[i] = nano_track_point(i / 160.0f);
+    lb_begin();
+    lb_uv_mul = 2.5f;   /* everything is finely detailed, as seen by a giant */
+    lb_terrain(-64, -64, 64, 64, 128, 128, nano_h, nano_style);
+    lb_uv_mul = 1.0f;
+    lb_water(-64, NANO_BAY_Z, 64, 64, -0.05f, -1.2f);
+    lb_water(-13.4f, -42, -10.6f, NANO_BAY_Z + 0.5f, 0.08f, -0.6f);
+    lb_water(5.5f, -36.5f, 26.5f, -34, 0.1f, -0.6f);
+    lb_water(5.5f, -18, 26.5f, -15.5f, 0.1f, -0.6f);
+    lb_water(5.5f, -34, 8, -18, 0.1f, -0.6f);
+    lb_water(24, -34, 26.5f, -18, 0.1f, -0.6f);
+
+    /* the royal castle: walls the giant can jump over, towers and the keep */
+    {
+        float y = 0.6f, top = y + 1.1f;
+        lb_box(9, y, -33, 23, top, -32.4f, TEX_STONE, TEX_STONE, 0.92f, 0.9f, 0.85f, 0);
+        lb_box(9, y, -19.6f, 15, top, -19, TEX_STONE, TEX_STONE, 0.92f, 0.9f, 0.85f, 0);
+        lb_box(17, y, -19.6f, 23, top, -19, TEX_STONE, TEX_STONE, 0.92f, 0.9f, 0.85f, 0);
+        lb_box(9, y, -32.4f, 9.6f, top, -19.6f, TEX_STONE, TEX_STONE, 0.92f, 0.9f, 0.85f, 0);
+        lb_box(22.4f, y, -32.4f, 23, top, -19.6f, TEX_STONE, TEX_STONE, 0.92f, 0.9f, 0.85f, 0);
+        for (k = 0; k < 20; k++) {   /* battlements */
+            float t = 9.3f + k * 0.7f;
+            lb_box(t, top, -33, t + 0.3f, top + 0.22f, -32.75f, TEX_STONE, TEX_STONE, 0.9f, 0.88f, 0.82f, 0);
+            if (t < 14.6f || t > 17.2f) lb_box(t, top, -19.25f, t + 0.3f, top + 0.22f, -19, TEX_STONE, TEX_STONE, 0.9f, 0.88f, 0.82f, 0);
+            lb_box(9, top, -32.6f + k * 0.67f, 9.25f, top + 0.22f, -32.3f + k * 0.67f, TEX_STONE, TEX_STONE, 0.9f, 0.88f, 0.82f, 0);
+            lb_box(22.75f, top, -32.6f + k * 0.67f, 23, top + 0.22f, -32.3f + k * 0.67f, TEX_STONE, TEX_STONE, 0.9f, 0.88f, 0.82f, 0);
+        }
+        for (k = 0; k < 4; k++) {   /* corner towers */
+            float tx = (k & 1) ? 23 : 9, tz = (k & 2) ? -19 : -33;
+            lb_cyl(tx, y, tz, 1.0f, 2.0f, 14, TEX_STONE, TEX_STONE, 0.95f, 0.93f, 0.88f, 0);
+            lb_cone(tx, y + 2.0f, tz, 1.2f, 1.1f, 14, TEX_ROOF, 0.3f, 0.4f, 0.85f, 1);
+        }
+        /* gatehouse and drawbridge */
+        lb_cyl(14.5f, y, -19.3f, 0.5f, 1.6f, 10, TEX_STONE, TEX_STONE, 0.95f, 0.93f, 0.88f, 0);
+        lb_cyl(17.5f, y, -19.3f, 0.5f, 1.6f, 10, TEX_STONE, TEX_STONE, 0.95f, 0.93f, 0.88f, 0);
+        lb_box(15, 0.45f, -19, 17, 0.62f, -15.2f, TEX_PLANK, TEX_WOOD, 0.9f, 0.75f, 0.55f, 0);
+        /* the keep and its tower */
+        lb_box(13, y, -29, 19, y + 1.8f, -23, TEX_STONE, TEX_STONE, 0.98f, 0.96f, 0.9f, 0);
+        lb_cyl(16, y + 1.8f, -26, 1.1f, 2.0f, 16, TEX_STONE, TEX_STONE, 0.98f, 0.96f, 0.9f, 0);
+        lb_box(15.95f, y + 3.8f, -26.05f, 16.05f, y + 4.8f, -25.95f, TEX_NONE, TEX_NONE, 0.4f, 0.3f, 0.2f, 0);
+        lb_quad(TEX_NONE, v3(16.05f, y + 4.4f, -26), v3(16.6f, y + 4.5f, -26), v3(16.6f, y + 4.8f, -26), v3(16.05f, y + 4.8f, -26), 0.9f, 0.2f, 0.2f, 0, 0);
+        lb_quad(TEX_NONE, v3(16.6f, y + 4.5f, -26), v3(16.05f, y + 4.4f, -26), v3(16.05f, y + 4.8f, -26), v3(16.6f, y + 4.8f, -26), 0.9f, 0.2f, 0.2f, 0, 0);
+    }
+    /* village plaza: paving, fountain and market stalls */
+    {
+        float y = nano_h(2, 10);
+        lb_cyl(2, y - 0.1f, 10, 3.0f, 0.14f, 24, TEX_STONE, TEX_STONE, 0.9f, 0.88f, 0.85f, 0);
+        lb_cyl(2, y + 0.04f, 10, 0.7f, 0.16f, 16, TEX_STONE, TEX_STONE, 0.85f, 0.85f, 0.9f, 0);
+        lb_cyl(2, y + 0.05f, 10, 0.6f, 0.16f, 16, TEX_WATER, TEX_WATER, 0.5f, 0.75f, 1, 0);
+        lb_cyl(2, y + 0.2f, 10, 0.1f, 0.35f, 8, TEX_STONE, TEX_STONE, 0.9f, 0.9f, 0.95f, 0);
+        for (k = 0; k < 6; k++) {
+            float a = TAU_F * k / 6 + 0.3f, sx = 2 + sinf(a) * 2.2f, sz = 10 + cosf(a) * 2.2f;
+            static const float cc[3][3] = { { 0.9f, 0.3f, 0.3f }, { 0.3f, 0.6f, 0.9f }, { 0.95f, 0.8f, 0.3f } };
+            lb_box(sx - 0.2f, y + 0.04f, sz - 0.15f, sx + 0.2f, y + 0.16f, sz + 0.15f, TEX_WOOD, TEX_WOOD, 0.8f, 0.6f, 0.4f, 0);
+            lb_box(sx - 0.24f, y + 0.3f, sz - 0.19f, sx + 0.24f, y + 0.33f, sz + 0.19f, TEX_NONE, TEX_NONE, cc[k % 3][0], cc[k % 3][1], cc[k % 3][2], 0);
+        }
+        /* the church with its steeple */
+        y = nano_h(8, 15);
+        lb_box(7.4f, y - 0.1f, 14.2f, 8.6f, y + 0.6f, 16.2f, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.9f, 0);
+        lb_ramp(7.3f, 14.1f, 8.0f, 16.3f, y + 0.6f, y + 0.95f, 0, 0.05f, TEX_ROOF, TEX_ROOF, 0.45f, 0.3f, 0.25f, 0);
+        lb_ramp(8.0f, 14.1f, 8.7f, 16.3f, y + 0.95f, y + 0.6f, 0, 0.05f, TEX_ROOF, TEX_ROOF, 0.45f, 0.3f, 0.25f, 0);
+        lb_cyl(8, y + 0.5f, 14.1f, 0.35f, 1.6f, 8, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.9f, 0);
+        lb_cone(8, y + 2.1f, 14.1f, 0.42f, 1.1f, 8, TEX_ROOF, 0.45f, 0.3f, 0.25f, 1);
+        obj_spawn(OT_REDCOIN, v3(8, y + 3.5f, 14.1f), 0, 0);
+    }
+    /* the windmill on the hill */
+    {
+        float y = nano_h(-30, 16);
+        lb_cyl(-30, y - 0.1f, 16, 0.6f, 2.1f, 10, TEX_NONE, TEX_NONE, 0.96f, 0.94f, 0.88f, 0);
+        lb_cone(-30, y + 2.0f, 16, 0.75f, 0.8f, 10, TEX_ROOF, 0.6f, 0.35f, 0.25f, 1);
+        lb_box(-30.1f, y + 1.9f, 16.5f, -29.9f, y + 2.1f, 16.65f, TEX_NONE, TEX_NONE, 0.4f, 0.3f, 0.2f, 0);
+        g_nano_windmill = v3(-30, y + 2.0f, 16.7f);
+        obj_spawn(OT_REDCOIN, v3(-30, y + 3.3f, 16), 0, 0);
+        coin_ring(v3(-30, y + 0.3f, 16), 3.5f, 8, 1);
+    }
+    /* the railway: rails, sleepers and bridges over the river */
+    for (i = 0; i < 160; i++) {
+        vec3 a = nano_track_pts[i], b = nano_track_pts[(i + 1) % 160], d = v3sub(b, a), s;
+        float ya, yb, len = v3len(d);
+        int river_a = fabsf(a.x + 12) < 2.8f, river_b = fabsf(b.x + 12) < 2.8f;
+        d = v3scale(d, 1.0f / len);
+        s = v3(d.z * 0.09f, 0, -d.x * 0.09f);
+        ya = river_a ? 0.42f : nano_h(a.x, a.z) + 0.03f;
+        yb = river_b ? 0.42f : nano_h(b.x, b.z) + 0.03f;
+        for (k = -1; k <= 1; k += 2) {
+            vec3 o2 = v3scale(s, (float)k), w = v3(d.z * 0.015f, 0, -d.x * 0.015f);
+            vec3 p0 = v3add(a, o2), p1 = v3add(b, o2);
+            p0.y = ya + 0.02f; p1.y = yb + 0.02f;
+            lb_quad(TEX_NONE, v3sub(p0, w), v3add(p0, w), v3add(p1, w), v3sub(p1, w), 0.45f, 0.45f, 0.5f, 0, 0);
+        }
+        {
+            vec3 m = v3lerp(a, b, 0.5f), w = v3scale(d, 0.035f);
+            float ym = (ya + yb) * 0.5f + 0.01f;
+            vec3 q0 = v3sub(v3sub(m, w), v3scale(s, 1.6f)), q1 = v3sub(v3add(m, w), v3scale(s, 1.6f));
+            vec3 q2 = v3add(v3add(m, w), v3scale(s, 1.6f)), q3 = v3add(v3sub(m, w), v3scale(s, 1.6f));
+            q0.y = q1.y = q2.y = q3.y = ym;
+            lb_quad(TEX_NONE, q0, q3, q2, q1, 0.45f, 0.3f, 0.2f, 0, 0);
+        }
+        if (river_a && river_b) lb_box(minf(a.x, b.x) - 0.15f, 0.3f, minf(a.z, b.z) - 0.25f, maxf(a.x, b.x) + 0.15f, 0.42f,
+                                       maxf(a.z, b.z) + 0.25f, TEX_PLANK, TEX_WOOD, 0.8f, 0.6f, 0.4f, 0);
+    }
+    /* road bridges over the river */
+    lb_box(-13.6f, 0.3f, 16.6f, -10.4f, 0.42f, 18.4f, TEX_STONE, TEX_STONE, 0.85f, 0.85f, 0.8f, 0);
+    lb_box(-13.6f, 0.3f, 7.3f, -10.4f, 0.42f, 9.1f, TEX_STONE, TEX_STONE, 0.85f, 0.85f, 0.8f, 0);
+    /* Lilliput harbour: breakwaters and piers */
+    g_nano_harbor = v3(-25, -0.05f, 31);
+    lb_box(-33, -0.9f, 27, -32.4f, 0.25f, 34, TEX_STONE, TEX_STONE, 0.8f, 0.8f, 0.78f, 0);
+    lb_box(-17.6f, -0.9f, 27, -17, 0.25f, 34, TEX_STONE, TEX_STONE, 0.8f, 0.8f, 0.78f, 0);
+    for (k = 0; k < 3; k++) lb_box(-29.2f + k * 4, -0.9f, 26, -28.8f + k * 4, 0.12f, 30.6f, TEX_PLANK, TEX_WOOD, 0.85f, 0.65f, 0.45f, 0);
+    /* Blefuscu island: a lighthouse and blue-roofed houses */
+    {
+        float y = nano_h(33, 58);
+        lb_cyl(33, y - 0.1f, 58, 0.45f, 1.2f, 10, TEX_NONE, TEX_NONE, 0.95f, 0.95f, 0.95f, 0);
+        lb_cyl(33, y + 1.1f, 58, 0.42f, 1.0f, 10, TEX_NONE, TEX_NONE, 0.9f, 0.2f, 0.2f, 0);
+        lb_cyl(33, y + 2.1f, 58, 0.5f, 0.15f, 10, TEX_METAL, TEX_METAL, 0.6f, 0.6f, 0.65f, 0);
+        obj_spawn(OT_REDCOIN, v3(33, y + 2.9f, 58), 0, 0);
+    }
+    /* the invaders' camp in the east */
+    {
+        static const float tents[6][2] = { { 44, -32 }, { 47, -33 }, { 50, -31 }, { 53, -28 }, { 42, -29 }, { 54, -24 } };
+        for (k = 0; k < 6; k++) {
+            float tx = tents[k][0], tz = tents[k][1];
+            lb_cone(tx, nano_h(tx, tz) - 0.05f, tz, 0.55f, 0.6f, 8, TEX_NONE, 0.3f, 0.4f, 0.85f, 1);
+        }
+        lb_box(48, nano_h(50, -25) - 0.1f, -26, 52, nano_h(50, -25) + 0.65f, -24, TEX_WOOD, TEX_WOOD, 0.6f, 0.45f, 0.3f, 0);
+        obj_spawn(OT_REDCOIN, v3(50, nano_h(50, -25) + 1.2f, -25), 0, 0);
+    }
+    /* houses: the village, the harbour hamlet, farms and Blefuscu */
+    {
+        static const float area[4][5] = {   /* cx cz rmin rmax tries */
+            { 2, 10, 3.8f, 13, 90 }, { -22, 20, 1, 6, 30 }, { 30, 8, 2, 16, 18 }, { 28, 56, 0.5f, 4, 16 }
+        };
+        int a;
+        for (a = 0; a < 4; a++)
+            for (k = 0; k < (int)area[a][4] && np < 140; k++) {
+                float ang = frand() * TAU_F, r = lerpf(area[a][2], area[a][3], sqrtf(frand()));
+                float x = area[a][0] + sinf(ang) * r, z = area[a][1] + cosf(ang) * r;
+                if (!nano_house_ok(x, z, placed, np, 1.4f)) continue;
+                placed[np++] = v3(x, 0, z);
+                nano_house(x, z, 0.5f + frand() * 0.4f, 0.4f + frand() * 0.3f, a == 3);
+            }
+    }
+    /* forests: on the mountain slopes, around the fires and dotted about */
+    for (k = 0; k < 900; k++) {
+        float x = frands() * 62, z = frands() * 62, h = nano_h(x, z);
+        float mtn = sqrtf((x + 40) * (x + 40) + (z + 40) * (z + 40));
+        if (h < 0.15f || h > 7.0f || nano_road_dist(x, z) < 0.8f || nano_track_dist(x, z) < 0.7f) continue;
+        if (rect_inside(x, z, 4, -38, 28, -13) > 0 || (x > 17 && x < 57 && z > -13 && z < 23)) continue;
+        if (fabsf(x + 12) < 2.2f && z < NANO_BAY_Z + 2) continue;
+        if (mtn > 30 && frand() > 0.12f) continue;
+        for (i = 0; i < np; i++) if (v3distxz(placed[i], v3(x, 0, z)) < 0.8f) break;
+        if (i < np) continue;
+        if (sqrtf((x - 2) * (x - 2) + (z - 10) * (z - 10)) < 4 || (x > 34 && z < -12)) continue;
+        nano_tree(x, z, 0.8f + frand() * 0.5f);
+    }
+    finish_geometry();
+
+    lv.spawn[0] = v3(-6, nano_h(-6, 3), 3); lv.spawn_yaw[0] = 0.9f;
+
+    /* star 0: tow the Blefuscu fleet into the harbour */
+    {
+        static const float ships[5][2] = { { 14, 46 }, { 19, 49 }, { 25, 45 }, { 31, 48 }, { 37, 44 } };
+        for (k = 0; k < 5; k++) {
+            o = obj_spawn(OT_NANOSHIP, v3(ships[k][0], -0.07f, ships[k][1]), PI_F + frands() * 0.4f, k);
+            if (o) o->home = o->pos;
+        }
+        nano_folk(-24, 26.5f, 2, "HARBOUR MASTER: Tie up the enemy ships by\nwading right up to them, then bring them\n"
+                                 "here, between the breakwaters of our harbour!");
+    }
+    /* star 1: forest fires on the mountain and the rain clouds */
+    {
+        static const float fires[4][2] = { { -38, -22 }, { -30, -34 }, { -50, -22 }, { -20, -45 } };
+        for (k = 0; k < 4; k++) {
+            float fx = fires[k][0], fz = fires[k][1];
+            obj_spawn(OT_NANOFIRE, v3(fx, nano_h(fx, fz), fz), 0, k);
+            for (i = 0; i < 9; i++) {
+                float a = TAU_F * i / 9, r = 0.8f + frand() * 1.4f;
+                nano_tree(fx + sinf(a) * r, fz + cosf(a) * r, 1.1f);
+            }
+        }
+        o = obj_spawn(OT_NANOCLOUD, v3(-33, nano_h(-33, -14) + 1.0f, -14), 0, 1);
+        if (o) o->home = o->pos;
+        o = obj_spawn(OT_NANOCLOUD, v3(-22, nano_h(-22, -32) + 1.0f, -32), 0, 1);
+        if (o) o->home = o->pos;
+        nano_folk(-28, -12, 1.5f, "TINY FORESTER: Help! The mountain forest is on\nfire and our buckets are much too small!\n"
+                                  "Grab one of those grey rain clouds with B\nand carry it over each fire until it's out.");
+    }
+    /* star 2: the invading army and its catapults */
+    {
+        static const float cata[3][2] = { { 40, -18 }, { 46, -26 }, { 53, -19 } };
+        for (k = 0; k < 3; k++) obj_spawn(OT_NANOCATAPULT, v3(cata[k][0], nano_h(cata[k][0], cata[k][1]), cata[k][1]), -PI_F / 2, k);
+        for (k = 0; k < 15; k++) {
+            float sx = 36.5f + (k / 5) * 1.0f, sz = -25 + (k % 5) * 1.6f;
+            obj_spawn(OT_NANOSOLDIER, v3(sx, nano_h(sx, sz), sz), -PI_F / 2, k);
+        }
+        nano_folk(18, -15, 1.0f, "TINY GUARD: Blefuscu's army has landed in the\neast with catapults! Their arrows sting even\n"
+                                 "a giant. Smash all the catapults - a ground\npound (Z in mid-air) scatters the soldiers!");
+    }
+    /* star 3: red fish (6 placed with the buildings above) */
+    obj_spawn(OT_REDCOIN, v3(16, 5.0f, -26.6f), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(-44, nano_h(-44, -40) + 0.8f, -40), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(-24, nano_h(-24, -54) + 0.8f, -54), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(5, 0.85f, 40), 0, 0);
+    obj_spawn(OT_STARMARKER, v3(2, nano_h(2, 10) + 3.0f, 10), 0, 3);
+    nano_folk(4, 6, 1.0f, "TINY PENGUIN: Wow, you're SO big! Red fish are\nhidden up high all over our kingdom: on\n"
+                          "towers, the mill, mountain tops, an island...");
+    nano_folk(0, 12.5f, 1.5f, "TINY MAYOR: Welcome, Great Giant! Please mind\nour roofs. The fleet of Blefuscu waits across\n"
+                              "the bay, a fire burns on the mountain and an\narmy marches in the east. Will you help us?");
+    /* villagers */
+    for (k = 0; k < 22; k++) {
+        float a = frand() * TAU_F, r = 3.4f + frand() * 7;
+        float x = 2 + sinf(a) * r, z = 10 + cosf(a) * r;
+        if (nano_h(x, z) < 0.15f || fabsf(x + 12) < 2.6f) continue;
+        nano_folk(x, z, 3.5f, NULL);
+    }
+    for (k = 0; k < 6; k++) nano_folk(-25 + frands() * 4, 24 + frand() * 1.5f, 2, NULL);
+    for (k = 0; k < 6; k++) nano_folk(12 + frand() * 8, -31 + frand() * 10, 2.5f, NULL);
+    for (k = 0; k < 5; k++) nano_folk(26 + frands() * 2, 54 + frands() * 2, 1.5f, NULL);
+    /* the little train */
+    for (k = 0; k < 4; k++) obj_spawn(OT_NANOTRAIN, nano_track_pts[0], 0, k);
+    /* clouds drifting at knee height */
+    for (k = 0; k < 12; k++) {
+        float x = frands() * 50, z = frands() * 40 - 5;
+        o = obj_spawn(OT_NANOCLOUD, v3(x, maxf(nano_h(x, z), 0) + 1.4f + frand() * 0.9f, z), 0, 0);
+        if (o) o->home = o->pos;
+    }
+    /* fish (100 for the coin star) */
+    coin_line(v3(16, 0.8f, -14), v3(16, 0.8f, -7), 5, 1);
+    coin_line(v3(14, 0.8f, -4), v3(6, 0.8f, 5), 5, 1);
+    coin_ring(v3(2, 0.6f, 10), 4.5f, 10, 1);
+    coin_line(v3(-8, 0.6f, 16.5f), v3(-20, 0.6f, 24.5f), 6, 1);
+    coin_line(v3(-5, 0.6f, 9), v3(-25, 0.6f, 13.5f), 7, 1);
+    coin_line(v3(8, 0.3f, 33), v3(30, 0.3f, 40), 9, 0);
+    coin_ring(v3(28, 0.9f, 56), 3.0f, 8, 1);
+    coin_line(v3(-26, 1.5f, -18), v3(-40, 6.5f, -36), 9, 1);
+    coin_ring(v3(16, 1.0f, -26), 4.5f, 10, 1);
+    coin_line(v3(24, 0.8f, 2), v3(48, 0.8f, 2), 9, 1);
+    coin_line(v3(38, 0.8f, -12), v3(50, 0.8f, -12), 6, 1);
+    for (k = 0; k < 14; k++) {
+        vec3 p = nano_track_pts[k * 11 + 5];
+        p.y = nano_h(p.x, p.z) + 0.6f;
+        if (fabsf(p.x + 12) < 2.8f) p.y = 1.0f;
+        obj_spawn(OT_COIN, p, 0, 0);
+    }
+    coin_line(v3(-32, 0.3f, 29), v3(-32, 0.3f, 37), 4, 0);
+}
+
+/* ================================================================
+ * HUGEPAGE HOUSE - a giant's living room; Tux is tiny here
+ * ================================================================ */
+static void huge_book(float x0, float y0, float z0, float x1, float y1, float z1)
+{
+    static const float bc[6][3] = { { 0.75f, 0.2f, 0.2f }, { 0.2f, 0.35f, 0.7f }, { 0.2f, 0.55f, 0.3f },
+                                    { 0.85f, 0.7f, 0.3f }, { 0.45f, 0.25f, 0.5f }, { 0.9f, 0.9f, 0.85f } };
+    int k = (int)(frand() * 6) % 6;
+    lb_box(x0, y0, z0, x1, y1, z1, TEX_NONE, TEX_NONE, bc[k][0], bc[k][1], bc[k][2], 0);
+}
+
+/* a book lying flat: cover, page block and spine */
+static void huge_flat_book(float x0, float z0, float x1, float z1, float y0, float th)
+{
+    huge_book(x0, y0, z0, x1, y0 + th, z1);
+    lb_box(x0 + 0.3f, y0 + 0.15f, z0 - 0.02f, x1 - 0.3f, y0 + th - 0.15f, z0 + 0.4f, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.85f, 0);
+}
+
+/* a row of upright books on a shelf (x from the back wall to the front lip); a few short ones are steps */
+static void huge_shelf_books(float y, float z0, float z1)
+{
+    float z = z0;
+    while (z < z1 - 1.0f) {
+        float w = 1.0f + frand() * 1.0f, h = 5.0f + frand() * 1.6f;
+        if (frand() < 0.15f) { z += 1.5f; continue; }
+        if (z + w > z1) break;
+        huge_book(31.2f, y, z, 35.8f, y + h, z + w);
+        z += w + 0.05f;
+    }
+}
+
+static void build_huge(void)
+{
+    Obj *o;
+    int k;
+    lv.name = "HUGEPAGE HOUSE";
+    lv.music = MUS_HUGE;
+    lv.course = CRS_HUGE;
+    lv.scale_world = 2;
+    set_sky(0.18f, 0.14f, 0.12f, 0.36f, 0.3f, 0.26f, 80, 220);
+    lv.ambient = 0.62f; lv.diffuse = 0.5f;
+    lv.death_y = -20;
+    g_coin_star_idx = 5;
+    lb_begin();
+    lb_uv_mul = 0.15f;   /* floorboards and fabrics the size of a giant's */
+    /* floor, walls, baseboards */
+    lb_box(-37, -2, -37, 37, 0, 37, TEX_PLANK, TEX_WOOD, 0.95f, 0.78f, 0.58f, 0);
+    lb_box(-37, 0, -37, 37, 44, -36, TEX_NONE, TEX_NONE, 0.88f, 0.82f, 0.68f, 0);
+    lb_box(-37, 0, -36, -36, 44, 36, TEX_NONE, TEX_NONE, 0.88f, 0.82f, 0.68f, 0);
+    lb_box(36, 0, -36, 37, 44, 36, TEX_NONE, TEX_NONE, 0.88f, 0.82f, 0.68f, 0);
+    lb_box(-37, 0, 36, 28, 44, 37, TEX_NONE, TEX_NONE, 0.88f, 0.82f, 0.68f, 0);
+    lb_box(32, 0, 36, 37, 44, 37, TEX_NONE, TEX_NONE, 0.88f, 0.82f, 0.68f, 0);
+    lb_box(28, 3.6f, 36, 32, 44, 37, TEX_NONE, TEX_NONE, 0.88f, 0.82f, 0.68f, 0);
+    for (k = 0; k < 18; k++) {   /* wallpaper stripes */
+        float a = -36 + k * 4 + 1.2f;
+        lb_quad(TEX_NONE, v3(a, 2.5f, -35.98f), v3(a + 1.2f, 2.5f, -35.98f), v3(a + 1.2f, 44, -35.98f), v3(a, 44, -35.98f), 0.78f, 0.7f, 0.55f, 0, 0);
+        lb_quad(TEX_NONE, v3(a + 1.2f, 2.5f, 35.98f), v3(a, 2.5f, 35.98f), v3(a, 44, 35.98f), v3(a + 1.2f, 44, 35.98f), 0.78f, 0.7f, 0.55f, 0, 0);
+        lb_quad(TEX_NONE, v3(-35.98f, 2.5f, a + 1.2f), v3(-35.98f, 2.5f, a), v3(-35.98f, 44, a), v3(-35.98f, 44, a + 1.2f), 0.78f, 0.7f, 0.55f, 0, 0);
+        lb_quad(TEX_NONE, v3(35.98f, 2.5f, a), v3(35.98f, 2.5f, a + 1.2f), v3(35.98f, 44, a + 1.2f), v3(35.98f, 44, a), 0.78f, 0.7f, 0.55f, 0, 0);
+    }
+    lb_box(-36, 0, -36, 36, 2.5f, -35.4f, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.9f, 0);
+    lb_box(-36, 0, -35.4f, -35.4f, 2.5f, 35.4f, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.9f, 0);
+    lb_box(35.4f, 0, -35.4f, 36, 2.5f, 35.4f, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.9f, 0);
+    lb_box(-36, 0, 35.4f, 28, 2.5f, 36, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.9f, 0);
+    lb_box(32, 0, 35.4f, 36, 2.5f, 36, TEX_NONE, TEX_NONE, 0.97f, 0.95f, 0.9f, 0);
+    /* the mouse hole in the south wall, with a cosy little room behind it */
+    lb_box(27, -2, 36, 33, 0, 42, TEX_PLANK, TEX_WOOD, 0.6f, 0.45f, 0.3f, 0);
+    lb_box(27, 0, 41, 33, 4, 42, TEX_WOOD, TEX_WOOD, 0.35f, 0.25f, 0.18f, 0);
+    lb_box(27, 0, 37, 28, 4, 41, TEX_WOOD, TEX_WOOD, 0.35f, 0.25f, 0.18f, 0);
+    lb_box(32, 0, 37, 33, 4, 41, TEX_WOOD, TEX_WOOD, 0.35f, 0.25f, 0.18f, 0);
+    lb_box(27, 3.6f, 37, 33, 4.4f, 41, TEX_WOOD, TEX_WOOD, 0.35f, 0.25f, 0.18f, 0);
+    /* the window over the counter */
+    lb_quad(TEX_NONE, v3(10, 15, -35.9f), v3(24, 15, -35.9f), v3(24, 26, -35.9f), v3(10, 26, -35.9f), 0.85f, 0.95f, 1.0f, 0, 0);
+    lb_box(9.4f, 26, -36, 24.6f, 26.8f, -35.4f, TEX_WOOD, TEX_WOOD, 0.97f, 0.97f, 0.95f, 0);
+    lb_box(9.4f, 15, -36, 10, 26, -35.4f, TEX_WOOD, TEX_WOOD, 0.97f, 0.97f, 0.95f, 0);
+    lb_box(24, 15, -36, 24.6f, 26, -35.4f, TEX_WOOD, TEX_WOOD, 0.97f, 0.97f, 0.95f, 0);
+    lb_box(16.7f, 15, -36, 17.3f, 26, -35.6f, TEX_WOOD, TEX_WOOD, 0.97f, 0.97f, 0.95f, 0);
+    lb_box(9, 14.3f, -36, 25, 15, -33.4f, TEX_WOOD, TEX_WOOD, 0.97f, 0.97f, 0.95f, 0);   /* windowsill */
+    /* the kitchen counter, its drawers and the high shelf */
+    lb_box(-36, 0, -36, 8, 10.4f, -26, TEX_WOOD, TEX_WOOD, 0.75f, 0.58f, 0.4f, 0);
+    lb_box(-36, 10.4f, -36, 8.5f, 11, -25.5f, TEX_TILE, TEX_TILE, 0.95f, 0.95f, 0.97f, 0);
+    lb_box(-34, 10.98f, -34.5f, -26, 11.02f, -28, TEX_METAL, TEX_METAL, 0.7f, 0.72f, 0.75f, 0);   /* sink */
+    lb_cyl(-31, 11, -31.5f, 2.2f, 6.0f, 16, TEX_NONE, TEX_NONE, 0.75f, 0.9f, 0.95f, 0);          /* a jar */
+    lb_cyl(-31, 17, -31.5f, 2.35f, 0.8f, 16, TEX_METAL, TEX_METAL, 0.85f, 0.3f, 0.25f, 0);
+    lb_box(-20, 23.2f, -36, 4, 24, -32, TEX_WOOD, TEX_WOOD, 0.8f, 0.6f, 0.42f, 0);
+    lb_box(-19, 20, -36, -18.4f, 23.2f, -35, TEX_METAL, TEX_METAL, 0.6f, 0.6f, 0.62f, 0);   /* brackets */
+    lb_box(2.4f, 20, -36, 3, 23.2f, -35, TEX_METAL, TEX_METAL, 0.6f, 0.6f, 0.62f, 0);
+    lb_cyl(0.6f, 24, -34.4f, 1.2f, 3.0f, 12, TEX_NONE, TEX_NONE, 0.9f, 0.75f, 0.3f, 0);           /* spice tins */
+    lb_cyl(2.8f, 24, -34.6f, 0.9f, 4.0f, 12, TEX_NONE, TEX_NONE, 0.3f, 0.55f, 0.3f, 0);
+    for (k = 0; k < 4; k++)   /* drawer fronts drawn on the counter (the drawers themselves move) */
+        lb_quad(TEX_NONE, v3(-32.5f + k * 6, 1.0f + k * 2.2f, -25.98f), v3(-27.5f + k * 6, 1.0f + k * 2.2f, -25.98f),
+                v3(-27.5f + k * 6, 2.2f + k * 2.2f, -25.98f), v3(-32.5f + k * 6, 2.2f + k * 2.2f, -25.98f), 0.25f, 0.18f, 0.12f, 0, 0);
+    /* the sofa and the wall clock above it */
+    lb_box(-36, 0, -12, -24, 6, 14, TEX_CARPET, TEX_CARPET, 0.4f, 0.6f, 0.45f, 0);
+    lb_box(-36, 6, -12, -32, 13, 14, TEX_CARPET, TEX_CARPET, 0.35f, 0.55f, 0.4f, 0);
+    lb_box(-32, 6, -12, -24, 9, -9, TEX_CARPET, TEX_CARPET, 0.35f, 0.55f, 0.4f, 0);
+    lb_box(-32, 6, 11, -24, 9, 14, TEX_CARPET, TEX_CARPET, 0.35f, 0.55f, 0.4f, 0);
+    lb_box(-31.5f, 6, -8.5f, -25, 7, 0.5f, TEX_CARPET, TEX_CARPET, 0.45f, 0.68f, 0.5f, 0);
+    lb_box(-31.5f, 6, 1.5f, -25, 7, 10.5f, TEX_CARPET, TEX_CARPET, 0.45f, 0.68f, 0.5f, 0);
+    for (k = 0; k < 24; k++) {
+        float a0 = TAU_F * k / 24, a1 = TAU_F * (k + 1) / 24;
+        lb_tri(TEX_NONE, v3(-35.85f, 22, -6), v3(-35.85f, 22 + cosf(a1) * 5.5f, -6 + sinf(a1) * 5.5f),
+               v3(-35.85f, 22 + cosf(a0) * 5.5f, -6 + sinf(a0) * 5.5f), 0.98f, 0.96f, 0.9f, 0, 0);
+        lb_quad(TEX_NONE, v3(-35.8f, 22 + cosf(a0) * 5.5f, -6 + sinf(a0) * 5.5f), v3(-35.8f, 22 + cosf(a1) * 5.5f, -6 + sinf(a1) * 5.5f),
+                v3(-35.8f, 22 + cosf(a1) * 6.2f, -6 + sinf(a1) * 6.2f), v3(-35.8f, 22 + cosf(a0) * 6.2f, -6 + sinf(a0) * 6.2f), 0.55f, 0.35f, 0.15f, 0, 0);
+    }
+    for (k = 0; k < 12; k++) {
+        float a = TAU_F * k / 12, c = cosf(a), s = sinf(a), l = k % 3 == 0 ? 1.0f : 0.5f;
+        lb_quad(TEX_NONE, v3(-35.75f, 22 + c * 4.9f - s * 0.15f, -6 + s * 4.9f + c * 0.15f), v3(-35.75f, 22 + c * 4.9f + s * 0.15f, -6 + s * 4.9f - c * 0.15f),
+                v3(-35.75f, 22 + c * (4.9f - l) + s * 0.15f, -6 + s * (4.9f - l) - c * 0.15f), v3(-35.75f, 22 + c * (4.9f - l) - s * 0.15f, -6 + s * (4.9f - l) + c * 0.15f),
+                0.1f, 0.1f, 0.12f, 0, 0);
+    }
+    /* the dining table: plate, cake, cup and salt; a chair with sugar cubes; a stack of books as stairs */
+    lb_box(-22, 8.2f, 4, 2, 9, 20, TEX_WOOD, TEX_WOOD, 0.7f, 0.48f, 0.3f, 0);
+    lb_cyl(-21, 0, 5, 0.9f, 8.2f, 10, TEX_WOOD, TEX_WOOD, 0.65f, 0.45f, 0.28f, 0);
+    lb_cyl(1, 0, 5, 0.9f, 8.2f, 10, TEX_WOOD, TEX_WOOD, 0.65f, 0.45f, 0.28f, 0);
+    lb_cyl(-21, 0, 19, 0.9f, 8.2f, 10, TEX_WOOD, TEX_WOOD, 0.65f, 0.45f, 0.28f, 0);
+    lb_cyl(1, 0, 19, 0.9f, 8.2f, 10, TEX_WOOD, TEX_WOOD, 0.65f, 0.45f, 0.28f, 0);
+    lb_cyl(-8, 9, 12, 3.6f, 0.3f, 24, TEX_NONE, TEX_NONE, 0.98f, 0.98f, 0.97f, 0);
+    lb_box(-10, 9.3f, 10.5f, -6, 11.5f, 14, TEX_NONE, TEX_NONE, 0.95f, 0.8f, 0.55f, 0);
+    lb_box(-10, 10.3f, 10.48f, -6, 10.6f, 14.02f, TEX_NONE, TEX_NONE, 1.0f, 0.55f, 0.65f, 0);
+    lb_box(-10.1f, 11.5f, 10.4f, -5.9f, 12.0f, 14.1f, TEX_NONE, TEX_NONE, 1.0f, 0.98f, 0.95f, 0);
+    lb_cyl(-7, 12, 11.5f, 0.55f, 0.7f, 8, TEX_NONE, TEX_NONE, 0.9f, 0.1f, 0.15f, 0);
+    lb_cyl(-17, 9, 8, 1.8f, 3.8f, 16, TEX_NONE, TEX_NONE, 0.98f, 0.98f, 1.0f, 0);
+    lb_cyl(-17, 12.75f, 8, 1.6f, 0.1f, 16, TEX_NONE, TEX_NONE, 0.35f, 0.2f, 0.1f, 0);
+    lb_box(-15.4f, 10.2f, 7.7f, -14.4f, 12.0f, 8.3f, TEX_NONE, TEX_NONE, 0.98f, 0.98f, 1.0f, 0);
+    lb_cyl(-3, 9, 17, 0.8f, 3.0f, 10, TEX_NONE, TEX_NONE, 0.95f, 0.95f, 0.95f, 0);
+    lb_cyl(-3, 12, 17, 0.8f, 0.4f, 10, TEX_METAL, TEX_METAL, 0.75f, 0.75f, 0.8f, 0);
+    lb_box(-20, 9, 16, -13, 9.15f, 16.5f, TEX_METAL, TEX_METAL, 0.8f, 0.8f, 0.85f, 0);   /* fork and knife */
+    lb_box(-20, 9, 17.3f, -13, 9.15f, 17.7f, TEX_METAL, TEX_METAL, 0.8f, 0.8f, 0.85f, 0);
+    lb_box(3, 4.4f, 8, 9, 5, 16, TEX_WOOD, TEX_WOOD, 0.75f, 0.52f, 0.32f, 0);            /* chair */
+    lb_box(8.2f, 5, 8, 9, 12, 16, TEX_WOOD, TEX_WOOD, 0.75f, 0.52f, 0.32f, 0);
+    for (k = 0; k < 4; k++) lb_cyl((k & 1) ? 8.4f : 3.6f, 0, (k & 2) ? 15.4f : 8.6f, 0.45f, 4.4f, 8, TEX_WOOD, TEX_WOOD, 0.7f, 0.48f, 0.3f, 0);
+    lb_box(3.2f, 5, 10, 5.2f, 7, 12, TEX_NONE, TEX_NONE, 1, 1, 1, 0);                   /* sugar cubes */
+    lb_box(5.6f, 5, 12.5f, 7.2f, 6.6f, 14.1f, TEX_NONE, TEX_NONE, 1, 1, 1, 0);
+    huge_flat_book(16, 9, 21, 15, 0, 1.7f);
+    huge_flat_book(12.5f, 9.5f, 16.5f, 14.5f, 0, 3.4f);
+    huge_flat_book(9.6f, 9.8f, 12.6f, 14.2f, 0, 5.0f);
+    /* the bookshelf on the east wall and the pile of books that climbs to it */
+    lb_box(30, 0, -26, 36, 32, -25, TEX_WOOD, TEX_WOOD, 0.6f, 0.4f, 0.25f, 0);
+    lb_box(30, 0, 5, 36, 32, 6, TEX_WOOD, TEX_WOOD, 0.6f, 0.4f, 0.25f, 0);
+    lb_box(30, 31.2f, -26, 36, 32, 6, TEX_WOOD, TEX_WOOD, 0.6f, 0.4f, 0.25f, 0);
+    lb_box(30, 0, -25, 36, 1.5f, 5, TEX_WOOD, TEX_WOOD, 0.6f, 0.4f, 0.25f, 0);
+    for (k = 0; k < 3; k++) {
+        float y = 8 + k * 8;
+        lb_box(30, y, -25, 36, y + 0.8f, 5, TEX_WOOD, TEX_WOOD, 0.62f, 0.42f, 0.26f, 0);
+        /* steps up to the next shelf: a short and a medium book at the north end */
+        huge_book(31.2f, y + 0.8f, -24.9f, 35.8f, y + 0.8f + 2.3f, -22.6f);
+        huge_book(31.2f, y + 0.8f, -22.5f, 35.8f, y + 0.8f + 4.6f, -20.2f);
+        huge_book(31.2f, y + 0.8f, -20.1f, 35.8f, y + 0.8f + 6.8f, -17.8f);
+        huge_shelf_books(y + 0.8f, -15.5f, 4.8f);
+    }
+    huge_shelf_books(1.5f, -24.8f, 4.8f);
+    huge_flat_book(24, -12, 30, -4, 0, 1.6f);
+    huge_flat_book(25, -11, 30, -5, 1.6f, 1.6f);
+    huge_flat_book(26, -10.5f, 30, -5.5f, 3.2f, 1.6f);
+    huge_flat_book(27, -10, 30, -6, 4.8f, 1.6f);
+    huge_flat_book(28, -9.5f, 30, -6.5f, 6.4f, 1.5f);
+    /* the rug, the cat's cushion and a floor lamp */
+    lb_box(4, 0, -22, 28, 0.2f, 2, TEX_CARPET, TEX_CARPET, 0.65f, 0.2f, 0.22f, 0);
+    lb_box(5, 0.2f, -21, 27, 0.22f, 1, TEX_CARPET, TEX_CARPET, 0.8f, 0.55f, 0.3f, 0);
+    lb_box(6, 0.22f, -20, 26, 0.24f, 0, TEX_CARPET, TEX_CARPET, 0.6f, 0.18f, 0.2f, 0);
+    lb_cyl(16, 0.24f, -10, 5.2f, 0.4f, 24, TEX_CARPET, TEX_CARPET, 0.5f, 0.35f, 0.65f, 0);
+    lb_cyl(-30, 0, 30, 3.0f, 0.6f, 16, TEX_METAL, TEX_METAL, 0.3f, 0.3f, 0.32f, 0);
+    lb_cyl(-30, 0.6f, 30, 0.35f, 23.0f, 8, TEX_METAL, TEX_METAL, 0.5f, 0.5f, 0.52f, 0);
+    lb_cyl(-30, 22, 30, 4.2f, 5.5f, 16, TEX_NONE, TEX_NONE, 1.0f, 0.95f, 0.8f, 0);
+    lb_uv_mul = 1.0f;
+    finish_geometry();
+
+    lv.spawn[0] = v3(-16, 0, -14); lv.spawn_yaw[0] = 1.9f;
+
+    /* star 0: on the cake on the table */
+    obj_spawn(OT_STAR, v3(-8, 12.4f, 12.2f), 0, 0);
+    /* star 1: the toaster launches Tux to the high shelf; the drawers are the stairs up to the counter */
+    o = obj_spawn(OT_TOASTER, v3(-2, 13.3f, -30.2f), 0, 0);
+    obj_spawn(OT_STAR, v3(-15, 24.4f, -34), 0, 1);
+    for (k = 0; k < 4; k++) {
+        o = obj_spawn(OT_PLATFORM, v3(-30 + k * 6, 1.6f + k * 2.2f, -28.2f), 0, 0);
+        if (o) {
+            obj_set_box(o, 2.6f, 0.6f, 2.0f, TEX_WOOD, TEX_WOOD, 0.85f, 0.65f, 0.45f);
+            o->f[2] = 4.4f; o->f[3] = 5.0f; o->f[4] = -k * 1.25f;   /* each drawer opens a little after the one below */
+        }
+    }
+    /* star 2: the sleeping cat (the star is under it) and the ball of yarn */
+    o = obj_spawn(OT_GIANTCAT, v3(16, 0.64f, -10), 0.6f, 0);
+    if (o) { o->home = o->pos; o->f[0] = -21; o->f[1] = -21; o->f[2] = 23; o->f[3] = 2; o->f[5] = 0.6f; }
+    o = obj_spawn(OT_YARN, v3(-27, 0, -18), 0, 0);
+    if (o) o->home = o->pos;
+    /* star 3: the mouse hole, past the giant's stomping slippers */
+    for (k = 0; k < 2; k++) {
+        o = obj_spawn(OT_GIANTFOOT, v3(10 + k * 10, 60, 30), 0, k);
+        if (o) {
+            o->home = v3(o->pos.x, 0, o->pos.z);
+            o->f[0] = 4; o->f[1] = 29.5f; o->f[2] = 26; o->f[3] = 30.5f;
+            o->i[0] = 60 + k * 90;
+        }
+    }
+    obj_spawn(OT_STAR, v3(30, 1.0f, 39), 0, 3);
+    /* star 4: red fish */
+    obj_spawn(OT_REDCOIN, v3(-17, 13.6f, 8), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(-34, 13.8f, 1), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(30.6f, 25.4f, -8), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(24, 1.2f, 33), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(-34, 11.8f, -27), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(-10, 0.8f, 12), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(20, 15.8f, -34.5f), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(30.6f, 2.3f, -2), 0, 0);
+    obj_spawn(OT_STARMARKER, v3(4, 4.0f, -6), 0, 4);
+    /* fish */
+    coin_line(v3(-16, 0.6f, -8), v3(-4, 0.6f, -8), 6, 0);
+    coin_ring(v3(16, 0.8f, -10), 8.0f, 12, 0);
+    coin_line(v3(-20, 9.6f, 14), v3(-12, 9.6f, 19), 5, 0);
+    coin_line(v3(-1, 9.6f, 6), v3(-1, 9.6f, 13), 4, 0);
+    coin_line(v3(-22, 11.6f, -28), v3(4, 11.6f, -28), 8, 0);
+    coin_line(v3(-30, 6.6f, -6), v3(-30, 6.6f, 9), 6, 0);
+    coin_line(v3(10, 0.6f, 32), v3(26, 0.6f, 32), 6, 0);
+    coin_line(v3(-18, 0.6f, 10), v3(-4, 0.6f, 10), 5, 0);
+    coin_line(v3(12, 15.6f, -34.5f), v3(22, 15.6f, -34.5f), 4, 0);
+    for (k = 0; k < 3; k++) coin_line(v3(30.6f, 9.4f + k * 8, -12), v3(30.6f, 9.4f + k * 8, 3), 5, 0);
+    coin_line(v3(18, 2.3f, 12), v3(10.5f, 5.7f, 12), 4, 0);
+    coin_ring(v3(-30, 1.2f, 30), 4.2f, 8, 0);
+    coin_line(v3(-26, 0.6f, -30), v3(-26, 0.6f, -20), 5, 0);
+    coin_line(v3(-14, 24.6f, -34), v3(2, 24.6f, -34), 4, 0);
+    coin_line(v3(24, 0.6f, -20), v3(24, 0.6f, -14), 4, 0);
+    coin_ring(v3(-8, 0.6f, -22), 4.0f, 8, 0);
+    sign(-12, -14, 2, -PI_F / 2, "A NOTE FROM A MOUSE: The giant keeps a star\nup on the high shelf. Hop into the toaster and\n"
+                                  "wait for the pop! The drawers of the counter\nslide in and out - ride them up to the top.");
+    sign(0, 30, 2, -PI_F / 2, "A NOTE FROM A MOUSE: Our door is at the far end\nof the hall. Watch out for the giant's slippers -\n"
+                              "when a shadow grows on the floor, RUN!");
+    sign(-20, -2, 2, PI_F / 2, "A NOTE FROM A MOUSE: The cat sleeps on something\nshiny. Don't run or jump near it! Cats can't\n"
+                           "resist a ball of yarn... throw one with B.");
+}
+
 void build_level(int level)
 {
     switch (level) {
@@ -2091,6 +2750,8 @@ void build_level(int level)
     case LV_SEA: build_sea(); break;
     case LV_SKY: build_sky(); break;
     case LV_SPACE: build_space(); break;
+    case LV_NANO: build_nano(); break;
+    case LV_HUGE: build_huge(); break;
     }
 }
 

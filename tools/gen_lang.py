@@ -29,7 +29,7 @@ def c_escape(s):
     return '"' + ''.join(out) + '"'
 
 # --- check the keys exist in the sources
-srcs = [os.path.join(ROOT, 'src', f) for f in ('game.c', 'levels.c', 'objects.c', 'player.c', 'sky.c', 'space.c')]
+srcs = [os.path.join(ROOT, 'src', f) for f in ('game.c', 'levels.c', 'objects.c', 'player.c', 'sky.c', 'space.c', 'scale.c')]
 found = set(json.loads(subprocess.check_output([sys.executable, os.path.join(HERE, 'extract_strings.py')] + srcs)))
 missing = [k for k in JA if k not in found and k != 'LANGUAGE']
 for k in missing:

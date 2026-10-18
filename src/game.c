@@ -63,6 +63,10 @@ const CourseInfo courses[CRS_COUNT] = {
                                 "Sky Flight: 300 Fish" }, LV_SKY },
     { "STARDUST ORBIT", 6, { "Through the Station Core", "Comet Ring Run", "Catch the Ice Comet",
                              "Red Fish of the Asteroid Belt", "Smash the Ice Meteors", "100 Fish of Orbit" }, LV_SPACE },
+    { "NANO VILLAGE", 5, { "Tow the Enemy Fleet", "Rain on the Forest Fires", "Rout the Tiny Army",
+                           "Red Fish of the Tiny Kingdom", "100 Fish of the Village" }, LV_NANO },
+    { "HUGEPAGE HOUSE", 6, { "Atop the Giant's Table", "Toaster Launch to the Top Shelf", "Distract the Giant Cat",
+                             "Past the Giant's Slippers", "Red Fish in the Giant's Room", "100 Fish of the House" }, LV_HUGE },
 };
 
 /* ======================================================================
@@ -340,7 +344,13 @@ static void dialog_draw(void)
         gfx_text(x + w - 30, y + 105, 2, dlg_buf[pe] ? "v" : "*", 1, 0.85f, 0.3f, 1);
 }
 
-void hud_message(const char *m, int frames) { g_hud_msg = tr(m); g_hud_msg_t = frames; }
+void hud_message(const char *m, int frames)
+{
+    extern int g_trace;
+    g_hud_msg = tr(m);
+    g_hud_msg_t = frames;
+    if (g_trace) printf("HUD f%d: %s\n", g_frame, m);   /* lets the play-tests see game events */
+}
 
 /* ======================================================================
  * level / warps
@@ -365,7 +375,7 @@ void level_load(int level, int spawn)
     rng_state = 0x1234567u + (unsigned)level * 77u;
     cur_level = level;
     build_level(level);
-    if (spawn < 0 || spawn >= 12) spawn = 0;
+    if (spawn < 0 || spawn >= 16) spawn = 0;
     sp = lv.spawn[spawn];
     sy = lv.spawn_yaw[spawn];
     if (!keep_coins) { pl.coins = 0; }
@@ -392,6 +402,13 @@ void level_load(int level, int spawn)
                     "Stick: steer (forward dives, back climbs)\nA: boost   B: brake   Z: quick turn\n"
                     "Fly through the rings, chase the comet and ram\nthe ice meteors at full boost to smash them!");
     }
+    if (lv.scale_world) scale_reset();
+    if (level == LV_NANO)
+        dialog_open("NANO VILLAGE\nWhoa... everything here is TINY! To the little\npenguins of this kingdom, Tux is a giant.\n"
+                    "Watch your step, help them out, and look:\nthe clouds only reach up to your knees!");
+    if (level == LV_HUGE)
+        dialog_open("HUGEPAGE HOUSE\nWhoa... everything here is HUGE! Tux is no\nbigger than a cup in this giant's house.\n"
+                    "Climb the furniture, ride the toaster and\ndon't wake the cat sleeping on the rug!");
     if (level == LV_SEA) {
         sfx(SFX_1UP);
         dialog_open("You got the DASH BOOTS!\nThey make you run so fast that you skim over\nthe water... and they won't come off on this sea!\n"
@@ -640,6 +657,7 @@ static void play_update(void)
     } else { g_wind = v3(0, 0, 0); g_gust = 0; }
     sky_update();
     space_update();
+    scale_update();
     objs_update();
     objs_collision();
     player_update();
@@ -990,6 +1008,7 @@ static void render_world(void)
     objs_draw_alpha();
     sky_draw_alpha();
     space_draw_alpha();
+    scale_draw_alpha();
     if (lv.snow) draw_snow();
     glDisable(GL_FOG);
     if (underwater) {

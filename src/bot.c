@@ -593,7 +593,8 @@ void bot_update(void)
             for (i = 0; i < nobj; i++) {
                 Obj *o = &objs[i];
                 if (!o->active) continue;
-                if (o->type == OT_KING || o->type == OT_SEGFAULT || o->type == OT_BRUTE || o->type == OT_RACER || o->type == OT_STAR || o->type == OT_BABY || o->type == OT_MOTHER || o->type == OT_GHOSTKING || (o->type == OT_GHOST && v3dist(o->pos, pl.pos) < 12) || o->type == OT_WATCHDOG || o->type == OT_CAGE || o->type == OT_OOM || o->type == OT_SEAL || o->type == OT_WHALE)
+                if (o->type == OT_KING || o->type == OT_SEGFAULT || o->type == OT_BRUTE || o->type == OT_RACER || o->type == OT_STAR || o->type == OT_BABY || o->type == OT_MOTHER || o->type == OT_GHOSTKING || (o->type == OT_GHOST && v3dist(o->pos, pl.pos) < 12) || o->type == OT_WATCHDOG || o->type == OT_CAGE || o->type == OT_OOM || o->type == OT_SEAL || o->type == OT_WHALE ||
+                    o->type == OT_NANOSHIP || o->type == OT_NANOFIRE || o->type == OT_NANOCATAPULT || o->type == OT_GIANTCAT || o->type == OT_TOASTER || o->type == OT_YARN)
                     printf("   obj type %d state %d hp %d pos=(%.2f %.2f %.2f) param %d\n", o->type, o->state, o->hp, o->pos.x, o->pos.y, o->pos.z, o->param);
             }
         }

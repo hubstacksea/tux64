@@ -676,7 +676,7 @@ static void gen_textures(void)
                 }
             }
         /* course pictures */
-        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL12) {
+        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL14) {
             mip = 1;
             for (y = 0; y < w; y++)
                 for (x = 0; x < w; x++) {
@@ -693,6 +693,8 @@ static void gen_textures(void)
                     case TEX_PORTAL11: put(w, x, y, 0.3f + 0.45f * v, 0.5f + 0.4f * v, 0.95f, 1); break;
                     case TEX_PORTAL12: put(w, x, y, 0.02f + 0.06f * v, 0.01f + 0.03f * v, 0.08f + 0.12f * v, 1); break;
                     case TEX_PORTAL10: put(w, x, y, 0.04f + 0.1f * v, 0.06f + 0.2f * v, 0.2f + 0.3f * v, 1); break;
+                    case TEX_PORTAL13: put(w, x, y, 0.45f + 0.35f * v, 0.7f + 0.2f * v, 1.0f, 1); break;
+                    case TEX_PORTAL14: put(w, x, y, 0.85f - 0.2f * v, 0.75f - 0.2f * v, 0.55f - 0.15f * v, 1); break;
                     default: put(w, x, y, 0.02f, 0.05f + 0.15f * v, 0.15f + 0.3f * v, 1); break;
                     }
                 }
@@ -854,6 +856,43 @@ static void gen_textures(void)
                 pic_circle(w, 48, 47, 1.4f, 1, 1, 1);
                 pic_rect(w, 43, 47, 46, 49, 1.0f, 0.5f, 0.1f);
                 pic_circle(w, 41, 49, 1.5f, 1.0f, 0.85f, 0.3f);
+            }
+            if (t == TEX_PORTAL13) {   /* a giant Tux striding over a tiny village */
+                int i;
+                for (y = 44; y < 64; y++)
+                    for (x = 0; x < 64; x++) put(w, x, y, 0.35f + 0.1f * ((x / 8 + y / 5) & 1), 0.7f, 0.3f, 1);
+                for (i = 0; i < 9; i++) {
+                    int hx = 2 + i * 7, hy = 50 + (i % 3) * 4;
+                    pic_rect(w, hx, hy, hx + 4, hy + 3, 0.98f, 0.95f, 0.85f);
+                    pic_fill_tri(w, hx - 1, hy, hx + 2, hy - 3, hx + 5, hy, 0.85f, 0.25f, 0.2f);
+                }
+                pic_circle(w, 32, 25, 13, 0.1f, 0.1f, 0.12f);   /* Tux towering above the roofs */
+                pic_circle(w, 32, 28, 9, 1, 1, 1);
+                pic_circle(w, 32, 11, 7, 0.1f, 0.1f, 0.12f);
+                pic_circle(w, 29, 10, 1.6f, 1, 1, 1);
+                pic_circle(w, 35, 10, 1.6f, 1, 1, 1);
+                pic_rect(w, 30, 13, 35, 15, 1.0f, 0.65f, 0.1f);
+                pic_rect(w, 24, 37, 30, 40, 1.0f, 0.65f, 0.1f);
+                pic_rect(w, 34, 37, 40, 40, 1.0f, 0.65f, 0.1f);
+                for (i = 0; i < 3; i++) pic_circle(w, 8 + i * 22, 30 + (i & 1) * 4, 3, 1, 1, 1);   /* clouds at knee height */
+            }
+            if (t == TEX_PORTAL14) {   /* a tiny Tux under a giant table, a cup and a sleeping cat */
+                int i;
+                for (y = 48; y < 64; y++)
+                    for (x = 0; x < 64; x++) put(w, x, y, 0.6f + 0.06f * ((x / 16) & 1), 0.38f, 0.2f, 1);
+                pic_rect(w, 0, 8, 64, 13, 0.55f, 0.32f, 0.16f);      /* table top */
+                pic_rect(w, 6, 13, 11, 48, 0.5f, 0.3f, 0.15f);       /* legs */
+                pic_rect(w, 50, 13, 55, 48, 0.5f, 0.3f, 0.15f);
+                pic_rect(w, 22, 0, 34, 8, 0.95f, 0.95f, 1.0f);       /* a giant cup on the table */
+                pic_rect(w, 34, 2, 37, 6, 0.95f, 0.95f, 1.0f);
+                pic_circle(w, 44, 44, 9, 0.95f, 0.6f, 0.25f);        /* sleeping cat */
+                pic_circle(w, 52, 40, 5, 0.95f, 0.6f, 0.25f);
+                pic_fill_tri(w, 49, 37, 50, 32, 53, 36, 0.95f, 0.6f, 0.25f);
+                pic_fill_tri(w, 53, 36, 56, 32, 56, 37, 0.95f, 0.6f, 0.25f);
+                for (i = 0; i < 3; i++) pic_rect(w, 38 + i * 5, 40 + i, 41 + i * 5, 41 + i, 0.75f, 0.4f, 0.15f);
+                pic_circle(w, 22, 52, 2.4f, 0.1f, 0.1f, 0.12f);   /* tiny Tux */
+                pic_circle(w, 22, 53, 1.4f, 1, 1, 1);
+                pic_rect(w, 20, 54, 24, 55, 1.0f, 0.6f, 0.1f);
             }
             pic_frame(w, 0.85f, 0.7f, 0.25f);
         }

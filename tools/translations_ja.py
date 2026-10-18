@@ -328,13 +328,15 @@ JA = {
 "TIME UP!": "タイムアップ!",
 "%d FISH! (star already owned)": "%d ひき たっせい! (スターは 入手ずみ)",
 "%d FISH! A star is waiting at the finish!": "%d ひき たっせい! ゴールで スターが もらえるよ!",
-"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSTARDUST ORBIT window (balcony, north-west): 14\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
+"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSTARDUST ORBIT window (balcony, north-west): 14\nNANO VILLAGE window (west, deep in the hall): 18\nHUGEPAGE HOUSE window (east, deep in the hall): 20\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
     "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
     "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
     "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
     "オーロラ海 ラリー(入口の 西よりの ウィンドウ): 10こ\n"
     "フロストクラウド スカイウェイ(2階 北の ウィンドウ): 12こ\n"
     "スターダスト オービット(2階 北西の ウィンドウ): 14こ\n"
+    "小人の国 ナノビレッジ(西の おくの ウィンドウ): 18こ\n"
+    "巨人の国 ヒュージページハウス(東の おくの ウィンドウ): 20こ\n"
     "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
 # ---------------------------------------------------------------- STARDUST ORBIT
 "STARDUST ORBIT": "スターダスト オービット",
@@ -358,4 +360,51 @@ JA = {
 "All the ice meteors are smashed!": "氷のいん石を ぜんぶ くだいた!",
 "ICE METEOR SMASHED! %d left": "いん石を くだいた! のこり %d",
 "Too slow! Ram it at full boost (hold A)!": "おそすぎる! Aを おしつづけて フルブーストで たいあたり!",
+# ---------------------------------------------------------------- NANO VILLAGE
+"NANO VILLAGE": "小人の国 ナノビレッジ",
+"Tow the Enemy Fleet": "てきの かんたいを ひっぱれ",
+"Rain on the Forest Fires": "山火事に 雨を ふらせろ",
+"Rout the Tiny Army": "小人の ぐんたいを おいはらえ",
+"Red Fish of the Tiny Kingdom": "小人の国の 赤いさかな",
+"100 Fish of the Village": "ビレッジの さかな100ぴき",
+"NANO VILLAGE\nWhoa... everything here is TINY! To the little\npenguins of this kingdom, Tux is a giant.\nWatch your step, help them out, and look:\nthe clouds only reach up to your knees!":
+    "小人の国 ナノビレッジ\nうわあ… ここは なにもかも ちっちゃい! この国の\n小さな ペンギンたちには Tuxは 巨人なんだ。\n"
+    "足もとに 気をつけて みんなを たすけよう。\nほら、雲が ひざの 高さに うかんでるよ!",
+"Ship in tow! %d/%d": "船を つないだ! %d/%d",
+"Ship in the harbour! %d left": "船が みなとに ついた! のこり %d",
+"The whole enemy fleet is in the harbour!": "てきの かんたいを ぜんぶ みなとに つれてきた!",
+"Fire out! %d left": "火が きえた! のこり %d",
+"All the forest fires are out!": "山火事が ぜんぶ きえた!",
+"Catapult smashed! %d left": "とうせききを こわした! のこり %d",
+"The tiny army is in full retreat!": "小人の ぐんたいは にげだした!",
+"HARBOUR MASTER: Tie up the enemy ships by\nwading right up to them, then bring them\nhere, between the breakwaters of our harbour!":
+    "みなとの かんりにん: てきの 船に あるいて ちかづけば\nロープで つなげますぞ。そのまま ここまで\nひっぱって、ぼうはていの あいだの みなとへ!",
+"TINY FORESTER: Help! The mountain forest is on\nfire and our buckets are much too small!\nGrab one of those grey rain clouds with B\nand carry it over each fire until it's out.":
+    "小人の きこり: たすけて! 山の 森が もえてるの!\nぼくらの バケツじゃ 小さすぎて…\nあの はいいろの 雨雲を Bで つかんで、\n火の 上まで はこんで 消してください!",
+"TINY GUARD: Blefuscu's army has landed in the\neast with catapults! Their arrows sting even\na giant. Smash all the catapults - a ground\npound (Z in mid-air) scatters the soldiers!":
+    "小人の へいし: ブレフスキュの ぐんたいが とうせききを\nもって 東に じょうりく! その矢は 巨人でも チクッと\nいたいぞ。とうせききを ぜんぶ こわせ! ヒップドロップ\n(空中で Z)で へいたいたちは ちりぢりに なる!",
+"TINY PENGUIN: Wow, you're SO big! Red fish are\nhidden up high all over our kingdom: on\ntowers, the mill, mountain tops, an island...":
+    "小さな ペンギン: わあ、すっごく 大きい! 赤い さかなは\nこの国の 高い ところに かくれてるよ。\nとうの 上、ふうしゃ、山の てっぺん、しま…",
+"TINY MAYOR: Welcome, Great Giant! Please mind\nour roofs. The fleet of Blefuscu waits across\nthe bay, a fire burns on the mountain and an\narmy marches in the east. Will you help us?":
+    "小人の 町長: ようこそ、巨人どの! 屋根を ふまないよう\nおねがいしますぞ。わんの むこうには ブレフスキュの\nかんたい、山では 火事、東からは ぐんたいが…\nどうか 力を かしてくだされ!",
+# ---------------------------------------------------------------- HUGEPAGE HOUSE
+"HUGEPAGE HOUSE": "巨人の国 ヒュージページハウス",
+"Atop the Giant's Table": "巨人の テーブルの 上",
+"Toaster Launch to the Top Shelf": "トースターで 高い たなへ",
+"Distract the Giant Cat": "巨大ネコの 気を そらせ",
+"Past the Giant's Slippers": "巨人の スリッパを くぐりぬけろ",
+"Red Fish in the Giant's Room": "巨人の へやの 赤いさかな",
+"100 Fish of the House": "ハウスの さかな100ぴき",
+"HUGEPAGE HOUSE\nWhoa... everything here is HUGE! Tux is no\nbigger than a cup in this giant's house.\nClimb the furniture, ride the toaster and\ndon't wake the cat sleeping on the rug!":
+    "巨人の国 ヒュージページハウス\nうわあ… ここは なにもかも 大きい! この 巨人の\n家では Tuxは コップくらいの 大きさしかない。\n"
+    "家具を よじのぼり、トースターに のって、じゅうたんで\nねむる ネコを おこさないように 気をつけよう!",
+"Tux dropped into the toaster slot...": "Tuxは トースターの あなに はいった…",
+"The cat was sleeping on a Kernel Star!": "ネコは カーネルスターの 上で ねていた!",
+"The giant cat woke up!": "巨大ネコが 目を さました!",
+"A NOTE FROM A MOUSE: The giant keeps a star\nup on the high shelf. Hop into the toaster and\nwait for the pop! The drawers of the counter\nslide in and out - ride them up to the top.":
+    "ネズミの メモ: 巨人は 高い たなに スターを かくしてる。\nトースターに とびのって ポンッと はねるのを まって!\nキッチンの ひきだしは 出たり 入ったり するから、\nそれに のって 上まで のぼろう。",
+"A NOTE FROM A MOUSE: Our door is at the far end\nof the hall. Watch out for the giant's slippers -\nwhen a shadow grows on the floor, RUN!":
+    "ネズミの メモ: ぼくらの ドアは ろうかの いちばん おく。\n巨人の スリッパに 気をつけて! ゆかに かげが\n大きくなったら にげろ!",
+"A NOTE FROM A MOUSE: The cat sleeps on something\nshiny. Don't run or jump near it! Cats can't\nresist a ball of yarn... throw one with B.":
+    "ネズミの メモ: ネコは なにか ピカピカの 上で ねてる。\nちかくで 走ったり ジャンプしたら ダメ!\nネコは けいとだまに むちゅう… Bで なげてみて。",
 }

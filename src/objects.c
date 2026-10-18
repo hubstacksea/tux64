@@ -109,6 +109,19 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_COMET: o->radius = 1.5f; o->height = 0; o->flags = OF_NOCULL; break;
     case OT_METEOR: o->radius = 3.2f; o->height = 0; o->flags = OF_NOCULL; break;
     case OT_ASTEROID: o->radius = 2.0f; o->height = 0; break;
+    case OT_NANOFOLK: o->radius = 0.15f; o->height = 0.35f; o->flags = OF_SHADOW; o->f[0] = 3.0f; break;
+    case OT_NANOSHIP: o->radius = 0.4f; o->height = 0.6f; break;
+    case OT_NANOCLOUD: o->radius = 0.8f; o->height = 1.0f; o->param2 = (int)(frand() * 7); if (param == 1) o->flags = OF_GRABBABLE | OF_SHADOW; break;
+    case OT_NANOFIRE: o->radius = 1.0f; o->height = 1.2f; break;
+    case OT_NANOSOLDIER: o->radius = 0.15f; o->height = 0.35f; o->flags = OF_SHADOW; break;
+    case OT_NANOCATAPULT: o->radius = 0.4f; o->height = 0.5f; o->flags = OF_SHADOW; break;
+    case OT_NANOSHOT: o->radius = 0.1f; o->height = 0.1f; break;
+    case OT_NANOTRAIN: o->radius = 0.3f; o->height = 0.4f; o->flags = OF_NOCULL; break;
+    case OT_TOASTER: o->radius = 3.0f; o->height = 4.6f; o->flags = OF_SOLID;
+        o->f[5] = 3.0f; o->f[6] = 2.3f; o->f[7] = 1.8f; break;
+    case OT_GIANTCAT: o->radius = 3.0f; o->height = 4.0f; o->flags = OF_SOLID | OF_SHADOW | OF_NOCULL; break;
+    case OT_YARN: o->radius = 0.9f; o->height = 1.8f; o->flags = OF_GRABBABLE | OF_SHADOW; break;
+    case OT_GIANTFOOT: o->radius = 4.0f; o->height = 3.0f; o->flags = OF_SOLID | OF_NOCULL; break;
     case OT_GATE: if (param >= 0 && param < 32) { gate_idx[param] = (int)(o - objs); if (param + 1 > g_gate_n) g_gate_n = param + 1; }
         o->radius = 0; o->height = 6; o->f[0] = 7.0f; break;
     case OT_ICECHUNK: o->radius = 1.35f; o->height = 1.6f; break;
@@ -2117,10 +2130,11 @@ static void upd_fx(Obj *o)
         if (o->timer > 30) obj_kill(o);
         break;
     case OT_FX_SHOCKWAVE: {
+        /* f[2] > 0: a harmless ring of dust; f[3] > 0: maximum radius */
         float r = o->timer * 0.18f;
         o->f[1] = r;
-        if (!player_in_air() && fabsf(v3distxz(o->pos, pl.pos) - r) < 0.7f && fabsf(pl.pos.y - o->pos.y) < 1.0f) player_hurt(1, o->pos);
-        if (r > 22) obj_kill(o);
+        if (o->f[2] <= 0 && !player_in_air() && fabsf(v3distxz(o->pos, pl.pos) - r) < 0.7f && fabsf(pl.pos.y - o->pos.y) < 1.0f) player_hurt(1, o->pos);
+        if (r > (o->f[3] > 0 ? o->f[3] : 22)) obj_kill(o);
         break;
     }
     }
@@ -2159,7 +2173,8 @@ int objs_try_talk(void)
         vec3 d;
         float dist;
         if (!o->active) continue;
-        if (o->type != OT_SIGN && o->type != OT_NPC && o->type != OT_MOTHER && o->type != OT_RACER && o->type != OT_SEAL) continue;
+        if (o->type != OT_SIGN && o->type != OT_NPC && o->type != OT_MOTHER && o->type != OT_RACER && o->type != OT_SEAL &&
+            !(o->type == OT_NANOFOLK && o->text)) continue;
         d = v3sub(o->pos, pl.pos);
         d.y = 0;
         dist = v3len(d);
@@ -2271,6 +2286,9 @@ void objs_update(void)
         case OT_GATE: upd_gate(o); break;
         case OT_SKYCOIN: case OT_SKYRING: sky_obj_update(o); break;
         case OT_SPACERING: case OT_COMET: case OT_METEOR: case OT_ASTEROID: space_obj_update(o); break;
+        case OT_NANOFOLK: case OT_NANOSHIP: case OT_NANOCLOUD: case OT_NANOFIRE: case OT_NANOSOLDIER:
+        case OT_NANOCATAPULT: case OT_NANOSHOT: case OT_NANOTRAIN:
+        case OT_TOASTER: case OT_GIANTCAT: case OT_YARN: case OT_GIANTFOOT: scale_obj_update(o); break;
         case OT_ICECHUNK: upd_icechunk(o); break;
         case OT_WHALE: upd_whale(o); break;
         case OT_BOOSTPAD: upd_boostpad(o); break;
@@ -2326,6 +2344,7 @@ void objs_collision(void)
         }
         if (o->type == OT_FALLPLAT && o->state == 3) continue;
         if (o->type == OT_WHALE) { whale_collision(o); continue; }
+        if (scale_obj_solid(o)) continue;
         if (o->type == OT_TRAMPOLINE) {
             add_box_col(o, v3add(o->pos, v3(0, 0.45f, 0)), 1.25f, 0.45f, 1.25f, 0);
             continue;
@@ -2394,7 +2413,8 @@ static void draw_obj(Obj *o)
         if (o->type == OT_BLUECOIN && o->param == 1 && g_blue_switch_timer <= 0) return;
         if (o->state == 1 && o->timer > 480 && (o->timer / 4) % 2) return;
         if (o->type == OT_BLUECOIN && o->param == 1 && g_blue_switch_timer < 180 && (g_frame / 4) % 2) return;
-        draw_model_at(dl, v3add(o->pos, v3(0, 0.45f, 0)), o->yaw, 1.15f);
+        /* in NANO VILLAGE the fish are drawn smaller so they do not tower over the houses */
+        draw_model_at(dl, v3add(o->pos, v3(0, 0.45f, 0)), o->yaw, lv.scale_world == 1 ? 0.7f : 1.15f);
         break;
     }
     case OT_ONEUP: draw_model_at(mdl[MDL_FISH_GREEN], v3add(o->pos, v3(0, 0.5f, 0)), o->yaw, 1.3f); break;
@@ -2629,6 +2649,8 @@ static void draw_obj(Obj *o)
     }
     case OT_SKYCOIN: case OT_SKYRING: sky_obj_draw(o); break;
     case OT_SPACERING: case OT_COMET: case OT_METEOR: case OT_ASTEROID: space_obj_draw(o); break;
+    case OT_NANOFOLK: case OT_NANOSHIP: case OT_NANOSOLDIER: case OT_NANOCATAPULT: case OT_NANOSHOT: case OT_NANOTRAIN:
+    case OT_TOASTER: case OT_GIANTCAT: case OT_YARN: case OT_GIANTFOOT: scale_obj_draw(o); break;
     case OT_ICECHUNK: if (o->state != 90) draw_model_at(mdl[MDL_ICECHUNK], o->pos, o->yaw, o->scale); break;
     case OT_WHALE: {
         float sw = sinf(o->t * 1.6f);
@@ -2867,7 +2889,8 @@ void objs_draw_alpha(void)
             int k;
             float r = o->f[1];
             glDisable(GL_TEXTURE_2D);
-            glColor4f(1, 0.6f, 0.9f, 0.7f);
+            if (o->f[2] > 0) glColor4f(0.85f, 0.78f, 0.62f, 0.6f * (1 - r / maxf(o->f[3], 0.1f)));
+            else glColor4f(1, 0.6f, 0.9f, 0.7f);
             glBegin(GL_QUAD_STRIP);
             for (k = 0; k <= 48; k++) {
                 float a = TAU_F * k / 48;

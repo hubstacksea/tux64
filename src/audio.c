@@ -321,6 +321,17 @@ static const SongDef songdefs[MUS_COUNT] = {
       "a4 - - - - - - - f4 - - - - - - - g4 - - - - - - - e4 - - - - - - - "
       "a4 - - - c5 - - - a4 - - - f4 - - - g4 - - - b4 - - - g#4 - - - b4 - - -",
       B_OCT, D_ROCK, 1, W_SQ25, 1 },
+    /* NANO: a bouncy little village march, played as if by a tiny wind-up band */
+    { 132, "G G D D G G C D G G D D C C D G",
+      "g5 b5 d6 b5 g5 - d5 - a5 c6 d6 c6 a5 - f#5 - g5 b5 d6 g6 - d6 b5 g5 e6 - c6 - d6 - . . "
+      "b5 - g5 - d5 - g5 - a5 - f#5 - d5 - a5 - c6 - e6 - c6 - g5 - a5 - d6 - f#6 - g6 -",
+      "g4 - - - d4 - - - g4 - - - c4 - d4 - g4 - - - d4 - - - c4 - - - d4 - g4 -",
+      B_POLKA, D_MARCH, 1, W_SQ25, 1 },
+    /* HUGE: slow, heavy giant footsteps in a cosy room */
+    { 96, "F F F F Bb Bb F F Gm Gm C C F F C C",
+      "f4 - - - a4 - c5 - f5 - - - e5 - c5 - d5 - - - bb4 - g4 - a4 - - - c5 - - - "
+      "bb4 - - - d5 - f5 - a4 - - - c5 - f5 - g4 - bb4 - c5 - e5 - f5 - - - . . . .",
+      NULL, B_ROOT, D_SOFT, 1, W_TRI, 1 },
 };
 
 #define MAXSTEPS 512

@@ -27,8 +27,8 @@ void input_update(void);
 void input_clear(void);
 
 /* ---------------- levels ---------------- */
-enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_COUNT };
-enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_COUNT };
+enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_NANO, LV_HUGE, LV_COUNT };
+enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_NANO, CRS_HUGE, CRS_COUNT };
 #define SAVE_COURSES 16   /* room in the save file for future courses */
 #define MAX_STARS 7
 
@@ -52,6 +52,7 @@ typedef struct {
     int snow, clouds, stars_sky, dark;   /* snow: 0 none, 1 light snowfall, 2 blizzard */
     int aurora;                          /* northern lights in the sky */
     int space;                           /* outer space: stars all around, nebulae, no ground */
+    int scale_world;                     /* 1 = NANO VILLAGE (Tux is a giant), 2 = HUGEPAGE HOUSE (Tux is tiny) */
     float wind_yaw;
 } Level;
 extern Level lv;
@@ -79,6 +80,8 @@ enum {
     OT_GATE, OT_ICECHUNK, OT_WHALE, OT_BOOSTPAD, OT_SEAL,
     OT_SKYCOIN, OT_SKYRING,
     OT_SPACERING, OT_COMET, OT_METEOR, OT_ASTEROID,
+    OT_NANOFOLK, OT_NANOSHIP, OT_NANOCLOUD, OT_NANOFIRE, OT_NANOSOLDIER, OT_NANOCATAPULT, OT_NANOSHOT, OT_NANOTRAIN,
+    OT_TOASTER, OT_GIANTCAT, OT_YARN, OT_GIANTFOOT,
     OT_FX_SPARKLE, OT_FX_SMOKE, OT_FX_EXPLODE, OT_FX_BUBBLE, OT_FX_SNOWPUFF, OT_FX_SHOCKWAVE,
     OT_COUNT
 };
@@ -349,6 +352,16 @@ void space_draw_sky(void);
 void space_camera(void);
 vec3 space_ring_pos(int k);
 Obj *space_ring(int k);
+/* NANO VILLAGE (Tux is a giant) and HUGEPAGE HOUSE (Tux is tiny): scale.c */
+extern int g_nano_ships_left, g_nano_fires_left, g_nano_catapults_left;
+extern vec3 g_nano_harbor, g_nano_windmill;
+vec3 nano_track_point(float u);
+void scale_reset(void);
+void scale_update(void);
+void scale_obj_update(Obj *o);
+void scale_obj_draw(Obj *o);
+void scale_draw_alpha(void);
+int  scale_obj_solid(Obj *o);     /* adds the dynamic collision of a scale-world object; 1 if handled */
 extern vec3 g_wind;          /* blizzard wind velocity (u/s), zero when calm */
 extern float g_gust;         /* 0..1 gust strength */
 extern const char *g_hud_msg;
@@ -381,5 +394,6 @@ void lb_stairs(float x0, float z0, float x1, float z1, float y0, float y1, int a
 void lb_appwindow(vec3 c, float yaw, float w, float h, int tex, float r, float g, float b);
 void lb_track(const vec3 *pts, int n, float width, float wall_h, int sub, int tex, float r, float g, float b, int flags);
 extern int lb_alpha_mode;
+extern float lb_uv_mul;
 
 #endif

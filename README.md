@@ -153,11 +153,13 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | AURORA SEA RALLY（オーロラ海ラリー） | 1階 南の壁 入口の西側のウィンドウ | 10 | 5 |
 | FROSTCLOUD SKYWAY（フロストクラウド スカイウェイ） | 2階 バルコニー 北の壁のウィンドウ | 12 | 4 |
 | STARDUST ORBIT（スターダスト オービット） | 2階 バルコニー 北の壁 西側のウィンドウ | 14 | 6 |
+| NANO VILLAGE（小人の国） | 1階 西の壁 奥のウィンドウ | 18 | 5 |
+| HUGEPAGE HOUSE（巨人の国） | 1階 東の壁 奥のウィンドウ | 20 | 6 |
 | SECRET ICE SLIDE | 2階 西端の隠し穴 | 0 | 2 |
 | CASTLE SECRETS | 城の庭 / ロビー | – | 2 |
 | SEGFAULT'S LAIR（最終） | 1階 バルコニー下のドア | 16 | グランドスター |
 
-全 54 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
+全 65 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
 アリーナのトゲ機雷の後ろに立って突進を誘い、直前で横に避けて機雷に激突させる（3回）。
 
 ### スター一覧
@@ -200,6 +202,22 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
   **ブーストリング**（くぐると超加速）、小さな月、背景のガス惑星と星雲。近くの魚は吸い寄せられる。
   Through the Station Core（ステーションの筒の中の仕切りをくぐり抜ける）/ Comet Ring Run（緑のリングから20個のリングを35秒以内に順番に。次のリングを画面のマーカーで表示）/
   Catch the Ice Comet（くねくね逃げる彗星にブーストで追いつく）/ Red Fish of the Asteroid Belt / Smash the Ice Meteors（氷の隕石6個をフルブーストで粉砕）/ 100 Fish
+* **NANO VILLAGE**（小人の国）: 『ガリバー旅行記』のリリパットのように、**Tux が巨人になる** 国。
+  家は Tux のすね丈しかなく、そのまままたいで屋根の上を歩ける。森は足首の高さで、雲はひざの高さを流れ、肩の高さを小鳥の群れが回る。
+  走ると一歩ごとに地面がゆれて土ぼこりが立ち、ジャンプの着地では小人のペンギンたちが飛び上がる（近くで走ると逃げ、立ち止まると手をふる）。
+  小さな汽車が村を一周していて、線路の上に立つと止まって汽笛を鳴らす。小人の町長・兵士・きこりなどには B で話しかけられる。
+  Tow the Enemy Fleet（湾の向こうのブレフスキュ艦隊に浅瀬を歩いて近づくとロープでつながる。5隻を引いて防波堤の間の港へ。船は小さな大砲を撃ってくる）/
+  Rain on the Forest Fires（ひざの高さの灰色の雨雲を B でつかんで頭上にかかげ、山の4か所の山火事の上で雨を降らせる）/
+  Rout the Tiny Army（東に上陸した小人の軍隊。矢はチクッと刺さる程度。投石機3台をヒップドロップか攻撃で壊すと軍隊は退却。ヒップドロップで兵士は吹き飛ぶ）/
+  Red Fish of the Tiny Kingdom（城の塔・風車・灯台・山頂・教会の尖塔など高い所）/ 100 Fish
+* **HUGEPAGE HOUSE**（巨人の国）: 逆に **Tux が小人になる** 巨人の部屋。テーブルや本、トースター、猫まで何もかも巨大で、床板や壁紙の模様も大きい。
+  カメラは低めで家具を見上げる。窓から差しこむ光の中を Tux の頭ほどのほこりが舞い、壁の大時計がチクタク鳴る。
+  Atop the Giant's Table（本の階段 → 椅子 → 角砂糖 → テーブルの上のケーキ）/
+  Toaster Launch to the Top Shelf（出たり入ったりするキッチンの引き出しを階段にしてカウンターへ。トースターの穴に乗るとレバーが下がり、ポンッと高い棚まで打ち上げられる）/
+  Distract the Giant Cat（じゅうたんで眠る巨大ネコの下にスターがある。近くで走ったりジャンプすると目を覚まして追いかけ、前足でたたいてくる。
+  毛糸玉を B で拾ってネコの近くへ投げると、毛糸玉に夢中になってクッションを離れる）/
+  Past the Giant's Slippers（廊下を歩く巨人のスリッパ。床に影が広がったあと踏みつけてきて、着地の衝撃波が床を走る（ジャンプでかわす）。
+  奥のネズミの穴にスター。止まっているスリッパの上には乗れる）/ Red Fish in the Giant's Room / 100 Fish
 * **SECRET ICE SLIDE**: ゴール到達 / 21 秒以内
 * **CASTLE SECRETS**: ロケットパックで城の屋根へ / ロビーのペンギンの贈り物（スター8個以上で話しかける）
 
@@ -227,7 +245,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 開発・テスト用:
 
 ```
---level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT)
+--level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT 14=NANO VILLAGE 15=HUGEPAGE HOUSE)
 --state N             0=タイトル 1=ファイル選択 2=スター選択 4=ゲームオーバー 5=エンディング
 --shot FRAME FILE.bmp 指定フレームでスクリーンショットを保存して終了
 --quit FRAME          指定フレームで終了
@@ -259,6 +277,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | `src/levels.c` | 各ステージのデザイン |
 | `src/sky.c` | FROSTCLOUD SKYWAY のループ状コース・パラループ・制限時間 |
 | `src/space.c` | STARDUST ORBIT のリング・彗星・隕石・小惑星・追尾カメラ・宇宙の背景 |
+| `src/scale.c` | NANO VILLAGE（小人・艦隊・雨雲と山火事・小人の軍隊・汽車・巨人の足音）と HUGEPAGE HOUSE（トースター・巨大ネコ・毛糸玉・巨人のスリッパ・時計・窓の光） |
 | `src/game.c` | 画面遷移・HUD・メニュー・会話ウィンドウ・セーブ・ワープ |
 | `src/lang.c` / `src/lang.h` | 言語選択と翻訳（`tr()`）、設定ファイル |
 | `src/lang_ja.c` / `src/font_ja.h` | 日本語翻訳テーブルと日本語グリフ（tools/gen_lang.py で生成） |

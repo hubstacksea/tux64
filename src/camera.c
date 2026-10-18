@@ -127,6 +127,8 @@ void camera_update(void)
 
     hd = cam.dist;
     h = cam.dist * 0.42f;
+    if (lv.scale_world == 1) h = cam.dist * 0.6f;    /* NANO VILLAGE: a giant's view down onto the roofs */
+    if (lv.scale_world == 2) h = cam.dist * 0.25f;   /* HUGEPAGE HOUSE: low, looking up at the furniture */
     if (pl.act == ACT_SWIM) h = cam.dist * 0.2f;
     /* Avoid obstacles like Lakitu: when the spot behind Tux is blocked (narrow corridors, walls),
      * try positions rotated around him and higher up, and drift toward the most open one. */

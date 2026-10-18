@@ -5,12 +5,14 @@
 
 static Mesh lb_mesh, lb_mesh_a;
 int lb_alpha_mode;
+float lb_uv_mul = 1.0f;   /* texture size multiplier: < 1 makes textures look huge (HUGEPAGE HOUSE) */
 
 void lb_begin(void)
 {
     mesh_init(&lb_mesh);
     mesh_init(&lb_mesh_a);
     lb_alpha_mode = 0;
+    lb_uv_mul = 1.0f;
 }
 
 void lb_end(GLuint *dl)
@@ -29,7 +31,7 @@ static void lb_target(int tex, float r, float g, float b, float a)
 {
     mb_begin(lb_alpha_mode ? &lb_mesh_a : &lb_mesh);
     mb_tex(tex);
-    mb_uvscale(g_tex_scale[tex]);
+    mb_uvscale(g_tex_scale[tex] * lb_uv_mul);
     mb_color4(r, g, b, a);
 }
 
