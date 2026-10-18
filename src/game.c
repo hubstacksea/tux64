@@ -71,6 +71,8 @@ const CourseInfo courses[CRS_COUNT] = {
                              "Skydive into the Rooftop Pool", "Red Fish Among the Rooftops", "100 Fish of the Heights" }, LV_CITY },
     { "CORE DUMP CAVERNS", 6, { "Bottom of the Abyss", "Mine Cart Plunge", "Bounce Up the Mushroom Chimney",
                                 "Light the Five Crystals", "Red Fish of the Deep", "100 Fish of the Caverns" }, LV_CAVE },
+    { "TTY WORLD 1-1", 6, { "Reach the Goal Castle", "Top of the Flagpole", "Secret of the Warp Pipe",
+                            "The Invisible Block", "Red Fish of TTY World", "100 Fish of TTY World" }, LV_SIDE },
 };
 
 /* ======================================================================
@@ -427,6 +429,7 @@ void level_load(int level, int spawn)
     }
     if (lv.scale_world) scale_reset();
     if (lv.tall_world) vert_reset();
+    if (lv.side_view) { side_reset(); camera_update(); }
     if (level == LV_NANO)
         dialog_open("NANO VILLAGE\nWhoa... everything here is TINY! To the little\npenguins of this kingdom, Tux is a giant.\n"
                     "Watch your step, help them out, and look:\nthe clouds only reach up to your knees!");
@@ -439,6 +442,9 @@ void level_load(int level, int spawn)
     if (level == LV_CAVE)
         dialog_open("CORE DUMP CAVERNS\nA giant shaft drills 290 m down into the\nearth, all the way to a lake of magma.\n"
                     "The deeper you go, the darker it gets. Follow\nthe ledge down, or take the mine cart!");
+    if (level == LV_SIDE)
+        dialog_open("TTY WORLD 1-1\nThe world has gone flat! Seen from the side,\nTux can only run left and right here.\n"
+                    "Jump on the walkers, bump the ? blocks from\nbelow and run for the flagpole at the end!");
     if (level == LV_SEA) {
         sfx(SFX_1UP);
         dialog_open("You got the DASH BOOTS!\nThey make you run so fast that you skim over\nthe water... and they won't come off on this sea!\n"
@@ -924,6 +930,7 @@ static void draw_sky(void)
         glDisable(GL_TEXTURE_2D);
     }
     glPopMatrix();
+    if (lv.side_view) side_draw_sky();   /* parallax hills and clouds behind the course */
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
 }

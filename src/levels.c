@@ -396,6 +396,8 @@ static void build_lobby(void)
         /* UPTIME HEIGHTS and CORE DUMP CAVERNS on the balcony, north wall, at both ends */
         lobby_window(v3(25, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL15, 0.95f, 0.5f, 0.35f, CRS_CITY);
         lobby_window(v3(-25, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL16, 0.55f, 0.35f, 0.25f, CRS_CAVE);
+        /* TTY WORLD 1-1 on the south wall, east of the entrance */
+        lobby_window(v3(9, 3.3f, 10.0f), PI_F, 5, 4.0f, TEX_PORTAL17, 0.95f, 0.3f, 0.25f, CRS_SIDE);
         for (k = 0; k < 5; k++) {   /* a wall of monitors above the balcony */
             float x = -20 + k * 10;
             lb_appwindow(v3(x, 12.2f, -40.0f), 0, 3.6f, 2.4f, TEX_CYDATA, 0.15f, 0.35f, 0.6f);
@@ -422,6 +424,7 @@ static void build_lobby(void)
     lv.spawn[14] = v3(27, 0, -24); lv.spawn_yaw[14] = -PI_F / 2;
     lv.spawn[15] = v3(25, 6, -36.5f); lv.spawn_yaw[15] = 0;
     lv.spawn[16] = v3(-25, 6, -36.5f); lv.spawn_yaw[16] = 0;
+    lv.spawn[17] = v3(9, 0, 6.5f); lv.spawn_yaw[17] = PI_F;
 
     /* doors */
     o = obj_spawn(OT_DOOR, v3(0, 0, 9.8f), PI_F, 0);
@@ -463,6 +466,8 @@ static void build_lobby(void)
         if (w) w->i[1] = 22;
         w = warp_box(v3(-25, 6.0f, -39.4f), 2.5f, 0.6f, 4, LV_CAVE, 0, 1, 16);
         if (w) w->i[1] = 24;
+        w = warp_box(v3(9, 0.0f, 9.4f), 2.5f, 0.6f, 4.5f, LV_SIDE, 0, 1, 17);
+        if (w) w->i[1] = 11;
     }
 
     {
@@ -482,6 +487,7 @@ static void build_lobby(void)
                         "HUGEPAGE HOUSE window (east, deep in the hall): 20\n"
                         "UPTIME HEIGHTS window (balcony, north-east end): 22\n"
                         "CORE DUMP CAVERNS window (balcony, north-west end): 24\n"
+                        "TTY WORLD 1-1 window (east of the entrance): 11\n"
                         "SEGFAULT's door (under the balcony): 16 stars\n"
                         "Jump into an app window to enter its world.");
     {
@@ -3197,6 +3203,189 @@ static void build_cave(void)
     tree(30, 60, 3, 1); tree(-34, 58, 3, 1); tree(55, 10, 3, 1); tree(-58, -20, 3, 1); tree(20, -62, 3, 1);
 }
 
+/* ================================================================
+ * TTY WORLD 1-1 - a side-scrolling course seen from a fixed side camera
+ * ================================================================ */
+#define ST SIDE_TILE
+
+/* ground: chunky tiles with a layer of snow on top */
+static void side_ground(float x0, float x1, float y)
+{
+    lb_box(x0, y - 8, -3.2f, x1, y, 3.2f, TEX_SNOW, TEX_GROUNDTILE, 1, 1, 1, 0);
+    lb_box(x0, y - 0.3f, -3.25f, x1, y + 0.02f, 3.25f, TEX_SNOW, TEX_SNOW, 1, 1, 1, 0);
+}
+
+/* a solid block of tiles (stairs, platforms) */
+static void side_solid(float x0, float y0, float x1, float y1, float r, float g, float b)
+{
+    lb_box(x0, y0, -ST / 2, x1, y1, ST / 2, TEX_GROUNDTILE, TEX_GROUNDTILE, r, g, b, 0);
+}
+
+/* a green pipe; returns the height of its top */
+static float side_pipe(float x, float y, float h)
+{
+    lb_cyl(x, y, 0, 1.3f, h - 0.7f, 16, TEX_NONE, TEX_NONE, 0.2f, 0.7f, 0.25f, 0);
+    lb_cyl(x, y + h - 0.7f, 0, 1.6f, 0.7f, 16, TEX_NONE, TEX_NONE, 0.25f, 0.82f, 0.3f, 0);
+    lb_cyl(x, y + h - 0.02f, 0, 1.2f, 0.04f, 16, TEX_NONE, TEX_NONE, 0.05f, 0.15f, 0.05f, 0);
+    lb_box(x - 1.1f, y + 0.3f, 1.25f, x - 0.7f, y + h - 0.9f, 1.32f, TEX_NONE, TEX_NONE, 0.6f, 0.95f, 0.6f, 0);   /* highlight */
+    return y + h;
+}
+
+static Obj *side_block(int type, float tx, float ty, int param)
+{
+    /* blocks sit on the tile grid: (tx, ty) = tile column / row, row 0 rests on the ground */
+    return obj_spawn(type, v3(tx * ST + ST / 2, ty * ST + ST / 2, 0), 0, param);
+}
+
+static void side_walker(float x, float y, float dir)
+{
+    Obj *o = obj_spawn(OT_WALKER, v3(x, y, 0), 0, 0);
+    if (o) o->f[0] = dir;
+}
+
+static void build_side(void)
+{
+    Obj *o;
+    int k;
+    lv.name = "TTY WORLD 1-1";
+    lv.music = MUS_SIDE;
+    lv.course = CRS_SIDE;
+    lv.side_view = 1;
+    set_sky(0.35f, 0.6f, 1.0f, 0.65f, 0.82f, 1.0f, 120, 380);
+    lv.ambient = 0.62f; lv.diffuse = 0.6f;
+    lv.death_y = -60;
+    g_coin_star_idx = 5;
+    lb_begin();
+    /* the ground, in pieces with pits between them */
+    side_ground(-16, 72, 0);
+    side_ground(78, 104.8f, 0);
+    side_ground(108, 150, 0);
+    side_ground(162, 238, 0);
+    side_ground(244, 368, 0);
+    side_solid(-16, 0, -12.8f, 30, 0.8f, 0.8f, 0.85f);    /* walls at both ends of the course */
+    side_solid(364.8f, 0, 368, 30, 0.8f, 0.8f, 0.85f);
+    death_floor(-10, 72, -4, 78, 4);
+    death_floor(-10, 104.8f, -4, 108, 4);
+    death_floor(-10, 150, -4, 162, 4);
+    death_floor(-10, 238, -4, 244, 4);
+    /* pipes (the third one is a warp pipe down to the bonus room) */
+    side_pipe(36, 0, 2.4f);
+    side_pipe(46, 0, 3.6f);
+    side_pipe(56, 0, 4.8f);
+    side_pipe(66, 0, 4.8f);
+    /* the twin staircases with a pit between them */
+    for (k = 0; k < 4; k++) {
+        side_solid(98.4f + k * ST, 0, 104.8f, (k + 1) * ST, 0.9f, 0.85f, 0.85f);
+        side_solid(108, 0, 114.4f - k * ST, (k + 1) * ST, 0.9f, 0.85f, 0.85f);
+    }
+    /* the fire bar's block */
+    side_solid(120 - ST / 2, 3.6f, 120 + ST / 2, 3.6f + ST, 0.6f, 0.4f, 0.25f);
+    /* floating platforms climbing up over the cannon field */
+    side_solid(196, 1.6f, 200.8f, 2.4f, 0.95f, 0.9f, 0.9f);
+    side_solid(203.2f, 4.0f, 208, 4.8f, 0.95f, 0.9f, 0.9f);
+    side_solid(210.4f, 6.4f, 216.8f, 7.2f, 0.95f, 0.9f, 0.9f);
+    side_solid(220, 4.0f, 224.8f, 4.8f, 0.95f, 0.9f, 0.9f);
+    /* the exit pipe from the bonus room */
+    side_pipe(260, 0, 4.8f);
+    /* the big final staircase */
+    for (k = 0; k < 8; k++) side_solid(300 + k * ST, 0, 316, (k + 1) * ST, 0.9f, 0.85f, 0.85f);   /* the top is a 3-tile run-up */
+    side_solid(317.8f, 0, 319.4f, ST, 0.6f, 0.4f, 0.25f);   /* the flagpole's base block */
+    /* the little castle at the end */
+    lb_box(332, 0, -3, 348, 6.4f, -0.8f, TEX_BRICK, TEX_BRICK, 0.85f, 0.6f, 0.5f, 0);
+    lb_box(336, 6.4f, -3, 344, 10.4f, -0.8f, TEX_BRICK, TEX_BRICK, 0.85f, 0.6f, 0.5f, 0);
+    for (k = 0; k < 5; k++) lb_box(332 + k * 3.6f, 6.4f, -3, 333.6f + k * 3.6f, 7.6f, -0.8f, TEX_BRICK, TEX_BRICK, 0.85f, 0.6f, 0.5f, 0);
+    for (k = 0; k < 3; k++) lb_box(336 + k * 3.2f, 10.4f, -3, 337.6f + k * 3.2f, 11.6f, -0.8f, TEX_BRICK, TEX_BRICK, 0.85f, 0.6f, 0.5f, 0);
+    lb_quad(TEX_NONE, v3(338.4f, 0, -0.78f), v3(341.6f, 0, -0.78f), v3(341.6f, 3.6f, -0.78f), v3(338.4f, 3.6f, -0.78f), 0.05f, 0.05f, 0.08f, 0, 0);
+    lb_quad(TEX_NONE, v3(339, 7.4f, -0.78f), v3(341, 7.4f, -0.78f), v3(341, 9.2f, -0.78f), v3(339, 9.2f, -0.78f), 0.05f, 0.05f, 0.08f, 0, 0);
+    /* the bonus room underground (entered through the warp pipe) */
+    lb_box(248, -46, -3.2f, 302, -40, 3.2f, TEX_GROUNDTILE, TEX_GROUNDTILE, 0.45f, 0.55f, 0.95f, 0);
+    lb_box(248, -28, -3.2f, 302, -24, 3.2f, TEX_BRICK, TEX_BRICK, 0.4f, 0.5f, 0.9f, 0);
+    lb_box(244.8f, -46, -3.2f, 248, -24, 3.2f, TEX_BRICK, TEX_BRICK, 0.4f, 0.5f, 0.9f, 0);
+    lb_box(302, -46, -3.2f, 305.2f, -24, 3.2f, TEX_BRICK, TEX_BRICK, 0.4f, 0.5f, 0.9f, 0);
+    for (k = 0; k < 3; k++) side_solid(275.2f + k * ST, -40, 281.6f, -40 + (k + 1) * ST, 0.5f, 0.6f, 1.0f);   /* a little stair-tower */
+    side_pipe(296, -40, 3.2f);
+    finish_geometry();
+
+    lv.spawn[0] = v3(-6, 0, 0); lv.spawn_yaw[0] = PI_F / 2;
+
+    /* ? blocks and bricks: (column, row) on the tile grid; ? block row 2 has its bottom 3.2 above the ground */
+    side_block(OT_QBLOCK, 7.5f, 2.25f, 0);
+    side_block(OT_BRICK, 13, 2.25f, 0);
+    side_block(OT_QBLOCK, 14, 2.25f, 0);
+    side_block(OT_BRICK, 15, 2.25f, 0);
+    side_block(OT_QBLOCK, 16, 2.25f, 2);   /* 1-UP */
+    side_block(OT_BRICK, 17, 2.25f, 0);
+    side_block(OT_QBLOCK, 15, 5.25f, 4);   /* red fish */
+    o = side_block(OT_QBLOCK, 52.5f, 2.25f, 2);   /* a hidden 1-UP block */
+    if (o) o->i[0] = 1;
+    side_block(OT_QBLOCK, 82.5f, 2.25f, 1);   /* ten fish */
+    for (k = 0; k < 8; k++) side_block(OT_BRICK, 79.5f + k, 5.25f, k == 4 ? 3 : 0);
+    side_block(OT_QBLOCK, 155, 2.25f, 0);
+    side_block(OT_QBLOCK, 156, 2.25f, 0);
+    side_block(OT_QBLOCK, 157, 2.25f, 0);
+    for (k = 0; k < 4; k++) side_block(OT_BRICK, 165 + k, 2.25f, 0);
+    o = side_block(OT_QBLOCK, 175, 2.25f, 3);   /* star 3: hidden in an invisible block */
+    if (o) { o->i[0] = 1; o->param2 = 3; }
+    side_block(OT_QBLOCK, 173, 2.25f, 0);
+    side_block(OT_QBLOCK, 177, 2.25f, 0);
+    /* walkers */
+    side_walker(30, 0, -1); side_walker(51, 0, -1); side_walker(61, 0, -1); side_walker(62.5f, 0, -1);
+    side_walker(90, 0, -1); side_walker(94, 0, 1); side_walker(128, 0, -1); side_walker(132, 0, -1);
+    side_walker(178, 0, -1); side_walker(205, 0, -1); side_walker(230, 0, -1); side_walker(270, 0, -1);
+    side_walker(276, 0, -1); side_walker(290, 0, -1);
+    /* the fire bar */
+    o = obj_spawn(OT_FLAMEBAR, v3(120, 3.6f + ST / 2, 0), 0, 6);
+    if (o) { o->f[0] = 2.0f; o->f[1] = 1; }
+    /* the moving platform over the wide pit */
+    o = obj_spawn(OT_PLATFORM, v3(152.4f, -0.3f, 0), 0, 0);
+    if (o) { obj_set_box(o, 2.4f, 0.3f, 1.2f, TEX_METAL, TEX_METAL, 0.9f, 0.75f, 0.3f); o->f[0] = 7.2f; o->f[3] = 5; }
+    /* cannons */
+    obj_spawn(OT_SIDECANNON, v3(172, 0, 0), 0, 0);
+    obj_spawn(OT_SIDECANNON, v3(186, 0, 0), 0, 1);
+    /* warp pipes: down into the bonus room and back up */
+    o = obj_spawn(OT_PIPEWARP, v3(56, 4.8f, 0), 0, 0);
+    if (o) { o->f[0] = 252; o->f[1] = -39.95f; o->f[2] = 0; }
+    o = obj_spawn(OT_PIPEWARP, v3(296, -36.8f, 0), 0, 0);
+    if (o) { o->f[0] = 260; o->f[1] = 4.85f; o->f[2] = 0; }
+    /* star 2: on the brick tower in the bonus room */
+    obj_spawn(OT_STAR, v3(280, -34.4f, 0), 0, 2);
+    /* the flagpole (stars 1 at its top) and the goal star at the castle (star 0) */
+    o = obj_spawn(OT_FLAGPOLE, v3(318.6f, ST, 0), 0, 0);
+    if (o) o->height = 15.2f;
+    obj_spawn(OT_STAR, v3(340, 0.6f, 0), 0, 0);
+    /* red fish (one more comes out of a ? block) */
+    obj_spawn(OT_REDCOIN, v3(75, 3.5f, 0), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(106.4f, 7.6f, 0), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(130.4f, 7.2f, 0), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(156, 2.6f, 0), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(213.6f, 8.0f, 0), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(186, 2.7f, 0), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(266, -39.3f, 0), 0, 0);
+    obj_spawn(OT_STARMARKER, v3(46, 9.5f, 0), 0, 4);
+    /* fish */
+    coin_line(v3(2, 0.6f, 0), v3(9, 0.6f, 0), 4, 0);
+    coin_line(v3(20.8f, 6.4f, 0), v3(28, 6.4f, 0), 4, 0);
+    coin_line(v3(40, 4.2f, 0), v3(42, 4.2f, 0), 2, 0);
+    for (k = 0; k < 5; k++) obj_spawn(OT_COIN, v3(73 + k * 1.2f, 2.5f + sinf(k / 4.0f * PI_F) * 2.0f, 0), 0, 0);
+    coin_line(v3(127.2f, 6.8f, 0), v3(138.4f, 6.8f, 0), 6, 0);   /* under the high bricks: jump from the ? block */
+    coin_line(v3(84, 0.6f, 0), v3(96, 0.6f, 0), 6, 0);
+    for (k = 0; k < 4; k++) obj_spawn(OT_COIN, v3(99.2f + k * ST, (k + 1) * ST + 0.6f, 0), 0, 0);
+    coin_line(v3(122, 0.6f, 0), v3(146, 0.6f, 0), 8, 0);
+    coin_line(v3(152, 2.0f, 0), v3(160, 2.0f, 0), 5, 0);
+    coin_line(v3(165, 0.6f, 0), v3(195, 0.6f, 0), 10, 0);
+    coin_line(v3(197, 3.0f, 0), v3(200, 3.0f, 0), 2, 0);
+    coin_line(v3(204, 5.4f, 0), v3(207, 5.4f, 0), 2, 0);
+    coin_line(v3(220.8f, 5.4f, 0), v3(224, 5.4f, 0), 2, 0);
+    for (k = 0; k < 5; k++) obj_spawn(OT_COIN, v3(239 + k * 1.2f, 2.5f + sinf(k / 4.0f * PI_F) * 2.0f, 0), 0, 0);
+    coin_line(v3(248, 0.6f, 0), v3(256, 0.6f, 0), 4, 0);
+    coin_line(v3(264, 0.6f, 0), v3(296, 0.6f, 0), 10, 0);
+    for (k = 0; k < 3; k++) coin_line(v3(254, -38.8f + k * 2.0f, 0), v3(274, -38.8f + k * 2.0f, 0), 8, 0);
+    coin_line(v3(284, -39.4f, 0), v3(292, -39.4f, 0), 4, 0);
+    sign(2, -1.2f, 2, 0, "TTY WORLD 1-1\nRun to the flagpole at the end of the course!\n"
+                            "Left / right to move, A to jump. Bump the ? blocks\nfrom below. Crouch (Z) on a pipe to go down it.");
+    sign(170, -1.2f, 2, 0, "Psst... not every block can be seen. Some only\nshow up when you bump into them from below!");
+}
+
 void build_level(int level)
 {
     switch (level) {
@@ -3218,6 +3407,7 @@ void build_level(int level)
     case LV_HUGE: build_huge(); break;
     case LV_CITY: build_city(); break;
     case LV_CAVE: build_cave(); break;
+    case LV_SIDE: build_side(); break;
     }
 }
 

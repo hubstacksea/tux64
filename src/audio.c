@@ -342,6 +342,11 @@ static const SongDef songdefs[MUS_COUNT] = {
       "e5 - . . b4 - . . g5 - . . f#5 - e5 - c5 - . . e5 - . . d#5 - . . b4 - . . "
       "e5 - . . g5 - . . b5 - a5 - g5 - . . a4 - . . c5 - e5 - d#5 - - - . . . .",
       NULL, B_ROOT, D_NONE, 1, W_SINE, 1 },
+    /* SIDE: a perky 8-bit overworld tune (original) */
+    { 150, "C C Am Am F F G G C C Am Am F F G C",
+      "c5 . e5 g5 c6 - g5 e5 a5 . c6 a5 e5 - c5 - f5 . a5 c6 f6 - c6 a5 g5 . b5 d6 g6 - . . "
+      "e6 - d6 c6 g5 - e5 - a5 - c6 - e6 d6 c6 - f5 a5 c6 f5 a5 c6 - . g5 b5 d6 b5 c6 - - -",
+      NULL, B_OCT, D_ROCK, 0, W_SQUARE, 1 },
 };
 
 #define MAXSTEPS 512

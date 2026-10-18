@@ -27,8 +27,8 @@ void input_update(void);
 void input_clear(void);
 
 /* ---------------- levels ---------------- */
-enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_NANO, LV_HUGE, LV_CITY, LV_CAVE, LV_COUNT };
-enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_NANO, CRS_HUGE, CRS_CITY, CRS_CAVE, CRS_COUNT };
+enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_NANO, LV_HUGE, LV_CITY, LV_CAVE, LV_SIDE, LV_COUNT };
+enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_NANO, CRS_HUGE, CRS_CITY, CRS_CAVE, CRS_SIDE, CRS_COUNT };
 #define SAVE_COURSES 24   /* room in the save file for future courses */
 #define MAX_SPAWNS 24
 #define MAX_LABELS 24
@@ -57,6 +57,7 @@ typedef struct {
     int scale_world;                     /* 1 = NANO VILLAGE (Tux is a giant), 2 = HUGEPAGE HOUSE (Tux is tiny) */
     int tall_world;                      /* 1 = UPTIME HEIGHTS (skyscrapers), 2 = CORE DUMP CAVERNS (deep shaft) */
     float zfar;                          /* far clip plane (0 = default) */
+    int side_view;                       /* TTY WORLD 1-1: fixed side camera, Tux moves in the plane z = 0 */
     float wind_yaw;
 } Level;
 extern Level lv;
@@ -87,6 +88,7 @@ enum {
     OT_NANOFOLK, OT_NANOSHIP, OT_NANOCLOUD, OT_NANOFIRE, OT_NANOSOLDIER, OT_NANOCATAPULT, OT_NANOSHOT, OT_NANOTRAIN,
     OT_TOASTER, OT_GIANTCAT, OT_YARN, OT_GIANTFOOT,
     OT_MINECART, OT_STALACTITE, OT_MUSHROOM, OT_CAVECRYSTAL,
+    OT_QBLOCK, OT_BRICK, OT_WALKER, OT_SIDECANNON, OT_SIDEBULLET, OT_PIPEWARP, OT_FLAGPOLE,
     OT_FX_SPARKLE, OT_FX_SMOKE, OT_FX_EXPLODE, OT_FX_BUBBLE, OT_FX_SNOWPUFF, OT_FX_SHOCKWAVE,
     OT_COUNT
 };
@@ -380,7 +382,15 @@ void vert_update(void);
 void vert_obj_update(Obj *o);
 void vert_obj_draw(Obj *o);
 void vert_draw_alpha(void);
-void vert_hud(void);     /* adds the dynamic collision of a scale-world object; 1 if handled */
+void vert_hud(void);
+/* TTY WORLD 1-1: side.c */
+#define SIDE_TILE 1.6f
+void side_reset(void);
+void side_camera(void);
+void side_obj_update(Obj *o);
+void side_obj_draw(Obj *o);
+int  side_obj_solid(Obj *o);
+void side_draw_sky(void);     /* adds the dynamic collision of a scale-world object; 1 if handled */
 extern vec3 g_wind;          /* blizzard wind velocity (u/s), zero when calm */
 extern float g_gust;         /* 0..1 gust strength */
 extern const char *g_hud_msg;

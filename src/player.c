@@ -136,6 +136,12 @@ void player_bounce(float vy)
 static void compute_intended(void)
 {
     int_mag = in.mag;
+    if (lv.side_view) {   /* TTY WORLD 1-1: only left and right */
+        int_mag = fabsf(in.sx) > 0.2f ? minf(fabsf(in.sx) * 1.1f, 1.0f) : 0;
+        if (pl.no_ctrl) int_mag = 0;
+        int_yaw = int_mag > 0 ? (in.sx > 0 ? PI_F / 2 : -PI_F / 2) : pl.yaw;
+        return;
+    }
     if (pl.no_ctrl) int_mag = 0;
     if (int_mag > 0.01f) int_yaw = wrap_angle(camera_yaw() - atan2f(in.sx, in.sy));
     else int_yaw = pl.yaw;
@@ -721,6 +727,7 @@ static int try_ledge(void)
 static void land_damage(void)
 {
     float fall = pl.peak_y - pl.pos.y;
+    if (lv.side_view) return;   /* TTY WORLD 1-1: like the old 2D games, no fall damage */
     if (fall > 11.0f && !(floor_flags() & SF_SNOW) && pl.act != ACT_TRAMP) {
         pl.health -= fall > 20 ? 4 : 3;
         sfx(SFX_HURT);
@@ -1740,6 +1747,7 @@ void player_update(void)
         }
     } else if (pl.act != ACT_DEATH) pl.sink = approachf(pl.sink, 0, 3 * DT);
     if (pl.health > 8) pl.health = 8;
+    if (lv.side_view) { pl.pos.z = 0; pl.vel.z = 0; }   /* TTY WORLD 1-1 is a plane */
 }
 
 /* ------------------------------------------------------------------ drawing */

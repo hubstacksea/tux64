@@ -126,6 +126,12 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_STALACTITE: o->radius = 0.7f; o->height = 2.4f; break;
     case OT_MUSHROOM: o->radius = 1.6f; o->height = 1.3f; break;
     case OT_CAVECRYSTAL: o->radius = 0.8f; o->height = 2.8f; o->flags = OF_SHADOW; break;
+    case OT_QBLOCK: case OT_BRICK: o->radius = 0.8f; o->height = 1.6f; o->flags = OF_SOLID | OF_NOCULL; break;
+    case OT_WALKER: o->radius = 0.55f; o->height = 1.0f; o->flags = OF_SHADOW; o->f[0] = -1; break;
+    case OT_SIDECANNON: o->radius = 0.8f; o->height = 1.9f; o->flags = OF_SOLID; break;
+    case OT_SIDEBULLET: o->radius = 0.6f; o->height = 1.0f; break;
+    case OT_PIPEWARP: o->radius = 1.0f; o->height = 0.5f; break;
+    case OT_FLAGPOLE: o->radius = 0.3f; o->height = 16.0f; o->flags = OF_NOCULL; break;
     case OT_GATE: if (param >= 0 && param < 32) { gate_idx[param] = (int)(o - objs); if (param + 1 > g_gate_n) g_gate_n = param + 1; }
         o->radius = 0; o->height = 6; o->f[0] = 7.0f; break;
     case OT_ICECHUNK: o->radius = 1.35f; o->height = 1.6f; break;
@@ -974,12 +980,18 @@ static void upd_spikebomb(Obj *o)
     }
 }
 
+/* f[1] = 1: the bar turns in the vertical x/y plane (TTY WORLD 1-1) instead of around the y axis */
+static vec3 flamebar_dir(Obj *o)
+{
+    return o->f[1] > 0 ? v3(sinf(o->yaw), cosf(o->yaw), 0) : yaw_dir(o->yaw);
+}
+
 static void upd_flamebar(Obj *o)
 {
     int i, n = o->param;
     o->yaw = wrap_angle(o->yaw + o->f[0] * DT);
     for (i = 1; i <= n; i++) {
-        vec3 p = v3add(o->pos, v3scale(yaw_dir(o->yaw), i * 0.9f));
+        vec3 p = v3add(o->pos, v3scale(flamebar_dir(o), i * 0.9f));
         if (v3distxz(p, pl.pos) < 0.45f + PR && pl.pos.y < p.y + 0.5f && pl.pos.y + PH > p.y - 0.5f) {
             if (pl.invinc == 0 && pl.act != ACT_DEATH) {
                 player_hurt(1, o->pos);
@@ -2298,6 +2310,8 @@ void objs_update(void)
         case OT_NANOCATAPULT: case OT_NANOSHOT: case OT_NANOTRAIN:
         case OT_TOASTER: case OT_GIANTCAT: case OT_YARN: case OT_GIANTFOOT: scale_obj_update(o); break;
         case OT_MINECART: case OT_STALACTITE: case OT_MUSHROOM: case OT_CAVECRYSTAL: vert_obj_update(o); break;
+        case OT_QBLOCK: case OT_BRICK: case OT_WALKER: case OT_SIDECANNON: case OT_SIDEBULLET: case OT_PIPEWARP:
+        case OT_FLAGPOLE: side_obj_update(o); break;
         case OT_ICECHUNK: upd_icechunk(o); break;
         case OT_WHALE: upd_whale(o); break;
         case OT_BOOSTPAD: upd_boostpad(o); break;
@@ -2354,6 +2368,7 @@ void objs_collision(void)
         if (o->type == OT_FALLPLAT && o->state == 3) continue;
         if (o->type == OT_WHALE) { whale_collision(o); continue; }
         if (scale_obj_solid(o)) continue;
+        if (side_obj_solid(o)) continue;
         if (o->type == OT_TRAMPOLINE) {
             add_box_col(o, v3add(o->pos, v3(0, 0.45f, 0)), 1.25f, 0.45f, 1.25f, 0);
             continue;
@@ -2662,6 +2677,7 @@ static void draw_obj(Obj *o)
     case OT_NANOFOLK: case OT_NANOSHIP: case OT_NANOSOLDIER: case OT_NANOCATAPULT: case OT_NANOSHOT: case OT_NANOTRAIN:
     case OT_TOASTER: case OT_GIANTCAT: case OT_YARN: case OT_GIANTFOOT: scale_obj_draw(o); break;
     case OT_MINECART: case OT_STALACTITE: case OT_MUSHROOM: case OT_CAVECRYSTAL: vert_obj_draw(o); break;
+    case OT_QBLOCK: case OT_BRICK: case OT_WALKER: case OT_SIDECANNON: case OT_SIDEBULLET: case OT_FLAGPOLE: side_obj_draw(o); break;
     case OT_ICECHUNK: if (o->state != 90) draw_model_at(mdl[MDL_ICECHUNK], o->pos, o->yaw, o->scale); break;
     case OT_WHALE: {
         float sw = sinf(o->t * 1.6f);
@@ -2813,7 +2829,7 @@ void objs_draw_alpha(void)
         case OT_FLAMEBAR: {
             int k;
             for (k = 1; k <= o->param; k++) {
-                vec3 p = v3add(o->pos, v3scale(yaw_dir(o->yaw), k * 0.9f));
+                vec3 p = v3add(o->pos, v3scale(flamebar_dir(o), k * 0.9f));
                 draw_glow(p, 0.6f, 0.3f, 0.7f, 1.0f, 1);   /* frost bar */
                 draw_glow(p, 0.3f, 0.85f, 0.95f, 1.0f, 1);
             }

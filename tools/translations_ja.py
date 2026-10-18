@@ -328,7 +328,7 @@ JA = {
 "TIME UP!": "タイムアップ!",
 "%d FISH! (star already owned)": "%d ひき たっせい! (スターは 入手ずみ)",
 "%d FISH! A star is waiting at the finish!": "%d ひき たっせい! ゴールで スターが もらえるよ!",
-"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSTARDUST ORBIT window (balcony, north-west): 14\nNANO VILLAGE window (west, deep in the hall): 18\nHUGEPAGE HOUSE window (east, deep in the hall): 20\nUPTIME HEIGHTS window (balcony, north-east end): 22\nCORE DUMP CAVERNS window (balcony, north-west end): 24\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
+"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSTARDUST ORBIT window (balcony, north-west): 14\nNANO VILLAGE window (west, deep in the hall): 18\nHUGEPAGE HOUSE window (east, deep in the hall): 20\nUPTIME HEIGHTS window (balcony, north-east end): 22\nCORE DUMP CAVERNS window (balcony, north-west end): 24\nTTY WORLD 1-1 window (east of the entrance): 11\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
     "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
     "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
     "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
@@ -339,6 +339,7 @@ JA = {
     "巨人の国 ヒュージページハウス(東の おくの ウィンドウ): 20こ\n"
     "アップタイム ハイツ(2階 北の 東はしの ウィンドウ): 22こ\n"
     "コアダンプ どうくつ(2階 北の 西はしの ウィンドウ): 24こ\n"
+    "TTYワールド 1-1(入口の 東の ウィンドウ): 11こ\n"
     "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
 # ---------------------------------------------------------------- STARDUST ORBIT
 "STARDUST ORBIT": "スターダスト オービット",
@@ -445,4 +446,21 @@ JA = {
     "トロッコ: のりこめば 深さ 200m の ふるい 駅まで\nいっきに くだるよ。手(フリッパー)は 中に しまってね!",
 "CORE DUMP CAVERNS - 290 m DEEP\nThe ledge spirals down to the magma at the\nbottom. Mind the loose rock overhead and the\ngaps where the ledge has crumbled away.":
     "コアダンプ どうくつ - 深さ 290m\nかべの 道は らせんを えがいて そこの マグマまで\nつづいている。頭の 上の おちてくる つららと、\n道が くずれた すきまに 気をつけて。",
+# ---------------------------------------------------------------- TTY WORLD 1-1
+"TTY WORLD 1-1": "TTYワールド 1-1",
+"Reach the Goal Castle": "ゴールの おしろへ",
+"Top of the Flagpole": "ポールの てっぺん",
+"Secret of the Warp Pipe": "どかんの ひみつ",
+"The Invisible Block": "見えない ブロック",
+"Red Fish of TTY World": "TTYワールドの 赤いさかな",
+"100 Fish of TTY World": "TTYワールドの さかな100ぴき",
+"TTY WORLD 1-1\nThe world has gone flat! Seen from the side,\nTux can only run left and right here.\nJump on the walkers, bump the ? blocks from\nbelow and run for the flagpole at the end!":
+    "TTYワールド 1-1\nせかいが ぺったんこに なっちゃった! ここは 横から\n見た せかい。Tuxは 右と 左にしか すすめないよ。\n"
+    "てきは ふみつけて、?ブロックは 下から たたいて、\nゴールの ポールまで 走りぬけよう!",
+"TTY WORLD 1-1\nRun to the flagpole at the end of the course!\nLeft / right to move, A to jump. Bump the ? blocks\nfrom below. Crouch (Z) on a pipe to go down it.":
+    "TTYワールド 1-1\nコースの おわりの ポールを めざして 走れ!\n右・左で いどう、Aで ジャンプ。?ブロックは 下から\nたたこう。どかんの 上で しゃがむ(Z)と 中に はいれるよ。",
+"Psst... not every block can be seen. Some only\nshow up when you bump into them from below!":
+    "ひそひそ… ブロックが ぜんぶ 見えるとは かぎらないよ。\n下から たたいて はじめて あらわれる ものも あるんだ!",
+"TOP OF THE FLAGPOLE!": "ポールの てっぺん!",
+"Flagpole bonus: %d fish": "ポール ボーナス: さかな %dひき",
 }

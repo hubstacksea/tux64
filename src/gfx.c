@@ -650,6 +650,35 @@ static void gen_textures(void)
                     else put(w, x, y, k * 0.7f, k * 0.9f, k * 1.7f, 1);
                     break;
                 }
+                case TEX_QBLOCK: case TEX_USEDBLOCK: {   /* a riveted block; the ? block has a big pixel "?" */
+                    static const char *qm[8] = { "..XXXX..", ".XX..XX.", ".....XX.", "....XX..", "...XX...", "........", "...XX...", "...XX..." };
+                    int bx = x / 6 - 1, by = y / 6 - 1;   /* 8 x 8 glyph cells of 6 px, centred (border 6 px) */
+                    int edge = x < 3 || y < 3 || x >= w - 3 || y >= w - 3;
+                    int rivet = (x % (w - 12) >= 5 && x % (w - 12) <= 7 && y % (w - 12) >= 5 && y % (w - 12) <= 7);
+                    int glyph = t == TEX_QBLOCK && bx >= 1 && bx < 9 && by >= 1 && by < 9 && qm[by - 1][bx - 1] == 'X';
+                    int shadow = t == TEX_QBLOCK && !glyph && bx >= 1 && bx < 9 && by >= 1 && by < 9 && bx > 1 && by > 1 &&
+                                 qm[by - 2][bx - 2] == 'X';
+                    if (t == TEX_QBLOCK) {
+                        if (edge) put(w, x, y, 0.55f, 0.3f, 0.05f, 1);
+                        else if (glyph) put(w, x, y, 1.0f, 0.97f, 0.85f, 1);
+                        else if (shadow) put(w, x, y, 0.6f, 0.35f, 0.05f, 1);
+                        else if (rivet) put(w, x, y, 0.55f, 0.3f, 0.05f, 1);
+                        else put(w, x, y, 0.98f + 0.02f * n, 0.68f + 0.06f * n, 0.12f, 1);
+                    } else {
+                        if (edge) put(w, x, y, 0.25f, 0.15f, 0.08f, 1);
+                        else if (rivet) put(w, x, y, 0.3f, 0.18f, 0.1f, 1);
+                        else put(w, x, y, 0.6f + 0.05f * n, 0.38f + 0.04f * n, 0.22f, 1);
+                    }
+                    break;
+                }
+                case TEX_GROUNDTILE: {   /* 2 x 2 chunky ground tiles with cracks */
+                    int px = x % 32, py = y % 32;
+                    int seam = px == 0 || py == 0 || px == 31 || py == 31;
+                    int crack = (px == 10 && py > 4 && py < 18) || (py == 18 && px > 10 && px < 22) || (px == 22 && py > 18 && py < 28);
+                    if (seam || crack) put(w, x, y, 0.35f, 0.18f, 0.1f, 1);
+                    else put(w, x, y, 0.82f + 0.06f * n, 0.5f + 0.04f * n, 0.3f, 1);
+                    break;
+                }
                 case TEX_OFFICE: {   /* 4 x 4 windows: concrete mullions, lit offices and dark glass */
                     int px = x % 16, py = y % 16, cx = x / 16, cy = y / 16;
                     float lit = hash2(cx, cy, 21), v = (float)py / 16;
@@ -684,7 +713,7 @@ static void gen_textures(void)
                 }
             }
         /* course pictures */
-        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL16) {
+        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL17) {
             mip = 1;
             for (y = 0; y < w; y++)
                 for (x = 0; x < w; x++) {
@@ -705,6 +734,7 @@ static void gen_textures(void)
                     case TEX_PORTAL14: put(w, x, y, 0.85f - 0.2f * v, 0.75f - 0.2f * v, 0.55f - 0.15f * v, 1); break;
                     case TEX_PORTAL15: put(w, x, y, 0.1f + 0.8f * v, 0.12f + 0.4f * v, 0.35f + 0.05f * v, 1); break;
                     case TEX_PORTAL16: put(w, x, y, 0.02f + 0.05f * v * v, 0.02f, 0.03f, 1); break;
+                    case TEX_PORTAL17: put(w, x, y, 0.4f, 0.6f, 1.0f, 1); break;
                     default: put(w, x, y, 0.02f, 0.05f + 0.15f * v, 0.15f + 0.3f * v, 1); break;
                     }
                 }
@@ -918,6 +948,23 @@ static void gen_textures(void)
                 pic_circle(w, 30, 7, 2.2f, 0.1f, 0.1f, 0.12f);   /* Tux on top of the tallest tower */
                 pic_circle(w, 30, 8, 1.3f, 1, 1, 1);
             }
+            if (t == TEX_PORTAL17) {   /* a side-scroller screen: ground tiles, a ? block, a pipe and Tux mid-jump */
+                int i;
+                for (i = 0; i < 8; i++) pic_rect(w, i * 8, 52, i * 8 + 7, 63, 0.8f, 0.5f, 0.3f);
+                pic_rect(w, 0, 51, 64, 52, 0.95f, 0.97f, 1.0f);
+                pic_circle(w, 12, 52, 9, 0.45f, 0.75f, 0.45f);
+                pic_circle(w, 12, 45, 4, 0.97f, 0.98f, 1.0f);
+                pic_rect(w, 44, 36, 56, 52, 0.2f, 0.7f, 0.25f);
+                pic_rect(w, 42, 32, 58, 37, 0.25f, 0.8f, 0.3f);
+                pic_rect(w, 24, 20, 32, 28, 0.98f, 0.68f, 0.12f);
+                pic_rect(w, 27, 22, 29, 25, 1, 1, 0.9f);
+                pic_rect(w, 33, 20, 41, 28, 0.85f, 0.45f, 0.3f);
+                pic_circle(w, 50, 10, 3, 1, 1, 1);
+                pic_circle(w, 46, 11, 2.4f, 1, 1, 1);
+                pic_circle(w, 29, 35, 2.6f, 0.1f, 0.1f, 0.12f);   /* Tux jumping up into the block */
+                pic_circle(w, 29, 36, 1.5f, 1, 1, 1);
+                pic_rect(w, 27, 38, 31, 39, 1.0f, 0.6f, 0.1f);
+            }
             if (t == TEX_PORTAL16) {   /* a shaft into the dark: a spiral ledge, crystals and magma far below */
                 int i;
                 pic_circle(w, 32, 6, 14, 0.75f, 0.85f, 0.95f);
@@ -958,6 +1005,7 @@ void gfx_init(void)
     g_tex_scale[TEX_WATER] = 0.08f;
     g_tex_scale[TEX_LAVA] = 0.08f;
     g_tex_scale[TEX_OFFICE] = 0.0625f;   /* a window every 4 units (one floor) */
+    g_tex_scale[TEX_GROUNDTILE] = 0.3125f;   /* one 32 px tile per 1.6 units */
     g_tex_scale[TEX_PLANK] = 0.3f;
     gen_textures();
     glEnable(GL_DEPTH_TEST);

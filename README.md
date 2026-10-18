@@ -157,11 +157,12 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | HUGEPAGE HOUSE（巨人の国） | 1階 東の壁 奥のウィンドウ | 20 | 6 |
 | UPTIME HEIGHTS（超高層ビル街） | 2階 バルコニー 北の壁 東端のウィンドウ | 22 | 6 |
 | CORE DUMP CAVERNS（地底の大洞窟） | 2階 バルコニー 北の壁 西端のウィンドウ | 24 | 6 |
+| TTY WORLD 1-1（横スクロール） | 1階 南の壁 入口の東側のウィンドウ | 11 | 6 |
 | SECRET ICE SLIDE | 2階 西端の隠し穴 | 0 | 2 |
 | CASTLE SECRETS | 城の庭 / ロビー | – | 2 |
 | SEGFAULT'S LAIR（最終） | 1階 バルコニー下のドア | 16 | グランドスター |
 
-全 77 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
+全 83 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
 アリーナのトゲ機雷の後ろに立って突進を誘い、直前で横に避けて機雷に激突させる（3回）。
 
 ### スター一覧
@@ -235,6 +236,14 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
   Mine Cart Plunge（地表の駅のトロッコに乗ると、急ならせんの線路を一気に下って深さ200mの駅へ。線路ぞいの魚も取れる）/
   Bounce Up the Mushroom Chimney（光るキノコを踏むと大きく跳ねる。縦穴に下がる煙突の中を棚のキノコで跳ね上がる）/
   Light the Five Crystals（道ぞいの暗い水晶5つをパンチで光らせる）/ Red Fish of the Deep / 100 Fish
+* **TTY WORLD 1-1**（横スクロール）: 昔ながらの **横スクロールアクション** をモチーフにしたステージ。カメラは真横に固定され、
+  Tux は **左右にしか動けない**（コースは z = 0 の平面）。背景には雪をかぶった山・丸い丘・雲が視差スクロールで流れる。
+  1.6 単位のタイルの格子でできていて、**? ブロック**（下から頭突きすると魚・10連続の魚・1-UP・赤い魚・スターが出る）、
+  頭突きやヒップドロップで壊れる **レンガ**、穴、踏みつけで倒せる **歩くてき**（近づくと動き出し、段差の手前で引き返す）、
+  左右に弾を撃つ **大砲**（弾も踏める）、縦に回る **トゲの回転バー**、穴の上を往復する足場、**土管**（上でしゃがむ（Z）と地下のボーナス部屋へワープ）、
+  大階段とゴールの **ポール**（つかむと旗と一緒にすべり降り、つかんだ高さで魚のボーナス）、小さなお城がある。落下ダメージなし。
+  Reach the Goal Castle / Top of the Flagpole（大階段の頂上から助走してポールの上のほうにつかまる）/
+  Secret of the Warp Pipe（地下のボーナス部屋）/ The Invisible Block（見えないブロックを下から頭突き）/ Red Fish / 100 Fish
 * **SECRET ICE SLIDE**: ゴール到達 / 21 秒以内
 * **CASTLE SECRETS**: ロケットパックで城の屋根へ / ロビーのペンギンの贈り物（スター8個以上で話しかける）
 
@@ -264,7 +273,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 開発・テスト用:
 
 ```
---level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT 14=NANO VILLAGE 15=HUGEPAGE HOUSE 16=UPTIME HEIGHTS 17=CORE DUMP CAVERNS)
+--level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT 14=NANO VILLAGE 15=HUGEPAGE HOUSE 16=UPTIME HEIGHTS 17=CORE DUMP CAVERNS 18=TTY WORLD 1-1)
 --state N             0=タイトル 1=ファイル選択 2=スター選択 4=ゲームオーバー 5=エンディング
 --shot FRAME FILE.bmp 指定フレームでスクリーンショットを保存して終了
 --quit FRAME          指定フレームで終了
@@ -296,6 +305,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | `src/levels.c` | 各ステージのデザイン |
 | `src/sky.c` | FROSTCLOUD SKYWAY のループ状コース・パラループ・制限時間 |
 | `src/space.c` | STARDUST ORBIT のリング・彗星・隕石・小惑星・追尾カメラ・宇宙の背景 |
+| `src/side.c` | TTY WORLD 1-1 の横固定カメラ・? ブロック・レンガ・歩くてき・大砲・土管ワープ・ゴールのポール・視差背景 |
 | `src/vertical.c` | UPTIME HEIGHTS（突風・雲の層・車のライト・飛行船・高度計）と CORE DUMP CAVERNS（トロッコ・つらら・キノコ・水晶・深さで変わる暗さ・深度計） |
 | `src/scale.c` | NANO VILLAGE（小人・艦隊・雨雲と山火事・小人の軍隊・汽車・巨人の足音）と HUGEPAGE HOUSE（トースター・巨大ネコ・毛糸玉・巨人のスリッパ・時計・窓の光） |
 | `src/game.c` | 画面遷移・HUD・メニュー・会話ウィンドウ・セーブ・ワープ |
