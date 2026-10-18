@@ -258,7 +258,7 @@ static void wall(float x0, float y0, float z0, float x1, float y1, float z1)
 
 static void lobby_label(vec3 c, float yaw, float h, const char *text, int course)
 {
-    if (lv.nlabels >= 16) return;
+    if (lv.nlabels >= MAX_LABELS) return;
     lv.label[lv.nlabels].p = v3add(v3mad(c, yaw_dir(yaw), 0.4f), v3(0, h * 0.5f + 1.05f, 0));
     lv.label[lv.nlabels].text = text;
     lv.label[lv.nlabels].course = course;
@@ -393,6 +393,9 @@ static void build_lobby(void)
         /* NANO VILLAGE (west wall) and HUGEPAGE HOUSE (east wall), deep in the hall */
         lobby_window(v3(-30.0f, 3.3f, -24), PI_F / 2, 5, 4.0f, TEX_PORTAL13, 0.4f, 0.85f, 0.35f, CRS_NANO);
         lobby_window(v3(30.0f, 3.3f, -24), -PI_F / 2, 5, 4.0f, TEX_PORTAL14, 0.85f, 0.55f, 0.3f, CRS_HUGE);
+        /* UPTIME HEIGHTS and CORE DUMP CAVERNS on the balcony, north wall, at both ends */
+        lobby_window(v3(25, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL15, 0.95f, 0.5f, 0.35f, CRS_CITY);
+        lobby_window(v3(-25, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL16, 0.55f, 0.35f, 0.25f, CRS_CAVE);
         for (k = 0; k < 5; k++) {   /* a wall of monitors above the balcony */
             float x = -20 + k * 10;
             lb_appwindow(v3(x, 12.2f, -40.0f), 0, 3.6f, 2.4f, TEX_CYDATA, 0.15f, 0.35f, 0.6f);
@@ -417,6 +420,8 @@ static void build_lobby(void)
     lv.spawn[12] = v3(-16, 6, -36.5f); lv.spawn_yaw[12] = 0;
     lv.spawn[13] = v3(-27, 0, -24); lv.spawn_yaw[13] = PI_F / 2;
     lv.spawn[14] = v3(27, 0, -24); lv.spawn_yaw[14] = -PI_F / 2;
+    lv.spawn[15] = v3(25, 6, -36.5f); lv.spawn_yaw[15] = 0;
+    lv.spawn[16] = v3(-25, 6, -36.5f); lv.spawn_yaw[16] = 0;
 
     /* doors */
     o = obj_spawn(OT_DOOR, v3(0, 0, 9.8f), PI_F, 0);
@@ -454,6 +459,10 @@ static void build_lobby(void)
         if (w) w->i[1] = 18;
         w = warp_box(v3(29.4f, 0.0f, -24), 0.6f, 2.5f, 4.5f, LV_HUGE, 0, 1, 14);
         if (w) w->i[1] = 20;
+        w = warp_box(v3(25, 6.0f, -39.4f), 2.5f, 0.6f, 4, LV_CITY, 0, 1, 15);
+        if (w) w->i[1] = 22;
+        w = warp_box(v3(-25, 6.0f, -39.4f), 2.5f, 0.6f, 4, LV_CAVE, 0, 1, 16);
+        if (w) w->i[1] = 24;
     }
 
     {
@@ -471,6 +480,8 @@ static void build_lobby(void)
                         "STARDUST ORBIT window (balcony, north-west): 14\n"
                         "NANO VILLAGE window (west, deep in the hall): 18\n"
                         "HUGEPAGE HOUSE window (east, deep in the hall): 20\n"
+                        "UPTIME HEIGHTS window (balcony, north-east end): 22\n"
+                        "CORE DUMP CAVERNS window (balcony, north-west end): 24\n"
                         "SEGFAULT's door (under the balcony): 16 stars\n"
                         "Jump into an app window to enter its world.");
     {
@@ -2326,7 +2337,7 @@ static void build_nano(void)
         lb_box(-30.1f, y + 1.9f, 16.5f, -29.9f, y + 2.1f, 16.65f, TEX_NONE, TEX_NONE, 0.4f, 0.3f, 0.2f, 0);
         g_nano_windmill = v3(-30, y + 2.0f, 16.7f);
         obj_spawn(OT_REDCOIN, v3(-30, y + 3.3f, 16), 0, 0);
-        coin_ring(v3(-30, y + 0.3f, 16), 3.5f, 8, 1);
+        coin_ring(v3(-30, y - 0.4f, 16), 3.5f, 8, 0);
     }
     /* the railway: rails, sleepers and bridges over the river */
     for (i = 0; i < 160; i++) {
@@ -2733,6 +2744,459 @@ static void build_huge(void)
                            "resist a ball of yarn... throw one with B.");
 }
 
+/* ================================================================
+ * UPTIME HEIGHTS - a skyscraper city at dusk, all about height
+ * ================================================================ */
+/* a tower: office facade on the sides, a flat roof with a parapet (gaps where bridges arrive) */
+static void city_tower(float x0, float z0, float x1, float z1, float h, float r, float g, float b)
+{
+    lb_box(x0, -2, z0, x1, h, z1, TEX_STONE, TEX_OFFICE, r, g, b, 0);
+}
+
+/* a parapet along one side from (ax,az) to (bx,bz), leaving out the parameter range g0..g1 (0..1) */
+static void city_wall_run(float ax, float az, float bx, float bz, float y, float g0, float g1)
+{
+    float t = 0.5f, h = y + 1.1f;
+    vec3 a = v3(ax, y, az), b = v3(bx, y, bz);
+    float segs[2][2] = { { 0, g0 }, { g1, 1 } };
+    int k;
+    for (k = 0; k < 2; k++) {
+        vec3 p = v3lerp(a, b, segs[k][0]), q = v3lerp(a, b, segs[k][1]);
+        if (segs[k][1] - segs[k][0] < 0.001f) continue;
+        lb_box(minf(p.x, q.x) - (ax == bx ? t / 2 : 0), y, minf(p.z, q.z) - (az == bz ? t / 2 : 0),
+               maxf(p.x, q.x) + (ax == bx ? t / 2 : 0), h, maxf(p.z, q.z) + (az == bz ? t / 2 : 0), TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0);
+    }
+}
+
+static void city_parapet(float x0, float z0, float x1, float z1, float y, int gap_side, float g0, float g1)
+{
+    /* gap_side: 0 none, 1 -x, 2 +x, 3 -z, 4 +z; the gap spans g0..g1 along that side */
+    float t = 0.5f, h = y + 1.1f;
+    if (gap_side == 3) { lb_box(x0, y, z0, g0, h, z0 + t, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); lb_box(g1, y, z0, x1, h, z0 + t, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); }
+    else lb_box(x0, y, z0, x1, h, z0 + t, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0);
+    if (gap_side == 4) { lb_box(x0, y, z1 - t, g0, h, z1, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); lb_box(g1, y, z1 - t, x1, h, z1, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); }
+    else lb_box(x0, y, z1 - t, x1, h, z1, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0);
+    if (gap_side == 1) { lb_box(x0, y, z0 + t, x0 + t, h, g0, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); lb_box(x0, y, g1, x0 + t, h, z1 - t, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); }
+    else lb_box(x0, y, z0 + t, x0 + t, h, z1 - t, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0);
+    if (gap_side == 2) { lb_box(x1 - t, y, z0 + t, x1, h, g0, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); lb_box(x1 - t, y, g1, x1, h, z1 - t, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0); }
+    else lb_box(x1 - t, y, z0 + t, x1, h, z1 - t, TEX_STONE, TEX_STONE, 0.6f, 0.6f, 0.65f, 0);
+}
+
+/* a steel girder (I-beam) between two points: narrow walkway, flanges and web */
+static void city_girder(vec3 a, vec3 b, float w)
+{
+    vec3 d = v3sub(b, a), c = v3lerp(a, b, 0.5f);
+    float len = v3len(d), yaw = atan2f(d.x, d.z), pitch = asinf(d.y / len);
+    lb_obox(v3add(c, v3(0, -0.15f, 0)), v3(w / 2, 0.15f, len / 2), yaw, pitch, TEX_METAL, TEX_METAL, 0.75f, 0.35f, 0.25f, 0);
+    lb_obox(v3add(c, v3(0, -1.0f, 0)), v3(0.12f, 0.7f, len / 2), yaw, pitch, TEX_METAL, TEX_METAL, 0.65f, 0.3f, 0.2f, 0);
+    lb_obox(v3add(c, v3(0, -1.75f, 0)), v3(w / 2, 0.12f, len / 2), yaw, pitch, TEX_METAL, TEX_METAL, 0.65f, 0.3f, 0.2f, 0);
+}
+
+/* an enclosed skybridge: floor, glass sides and roof (the glass is see-through) */
+static void city_skybridge(vec3 a, vec3 b, float w)
+{
+    vec3 d = v3sub(b, a), c = v3lerp(a, b, 0.5f), side;
+    float len = v3len(d), yaw = atan2f(d.x, d.z), pitch = asinf(d.y / len);
+    lb_obox(v3add(c, v3(0, -0.3f, 0)), v3(w / 2, 0.3f, len / 2), yaw, pitch, TEX_TILE, TEX_METAL, 0.85f, 0.85f, 0.9f, 0);
+    lb_obox(v3add(c, v3(0, 3.6f, 0)), v3(w / 2 + 0.2f, 0.2f, len / 2), yaw, pitch, TEX_METAL, TEX_METAL, 0.6f, 0.62f, 0.7f, 0);
+    side = v3(cosf(yaw), 0, -sinf(yaw));
+    lb_obox(v3add(c, v3add(v3scale(side, w / 2), v3(0, 0.25f, 0))), v3(0.1f, 0.25f, len / 2), yaw, pitch, TEX_METAL, TEX_METAL, 0.6f, 0.62f, 0.7f, 0);
+    lb_obox(v3add(c, v3add(v3scale(side, -w / 2), v3(0, 0.25f, 0))), v3(0.1f, 0.25f, len / 2), yaw, pitch, TEX_METAL, TEX_METAL, 0.6f, 0.62f, 0.7f, 0);
+    lb_alpha_mode = 1;
+    {
+        int k;
+        for (k = -1; k <= 1; k += 2) {
+            vec3 o = v3scale(side, k * w / 2);
+            vec3 p0 = v3add(a, o), p1 = v3add(b, o);
+            lb_quad(TEX_NONE, p0, p1, v3add(p1, v3(0, 3.5f, 0)), v3add(p0, v3(0, 3.5f, 0)), 0.6f, 0.85f, 1.0f, 0, 0);
+            lb_quad(TEX_NONE, p1, p0, v3add(p0, v3(0, 3.5f, 0)), v3add(p1, v3(0, 3.5f, 0)), 0.6f, 0.85f, 1.0f, 0, 0);
+        }
+    }
+    lb_alpha_mode = 0;
+    /* invisible side walls so Tux cannot jump out through the glass */
+    {
+        int k;
+        for (k = -1; k <= 1; k += 2) {
+            vec3 o = v3scale(side, k * w / 2);
+            vec3 p0 = v3add(a, o), p1 = v3add(b, o), q0 = v3add(p0, v3(0, 3.5f, 0)), q1 = v3add(p1, v3(0, 3.5f, 0));
+            col_add_tri(p0, p1, q1, SF_NOCAM, 0); col_add_tri(p0, q1, q0, SF_NOCAM, 0);
+            col_add_tri(p0, q1, p1, SF_NOCAM, 0); col_add_tri(p0, q0, q1, SF_NOCAM, 0);
+        }
+    }
+}
+
+static void build_city(void)
+{
+    Obj *o;
+    int k;
+    lv.name = "UPTIME HEIGHTS";
+    lv.music = MUS_CITY;
+    lv.course = CRS_CITY;
+    lv.tall_world = 1;
+    lv.zfar = 900;
+    set_sky(0.08f, 0.1f, 0.3f, 0.95f, 0.55f, 0.42f, 160, 650);
+    lv.ambient = 0.55f; lv.diffuse = 0.55f;
+    lv.death_y = 25;
+    lv.stars_sky = 1;
+    lv.snow = 1;
+    g_coin_star_idx = 5;
+    lb_begin();
+    /* the street far below and the skyline all around */
+    lb_box(-420, -2, -420, 420, 0, 420, TEX_STONE, TEX_STONE, 0.25f, 0.25f, 0.3f, 0);
+    for (k = -6; k <= 6; k++) {
+        lb_box(k * 60.0f + 4, 0, -420, k * 60.0f + 12, 0.05f, 420, TEX_NONE, TEX_NONE, 0.12f, 0.12f, 0.15f, 0);
+        lb_box(-420, 0, k * 60.0f + 4, 420, 0.05f, k * 60.0f + 12, TEX_NONE, TEX_NONE, 0.12f, 0.12f, 0.15f, 0);
+    }
+    lb_uv_mul = 1.0f;
+    for (k = 0; k < 170; k++) {
+        float a = frand() * TAU_F, r = 110 + frand() * 300;
+        float x = cosf(a) * r, z = sinf(a) * r, s = 10 + frand() * 14, h = 40 + frand() * frand() * 220;
+        float sh = 0.6f + 0.35f * frand();
+        if (fmodf(fabsf(x) + 2, 60) < 18 || fmodf(fabsf(z) + 2, 60) < 18) continue;   /* keep the streets clear */
+        city_tower(x - s, z - s, x + s, z + s, h, sh * 0.85f, sh * 0.9f, sh);
+        if (frand() < 0.3f) city_tower(x - s * 0.5f, z - s * 0.5f, x + s * 0.5f, z + s * 0.5f, h + 10 + frand() * 25, sh * 0.8f, sh * 0.85f, sh);
+    }
+    /* A: the starting tower (roof 120) */
+    city_tower(-15, -15, 15, 15, 120, 0.75f, 0.8f, 0.9f);
+    /* A's parapet has openings for the girder (east), the skybridges (west, north) and the girder from E (north-west corner) */
+    city_wall_run(14.75f, -14.75f, 14.75f, 14.75f, 120, 0.45f, 0.55f);     /* east: girder */
+    city_wall_run(-14.75f, 14.75f, -14.75f, 0, 120, 0.32f, 0.6f);         /* west: skybridge to B */
+    city_wall_run(-14.75f, 0, -14.75f, -12, 120, 0, 0);
+    city_wall_run(-12, -14.75f, -2.6f, -14.75f, 120, 0, 0);               /* north: skybridge to D */
+    city_wall_run(2.6f, -14.75f, 14.75f, -14.75f, 120, 0, 0);
+    city_wall_run(14.75f, 14.75f, -14.75f, 14.75f, 120, 0, 0);
+    lb_cyl(-6, 120, 6, 4.5f, 0.06f, 20, TEX_NONE, TEX_NONE, 0.25f, 0.6f, 0.35f, 0);              /* helipad */
+    lb_box(-7, 120.06f, 4.2f, -6.5f, 120.1f, 7.8f, TEX_NONE, TEX_NONE, 1, 1, 1, 0);
+    lb_box(-5.5f, 120.06f, 4.2f, -5.0f, 120.1f, 7.8f, TEX_NONE, TEX_NONE, 1, 1, 1, 0);
+    lb_box(-6.5f, 120.06f, 5.8f, -5.5f, 120.1f, 6.2f, TEX_NONE, TEX_NONE, 1, 1, 1, 0);
+    lb_box(6, 120, 5, 11, 122.2f, 10, TEX_METAL, TEX_METAL, 0.7f, 0.72f, 0.75f, 0);              /* air conditioners */
+    lb_box(6, 120, -10, 10, 121.6f, -6, TEX_METAL, TEX_METAL, 0.7f, 0.72f, 0.75f, 0);
+    for (k = 0; k < 4; k++) lb_cyl(-11 + (k & 1) * 3.0f, 120, -11 + (k / 2) * 3.0f, 0.25f, 3.0f, 6, TEX_METAL, TEX_METAL, 0.4f, 0.35f, 0.3f, 0);
+    lb_cyl(-9.5f, 123, -9.5f, 2.5f, 3.5f, 14, TEX_WOOD, TEX_WOOD, 0.55f, 0.4f, 0.3f, 0);          /* water tank */
+    lb_cone(-9.5f, 126.5f, -9.5f, 2.8f, 1.2f, 14, TEX_ROOF, 0.4f, 0.3f, 0.25f, 1);
+    obj_spawn(OT_REDCOIN, v3(-9.5f, 120.6f, -9.5f), 0, 0);   /* under the water tank */
+    obj_spawn(OT_REDCOIN, v3(8.5f, 122.8f, 7.5f), 0, 0);    /* on the air conditioner */
+    /* star 2: the windy girder east to the small tower F (roof 118) */
+    city_tower(54, -6, 66, 6, 118, 0.7f, 0.7f, 0.78f);
+    city_parapet(54, -6, 66, 6, 118, 1, -1.5f, 1.5f);
+    city_girder(v3(15, 120, 0), v3(33, 119.2f, 0), 2.0f);
+    lb_box(32, 116.9f, -2, 36, 119.2f, 2, TEX_METAL, TEX_METAL, 0.6f, 0.3f, 0.2f, 0);   /* junction */
+    city_girder(v3(36, 119.2f, 0), v3(54, 118, 0), 2.0f);
+    obj_spawn(OT_REDCOIN, v3(34, 119.8f, 0), 0, 0);
+    obj_spawn(OT_STAR, v3(60, 118.8f, 0), 0, 2);
+    coin_line(v3(18, 120.6f, 0), v3(30, 119.8f, 0), 4, 0);
+    coin_line(v3(38, 119.6f, 0), v3(51, 118.7f, 0), 4, 0);
+    /* B: the stepped tower to the west (terrace 128, top 175), reached through a skybridge */
+    city_tower(-78, -5, -48, 25, 128, 0.65f, 0.75f, 0.85f);
+    city_parapet(-78, -5, -48, 25, 128, 2, 4, 12);
+    city_tower(-78, -5, -60, 13, 175, 0.7f, 0.78f, 0.88f);
+    city_parapet(-78, -5, -60, 13, 175, 0, 0, 0);
+    lb_box(-74, 175, -3, -68, 176.3f, 3, TEX_METAL, TEX_METAL, 0.55f, 0.58f, 0.62f, 0);   /* machine room: a step up to the crane's jib */    city_skybridge(v3(-15, 120, 8), v3(-48, 128, 8), 4.0f);
+    obj_spawn(OT_REDCOIN, v3(-31.5f, 128.4f, 8), 0, 0);   /* on the skybridge roof */
+    coin_line(v3(-19, 121.5f, 8), v3(-44, 127.5f, 8), 6, 0);
+    /* the window washer's gondola climbs B's east face to the top */
+    o = obj_spawn(OT_PLATFORM, v3(-57.8f, 128.3f, 4), 0, 0);
+    if (o) { obj_set_box(o, 1.6f, 0.3f, 2.6f, TEX_METAL, TEX_METAL, 0.85f, 0.85f, 0.3f); o->f[1] = 47.2f; o->f[3] = 12; }
+    lb_cyl(-58.6f, 175, 1.2f, 0.12f, 3, 6, TEX_METAL, TEX_METAL, 0.5f, 0.5f, 0.5f, 0);
+    lb_cyl(-58.6f, 175, 6.8f, 0.12f, 3, 6, TEX_METAL, TEX_METAL, 0.5f, 0.5f, 0.5f, 0);
+    lb_box(-59.5f, 177.6f, 0.8f, -55.6f, 178, 7.2f, TEX_METAL, TEX_METAL, 0.5f, 0.5f, 0.5f, 0);
+    obj_spawn(OT_REDCOIN, v3(-76, 175.8f, 10), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(-57.5f, 178.6f, 4), 0, 0);   /* on the gondola's beam */
+    coin_ring(v3(-69, 175.6f, 4), 5, 8, 0);
+    coin_line(v3(-76, 175.6f, 10), v3(-64, 175.6f, 10), 4, 0);
+    /* star 1: the tower crane on the unfinished tower C; its jib swings over B's roof */
+    {
+        float cx = -66, cz = -30, top = 160;
+        for (k = 0; k < 4; k++) {   /* the bare steel frame of the unfinished tower */
+            float px = cx + ((k & 1) ? 9 : -9), pz = cz + ((k & 2) ? 9 : -9);
+            lb_box(px - 0.6f, -2, pz - 0.6f, px + 0.6f, top, pz + 0.6f, TEX_METAL, TEX_METAL, 0.65f, 0.35f, 0.2f, 0);
+        }
+        for (k = 0; k < 16; k++) {
+            float y = 20 + k * 9;
+            lb_box(cx - 9, y, cz - 9.4f, cx + 9, y + 0.6f, cz - 8.6f, TEX_METAL, TEX_METAL, 0.65f, 0.35f, 0.2f, 0);
+            lb_box(cx - 9, y, cz + 8.6f, cx + 9, y + 0.6f, cz + 9.4f, TEX_METAL, TEX_METAL, 0.65f, 0.35f, 0.2f, 0);
+            lb_box(cx - 9.4f, y, cz - 9, cx - 8.6f, y + 0.6f, cz + 9, TEX_METAL, TEX_METAL, 0.65f, 0.35f, 0.2f, 0);
+            lb_box(cx + 8.6f, y, cz - 9, cx + 9.4f, y + 0.6f, cz + 9, TEX_METAL, TEX_METAL, 0.65f, 0.35f, 0.2f, 0);
+        }
+        lb_box(cx - 9.5f, top, cz - 9.5f, cx + 9.5f, top + 0.8f, cz + 9.5f, TEX_PLANK, TEX_METAL, 0.75f, 0.65f, 0.5f, 0);
+        /* the crane mast and the operator's cab */
+        lb_box(cx - 1.2f, top + 0.8f, cz - 1.2f, cx + 1.2f, 176, cz + 1.2f, TEX_METAL, TEX_METAL, 0.95f, 0.8f, 0.15f, 0);
+        lb_box(cx - 1.6f, 178.2f, cz - 1.6f, cx + 1.6f, 180.6f, cz + 1.6f, TEX_METAL, TEX_METAL, 0.95f, 0.8f, 0.15f, 0);
+        lb_box(cx - 0.4f, 180.6f, cz - 0.4f, cx + 0.4f, 190, cz + 0.4f, TEX_METAL, TEX_METAL, 0.95f, 0.8f, 0.15f, 0);
+        o = obj_spawn(OT_ROTPLAT, v3(cx, 177.2f, cz), 0, 0);
+        if (o) { obj_set_box(o, 0.9f, 0.5f, 36.0f, TEX_METAL, TEX_METAL, 0.95f, 0.8f, 0.15f); o->f[3] = 0.22f; o->flags |= OF_NOCULL; }
+        obj_spawn(OT_STAR, v3(cx, 181.2f, cz), 0, 1);
+    }
+    /* D: the spire tower (roof 230) with an express elevator and an antenna mast */
+    city_tower(-12, -87, 12, -63, 230, 0.6f, 0.68f, 0.85f);
+    city_tower(-8, -83, 8, -67, 234, 0.62f, 0.7f, 0.88f);
+    city_parapet(-12, -87, 12, -63, 230, 4, -3, 3);
+    city_skybridge(v3(0, 120, -15), v3(0, 120, -58), 5.0f);
+    lb_stairs(-2.5f, -63.2f, 2.5f, -67.2f, 230, 234, 1, 8, TEX_STONE, 0.6f, 0.65f, 0.75f);
+    /* the glass shaft of the express elevator */
+    lb_alpha_mode = 1;
+    lb_quad(TEX_NONE, v3(-3, 120, -57.6f), v3(3, 120, -57.6f), v3(3, 232, -57.6f), v3(-3, 232, -57.6f), 0.6f, 0.85f, 1.0f, 0, 0);
+    lb_quad(TEX_NONE, v3(3, 120, -57.6f), v3(3, 120, -63), v3(3, 232, -63), v3(3, 232, -57.6f), 0.6f, 0.85f, 1.0f, 0, 0);
+    lb_quad(TEX_NONE, v3(-3, 120, -63), v3(-3, 120, -57.6f), v3(-3, 232, -57.6f), v3(-3, 232, -63), 0.6f, 0.85f, 1.0f, 0, 0);
+    lb_alpha_mode = 0;    o = obj_spawn(OT_ELEVATOR, v3(0, 119.75f, -60.5f), 0, 0);
+    if (o) { obj_set_box(o, 2.6f, 0.25f, 2.6f, TEX_METAL, TEX_METAL, 0.9f, 0.9f, 0.95f); o->f[0] = 110.0f; o->f[1] = 15.0f; o->home = o->pos; o->flags |= OF_NOCULL; }
+    o = obj_spawn(OT_POLE, v3(0, 234, -75), 0, 0);
+    if (o) { o->height = 34; o->radius = 0.45f; }
+    lb_cyl(0, 234, -75, 0.4f, 34, 8, TEX_METAL, TEX_METAL, 0.85f, 0.85f, 0.9f, 0);
+    obj_spawn(OT_STAR, v3(0, 265.5f, -75), 0, 0);   /* at the top of the mast: grab it while climbing */
+    obj_spawn(OT_REDCOIN, v3(9, 231, -84), 0, 0);
+    coin_line(v3(0, 121, -20), v3(0, 121, -54), 6, 0);
+    /* star 3: skydive from D's roof through the rings into the rooftop pool on tower E */
+    city_tower(-48, -50, -28, -30, 44, 0.7f, 0.65f, 0.6f);
+    lb_box(-48, 44, -50, -28, 50, -47, TEX_TILE, TEX_TILE, 0.95f, 0.95f, 0.97f, 0);
+    lb_box(-48, 44, -33, -28, 50, -30, TEX_TILE, TEX_TILE, 0.95f, 0.95f, 0.97f, 0);
+    lb_box(-48, 44, -47, -45, 50, -33, TEX_TILE, TEX_TILE, 0.95f, 0.95f, 0.97f, 0);
+    lb_box(-31, 44, -47, -28, 50, -33, TEX_TILE, TEX_TILE, 0.95f, 0.95f, 0.97f, 0);
+    lb_box(-45, 44, -47, -31, 47, -33, TEX_TILE, TEX_TILE, 0.4f, 0.75f, 0.95f, 0);
+    lb_water(-45, -47, -31, -33, 49.6f, 44);
+    obj_spawn(OT_REDCOIN, v3(-38, 47.8f, -40), 0, 0);
+    {
+        static const float rings[6][3] = { { -18, 205, -76 }, { -22, 180, -70 }, { -26, 152, -63 }, { -30, 124, -56 }, { -34, 96, -48 }, { -37, 70, -42 } };
+        for (k = 0; k < 6; k++) {
+            o = obj_spawn(OT_RING, v3(rings[k][0], rings[k][1], rings[k][2]), 0, k);
+            if (o) { o->param2 = 3; o->f[0] = 4.5f; o->f[1] = -38; o->f[2] = 46.5f; o->f[3] = -40; o->flags |= OF_NOCULL; }
+            coin_line(v3(rings[k][0], rings[k][1] + 7, rings[k][2] - 2), v3(rings[k][0], rings[k][1] + 3, rings[k][2] - 1), 2, 0);
+        }
+    }
+    /* the way back up from the pool: an elevator and a girder to A */
+    o = obj_spawn(OT_ELEVATOR, v3(-29.5f, 49.75f, -28.5f), 0, 0);
+    if (o) { obj_set_box(o, 1.5f, 0.25f, 1.5f, TEX_METAL, TEX_METAL, 0.9f, 0.9f, 0.95f); o->f[0] = 70.25f; o->f[1] = 12.0f; o->home = o->pos; o->flags |= OF_NOCULL; }
+    city_girder(v3(-29.5f, 120, -27), v3(-14.6f, 120, -14.6f), 1.6f);
+    /* fish */
+    coin_ring(v3(-6, 120.6f, 6), 6.0f, 10, 0);
+    coin_line(v3(-12, 120.6f, 12), v3(12, 120.6f, 12), 6, 0);
+    coin_line(v3(-12, 120.6f, -2), v3(-12, 120.6f, -12), 4, 0);
+    coin_line(v3(-74, 128.6f, 20), v3(-52, 128.6f, 20), 6, 0);
+    coin_ring(v3(0, 230.6f, -75), 7.0f, 10, 0);
+    coin_line(v3(-9, 230.6f, -66), v3(9, 230.6f, -66), 5, 0);
+    for (k = 0; k < 6; k++) obj_spawn(OT_COIN, v3(0, 238 + k * 5, -74.2f), 0, 0);
+    coin_line(v3(-27, 120.8f, -25.5f), v3(-17, 120.8f, -16.5f), 4, 0);
+    coin_ring(v3(-38, 50.6f, -40), 9.0f, 10, 0);
+    coin_line(v3(57, 118.6f, -4), v3(63, 118.6f, 4), 4, 0);
+    finish_geometry();
+
+    lv.spawn[0] = v3(0, 120, 10); lv.spawn_yaw[0] = PI_F;
+    obj_spawn(OT_STARMARKER, v3(0, 124, 0), 0, 4);
+    sign(3, 12, 122, PI_F, "UPTIME HEIGHTS - ROOFTOP NOTICE\nGusts sweep the girder to the east: crouch (Z)\n"
+                           "when the wind blows! The window washer's lift\nclimbs the west tower. An express elevator\n"
+                           "waits at the end of the north skybridge.");
+    sign(-4, -57, 232, 0, "SKYDIVE CLUB: Run off the west edge and fall\nthrough all six rings into the pool on the\n"
+                          "roof far below. Steer while you fall!");
+}
+
+/* ================================================================
+ * CORE DUMP CAVERNS - a giant shaft down to a lake of magma, all about depth
+ * ================================================================ */
+#define CAVE_R 40.0f
+#define CAVE_BOTTOM -290.0f
+
+static float cave_wall_r(float a, float y)
+{
+    float n = 0.5f + 0.5f * sinf(a * 7 + y * 0.13f) * cosf(a * 3 - y * 0.07f);
+    return CAVE_R + 0.4f + n * 2.6f;
+}
+
+/* place a box in the cave's polar frame: centre at angle a, radius r, height y; half sizes along the
+ * tangent (ht), up (hy) and the radius (hr) */
+static void cave_box(float a, float r, float y, float ht, float hy, float hr, int tt, int ts, float cr, float cg, float cb)
+{
+    lb_obox(cave_polar(a, r, y), v3(ht, hy, hr), a, 0, tt, ts, cr, cg, cb, 0);
+}
+
+static float cave_ground(float x, float z)
+{
+    float d = sqrtf(x * x + z * z);
+    float h = 0.2f * sinf(x * 0.1f) * sinf(z * 0.13f);
+    if (d < CAVE_R + 1) return -40;   /* the hole itself (the surface mesh is cut away there) */
+    if (d < 48) h = lerpf(-0.3f, h, (d - 41) / 7);
+    h += maxf(0, d - 80) * 0.6f;
+    return h;
+}
+
+static void build_cave(void)
+{
+    Obj *o;
+    int i, k;
+    const float turn = CAVE_WALK_TURNS * TAU_F;
+    lv.name = "CORE DUMP CAVERNS";
+    lv.music = MUS_CAVE;
+    lv.course = CRS_CAVE;
+    lv.tall_world = 2;
+    lv.zfar = 600;
+    set_sky(0.55f, 0.7f, 0.95f, 0.75f, 0.85f, 0.95f, 80, 320);
+    lv.ambient = 0.6f; lv.diffuse = 0.5f;
+    lv.death_y = -320;
+    g_coin_star_idx = 5;
+    lb_begin();
+    /* the snowy surface around the opening (a ring of quads, the middle left open) */
+    for (k = 0; k < 48; k++) {
+        float a0 = TAU_F * k / 48, a1 = TAU_F * (k + 1) / 48;
+        static const float rr[6] = { CAVE_R + 0.4f, 44, 50, 62, 80, 110 };
+        for (i = 0; i < 5; i++) {
+            vec3 p00 = cave_polar(a0, rr[i], 0), p01 = cave_polar(a1, rr[i], 0), p10 = cave_polar(a0, rr[i + 1], 0), p11 = cave_polar(a1, rr[i + 1], 0);
+            int tex = i < 1 ? TEX_ROCK : TEX_SNOW;
+            if (i == 0) { p00.x = sinf(a0) * cave_wall_r(a0, 0); p00.z = cosf(a0) * cave_wall_r(a0, 0); p01.x = sinf(a1) * cave_wall_r(a1, 0); p01.z = cosf(a1) * cave_wall_r(a1, 0); }
+            p00.y = i ? cave_ground(p00.x, p00.z) : 0; p01.y = i ? cave_ground(p01.x, p01.z) : 0;
+            p10.y = cave_ground(p10.x, p10.z); p11.y = cave_ground(p11.x, p11.z);
+            lb_quad(tex, p00, p10, p11, p01, i ? 1 : 0.7f, i ? 1 : 0.68f, i ? 1 : 0.66f, 0, 1);
+        }
+    }
+    /* the shaft wall, facing inward */
+    for (k = 0; k < 48; k++)
+        for (i = 0; i < 50; i++) {
+            float a0 = TAU_F * k / 48, a1 = TAU_F * (k + 1) / 48, y0 = -6.0f * i, y1 = -6.0f * (i + 1);
+            vec3 p00 = cave_polar(a0, cave_wall_r(a0, y0), y0), p01 = cave_polar(a1, cave_wall_r(a1, y0), y0);
+            vec3 p10 = cave_polar(a0, cave_wall_r(a0, y1), y1), p11 = cave_polar(a1, cave_wall_r(a1, y1), y1);
+            float depth = clampf(-y0 / 290, 0, 1), sh = 0.85f + 0.15f * sinf(k * 1.7f + i * 0.9f);
+            float cr = lerpf(0.75f, 0.7f, depth) * sh, cg = lerpf(0.75f, 0.42f, depth) * sh, cb = lerpf(0.8f, 0.35f, depth) * sh;
+            if (y0 > -40) { cr = 0.8f * sh; cg = 0.88f * sh; cb = 0.95f * sh; }   /* frost near the opening */
+            lb_quad(y0 > -40 ? TEX_ICE : TEX_ROCK, p00, p01, p11, p10, cr, cg, cb, 0, 1);
+        }
+    /* the spiral ledge: two turns down to the bottom, with a low rim on the open side */
+    for (k = 0; k < 160; k++) {
+        float a0 = turn * k / 160, a1 = turn * (k + 1) / 160, y0 = cave_walk_y(a0), y1 = cave_walk_y(a1);
+        float ri = 33.0f, ro = CAVE_R + 0.6f;
+        vec3 i0 = cave_polar(a0, ri, y0), i1 = cave_polar(a1, ri, y1), o0 = cave_polar(a0, ro, y0), o1 = cave_polar(a1, ro, y1);
+        vec3 i0b = v3add(i0, v3(0, -1.6f, 0)), i1b = v3add(i1, v3(0, -1.6f, 0)), o0b = v3add(o0, v3(0, -1.6f, 0)), o1b = v3add(o1, v3(0, -1.6f, 0));
+        float sh = (k & 1) ? 0.92f : 1.0f, depth = clampf(-y0 / 290, 0, 1);
+        int gap = k == 37 || k == 38 || k == 101 || k == 102;   /* two places where the ledge has crumbled away */
+        if (gap) continue;
+        lb_quad(TEX_STONE, i0, o0, o1, i1, 0.72f * sh, lerpf(0.7f, 0.5f, depth) * sh, lerpf(0.68f, 0.45f, depth) * sh, 0, 1);
+        lb_quad(TEX_ROCK, i0b, i1b, o1b, o0b, 0.4f, 0.38f, 0.36f, 0, 1);
+        lb_quad(TEX_ROCK, i0, i1, i1b, i0b, 0.55f, 0.5f, 0.48f, 0, 1);
+        if (k % 4 != 3) {   /* a low stone rim, broken here and there */
+            vec3 r0 = cave_polar(a0, ri + 0.3f, y0), r1 = cave_polar(a1, ri + 0.3f, y1);
+            lb_quad(TEX_ROCK, r0, r1, v3add(r1, v3(0, 0.5f, 0)), v3add(r0, v3(0, 0.5f, 0)), 0.5f, 0.48f, 0.45f, 0, 1);
+            lb_quad(TEX_ROCK, r1, r0, v3add(r0, v3(0, 0.5f, 0)), v3add(r1, v3(0, 0.5f, 0)), 0.5f, 0.48f, 0.45f, 0, 1);
+        }
+    }
+    /* the bottom: a rocky rim around a lake of magma, stepping stones and a pillar in the middle */
+    for (k = 0; k < 48; k++) {
+        float a0 = TAU_F * k / 48, a1 = TAU_F * (k + 1) / 48;
+        lb_quad(TEX_ROCK, cave_polar(a0, 30, CAVE_BOTTOM), cave_polar(a0, CAVE_R + 3, CAVE_BOTTOM), cave_polar(a1, CAVE_R + 3, CAVE_BOTTOM), cave_polar(a1, 30, CAVE_BOTTOM), 0.4f, 0.3f, 0.28f, 0, 1);
+        lb_quad(TEX_ROCK, cave_polar(a0, 30, CAVE_BOTTOM - 3), cave_polar(a0, 30, CAVE_BOTTOM), cave_polar(a1, 30, CAVE_BOTTOM), cave_polar(a1, 30, CAVE_BOTTOM - 3), 0.4f, 0.3f, 0.28f, 0, 1);
+        lb_tri(TEX_LAVA, v3(0, CAVE_BOTTOM - 2.5f, 0), cave_polar(a0, 30.5f, CAVE_BOTTOM - 2.5f), cave_polar(a1, 30.5f, CAVE_BOTTOM - 2.5f), 1, 1, 1, SF_BURN, 1);
+    }
+    {
+        static const float stones[5][2] = { { 0.3f, 26 }, { 0.55f, 21.5f }, { 0.8f, 17 }, { 1.1f, 13 }, { 1.45f, 9.5f } };
+        for (k = 0; k < 5; k++) lb_cyl(sinf(stones[k][0]) * stones[k][1], CAVE_BOTTOM - 3, cosf(stones[k][0]) * stones[k][1], 2.2f, 3.4f, 10, TEX_ROCK, TEX_ROCK, 0.45f, 0.35f, 0.3f, 0);
+        lb_cyl(sinf(1.9f) * 6, CAVE_BOTTOM - 3, cosf(1.9f) * 6, 2.6f, 5.0f, 12, TEX_ROCK, TEX_ROCK, 0.5f, 0.38f, 0.32f, 0);
+        obj_spawn(OT_STAR, v3(sinf(1.9f) * 6, CAVE_BOTTOM + 2.6f, cosf(1.9f) * 6), 0, 0);
+    }
+    /* the central spire of rock rising out of the magma, with two rope bridges to it */
+    lb_cyl(0, CAVE_BOTTOM - 3, 0, 3.0f, 196, 14, TEX_ROCK, TEX_ROCK, 0.5f, 0.45f, 0.42f, 0);
+    lb_cyl(0, -100.8f, 0, 5.5f, 0.8f, 16, TEX_STONE, TEX_ROCK, 0.6f, 0.55f, 0.5f, 0);
+    lb_cyl(0, -200.8f, 0, 5.5f, 0.8f, 16, TEX_STONE, TEX_ROCK, 0.6f, 0.55f, 0.5f, 0);
+    for (k = 0; k < 2; k++) {
+        float y = k ? -200 : -100, a = (-y) / 290.0f * turn;
+        vec3 p0 = cave_polar(a, 33.2f, y), p1 = cave_polar(a, 5.3f, y), d = v3sub(p1, p0), side;
+        float len = v3len(d);
+        int n = (int)(len / 1.1f);
+        d = v3scale(d, 1.0f / len);
+        side = v3(d.z, 0, -d.x);
+        for (i = 0; i < n; i++) {   /* planks with little gaps, sagging in the middle */
+            float t = (i + 0.5f) / n, sag = sinf(t * PI_F) * 1.2f;
+            vec3 c = v3add(v3lerp(p0, p1, t), v3(0, -sag - 0.1f, 0));
+            lb_obox(c, v3(1.2f, 0.1f, 0.45f), atan2f(d.x, d.z), 0, TEX_PLANK, TEX_WOOD, 0.75f, 0.55f, 0.35f, 0);
+        }
+        obj_spawn(OT_REDCOIN, v3add(v3lerp(p0, p1, 0.5f), v3(0, -0.6f, 0)), 0, 0);
+        coin_line(v3add(v3lerp(p0, p1, 0.2f), v3(0, 0.1f, 0)), v3add(v3lerp(p0, p1, 0.8f), v3(0, 0.1f, 0)), 4, 0);
+        (void)side;
+    }
+    obj_spawn(OT_REDCOIN, v3(0, -96.4f, 0), 0, 0);
+    /* the waterfall pouring down the wall into the dark */
+    lb_alpha_mode = 1;
+    {
+        float a = 2.2f, w = 0.06f;
+        for (i = 0; i < 40; i++) {
+            float y0 = -30 - i * 6.5f, y1 = y0 - 6.5f;
+            vec3 p0 = cave_polar(a - w, 39.2f, y0), p1 = cave_polar(a + w, 39.2f, y0), p2 = cave_polar(a + w, 39.2f, y1), p3 = cave_polar(a - w, 39.2f, y1);
+            lb_quad(TEX_WATER, p0, p1, p2, p3, 0.75f, 0.9f, 1.0f, 0, 0);
+            lb_quad(TEX_WATER, p1, p0, p3, p2, 0.75f, 0.9f, 1.0f, 0, 0);
+        }
+    }
+    lb_alpha_mode = 0;
+    /* star 2: the mushroom chimney, hanging in the shaft beside the ledge deep down (below the mine track) */
+    {
+        float a = 11.0f, y = cave_walk_y(11.0f);
+        cave_box(a, 26, y - 0.5f, 4.5f, 0.5f, 7.0f, TEX_STONE, TEX_ROCK, 0.6f, 0.55f, 0.5f);          /* floor, from the ledge inward */
+        cave_box(a, 22.0f, y + 21, 4.5f, 21, 0.5f, TEX_ROCK, TEX_ROCK, 0.5f, 0.45f, 0.42f);          /* inner wall */
+        cave_box(a, 30.5f, y + 23, 4.5f, 19, 0.5f, TEX_ROCK, TEX_ROCK, 0.5f, 0.45f, 0.42f);          /* outer wall, door below */
+        lb_obox(v3add(cave_polar(a, 26.25f, y + 21), v3scale(v3(cosf(a), 0, -sinf(a)), 4.5f)), v3(0.5f, 21, 4.75f), a, 0, TEX_ROCK, TEX_ROCK, 0.5f, 0.45f, 0.42f, 0);
+        lb_obox(v3add(cave_polar(a, 26.25f, y + 21), v3scale(v3(cosf(a), 0, -sinf(a)), -4.5f)), v3(0.5f, 21, 4.75f), a, 0, TEX_ROCK, TEX_ROCK, 0.5f, 0.45f, 0.42f, 0);
+        o = obj_spawn(OT_MUSHROOM, cave_polar(a, 27.4f, y), 0, 0);   /* under the outer shelves, clear of the first one */
+        for (k = 1; k <= 5; k++) {
+            float r = (k & 1) ? 25.0f : 27.4f, sy = y + k * 7;
+            cave_box(a, r + ((k & 1) ? -0.6f : 0.6f), sy - 0.4f, 3.8f, 0.4f, 1.8f, TEX_STONE, TEX_ROCK, 0.6f, 0.55f, 0.5f);
+            if (k < 5) obj_spawn(OT_MUSHROOM, cave_polar(a, r, sy), 0, 0);
+        }
+        obj_spawn(OT_STAR, cave_polar(a, 25.0f, y + 35.5f), 0, 2);
+        obj_spawn(OT_REDCOIN, cave_polar(a, 26, y + 18), 0, 0);
+        (void)o;
+    }
+    /* star 1: the mine cart track (its own steeper spiral) with a station at each end */
+    for (k = 0; k < 300; k++) {
+        vec3 a = cave_track_point(k / 300.0f), b = cave_track_point((k + 1) / 300.0f), d = v3sub(b, a);
+        float len = v3len(d), yaw = atan2f(d.x, d.z), pitch = asinf(d.y / len);
+        vec3 side = v3(cosf(yaw), 0, -sinf(yaw)), c = v3lerp(a, b, 0.5f);
+        lb_obox(v3add(c, v3(0, -0.15f, 0)), v3(1.1f, 0.08f, 0.18f), yaw, 0, TEX_WOOD, TEX_WOOD, 0.45f, 0.32f, 0.2f, 0);
+        lb_obox(v3add(c, v3scale(side, 0.62f)), v3(0.06f, 0.06f, len / 2 + 0.02f), yaw, pitch, TEX_METAL, TEX_METAL, 0.6f, 0.6f, 0.62f, 0);
+        lb_obox(v3add(c, v3scale(side, -0.62f)), v3(0.06f, 0.06f, len / 2 + 0.02f), yaw, pitch, TEX_METAL, TEX_METAL, 0.6f, 0.6f, 0.62f, 0);
+        if (k % 12 == 0 && k > 6 && k < 294) lb_box(c.x - 0.15f, c.y - 9, c.z - 0.15f, c.x + 0.15f, c.y - 0.2f, c.z + 0.15f, TEX_WOOD, TEX_WOOD, 0.4f, 0.3f, 0.2f, 0);
+        if (k % 10 == 5) obj_spawn(OT_COIN, v3add(c, v3(0, 1.0f, 0)), 0, 0);
+    }
+    cave_box(0.15f, 30, -4.6f, 3.0f, 0.5f, 7, TEX_PLANK, TEX_WOOD, 0.75f, 0.55f, 0.35f);                    /* top station */
+    cave_box(CAVE_TRACK_ANGLE - 0.15f, 30.5f, -200.6f, 4.5f, 0.5f, 10, TEX_PLANK, TEX_WOOD, 0.75f, 0.55f, 0.35f);   /* bottom station */
+    o = obj_spawn(OT_MINECART, cave_track_point(0), 0, 0);
+    obj_spawn(OT_STAR, cave_polar(CAVE_TRACK_ANGLE - 0.1f, 33, -198.6f), 0, 1);
+    /* star 3: five dark crystals on the ledge; punch them or stand on them to light them up */
+    {
+        static const float ca[5] = { 1.2f, 3.4f, 5.6f, 8.6f, 11.2f };
+        for (k = 0; k < 5; k++) {
+            o = obj_spawn(OT_CAVECRYSTAL, cave_polar(ca[k], 38.3f, cave_walk_y(ca[k])), ca[k], k);
+            if (o) o->yaw = ca[k];
+        }
+    }
+    /* falling stalactites above the ledge, each under a rock overhang */
+    {
+        static const float sa[7] = { 0.8f, 2.6f, 4.4f, 6.0f, 7.2f, 9.4f, 10.6f };
+        for (k = 0; k < 7; k++) {
+            float y = cave_walk_y(sa[k]);
+            cave_box(sa[k], 38.5f, y + 12.5f, 2.5f, 0.8f, 2.6f, TEX_ROCK, TEX_ROCK, 0.5f, 0.45f, 0.42f);
+            o = obj_spawn(OT_STALACTITE, cave_polar(sa[k], 36.6f, y + 11.7f), 0, k);
+            if (o) o->home = o->pos;
+        }
+    }
+    /* fish along the ledge, and red fish */
+    for (k = 0; k < 64; k++) {
+        float a = turn * (k + 0.5f) / 64;
+        if (fabsf(a - 37.5f * turn / 160) < 0.15f || fabsf(a - 101.5f * turn / 160) < 0.15f) continue;
+        obj_spawn(OT_COIN, cave_polar(a, 36.5f, cave_walk_y(a) + 0.5f), 0, 0);
+    }
+    obj_spawn(OT_REDCOIN, cave_polar(2.2f, 38.8f, cave_walk_y(2.2f) + 0.6f), 0, 0);   /* behind the waterfall */
+    obj_spawn(OT_REDCOIN, cave_polar(38.0f * turn / 160, 36.5f, cave_walk_y(38.0f * turn / 160) + 1.0f), 0, 0);   /* over a gap */
+    obj_spawn(OT_REDCOIN, cave_polar(102.0f * turn / 160, 36.5f, cave_walk_y(102.0f * turn / 160) + 1.0f), 0, 0);
+    obj_spawn(OT_REDCOIN, v3(sinf(1.1f) * 13, CAVE_BOTTOM + 1.2f, cosf(1.1f) * 13), 0, 0);
+    obj_spawn(OT_STARMARKER, v3(0, -93, 0), 0, 4);
+    /* a little miners' hut and a warning sign at the surface */
+    lb_box(-18, -0.2f, 52, -10, 4, 58, TEX_WOOD, TEX_WOOD, 0.6f, 0.45f, 0.3f, 0);
+    lb_ramp(-18.5f, 51.5f, -9.5f, 55, 4, 5.5f, 1, 0.2f, TEX_ROOF, TEX_ROOF, 0.85f, 0.9f, 1.0f, 0);
+    lb_ramp(-18.5f, 55, -9.5f, 58.5f, 5.5f, 4, 1, 0.2f, TEX_ROOF, TEX_ROOF, 0.85f, 0.9f, 1.0f, 0);
+    finish_geometry();
+
+    lv.spawn[0] = v3(-6, 0, 54); lv.spawn_yaw[0] = PI_F;
+    coin_ring(v3(0, 0.6f, 0), 52, 12, 1);
+    sign(sinf(0.32f) * 34, cosf(0.32f) * 34, -2, 0.32f + PI_F / 2, "MINE CART: Hop in for a ride down to the old\nstation at 200 m. Keep your flippers inside!");
+    sign(-3, 46, 2, PI_F, "CORE DUMP CAVERNS - 290 m DEEP\nThe ledge spirals down to the magma at the\n"
+                          "bottom. Mind the loose rock overhead and the\ngaps where the ledge has crumbled away.");
+    tree(30, 60, 3, 1); tree(-34, 58, 3, 1); tree(55, 10, 3, 1); tree(-58, -20, 3, 1); tree(20, -62, 3, 1);
+}
+
 void build_level(int level)
 {
     switch (level) {
@@ -2752,6 +3216,8 @@ void build_level(int level)
     case LV_SPACE: build_space(); break;
     case LV_NANO: build_nano(); break;
     case LV_HUGE: build_huge(); break;
+    case LV_CITY: build_city(); break;
+    case LV_CAVE: build_cave(); break;
     }
 }
 

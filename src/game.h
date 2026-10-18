@@ -27,9 +27,11 @@ void input_update(void);
 void input_clear(void);
 
 /* ---------------- levels ---------------- */
-enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_NANO, LV_HUGE, LV_COUNT };
-enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_NANO, CRS_HUGE, CRS_COUNT };
-#define SAVE_COURSES 16   /* room in the save file for future courses */
+enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_NANO, LV_HUGE, LV_CITY, LV_CAVE, LV_COUNT };
+enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_NANO, CRS_HUGE, CRS_CITY, CRS_CAVE, CRS_COUNT };
+#define SAVE_COURSES 24   /* room in the save file for future courses */
+#define MAX_SPAWNS 24
+#define MAX_LABELS 24
 #define MAX_STARS 7
 
 typedef struct { float x0, z0, x1, z1, ybot, y; int warm; } WaterBox;
@@ -45,14 +47,16 @@ typedef struct {
     GLuint dl, dl_alpha;
     WaterBox water[8];
     int nwater;
-    vec3 spawn[16];
-    float spawn_yaw[16];
-    struct { vec3 p; const char *text; int course; } label[16];   /* floating window titles */
+    vec3 spawn[MAX_SPAWNS];
+    float spawn_yaw[MAX_SPAWNS];
+    struct { vec3 p; const char *text; int course; } label[MAX_LABELS];   /* floating window titles */
     int nlabels;
     int snow, clouds, stars_sky, dark;   /* snow: 0 none, 1 light snowfall, 2 blizzard */
     int aurora;                          /* northern lights in the sky */
     int space;                           /* outer space: stars all around, nebulae, no ground */
     int scale_world;                     /* 1 = NANO VILLAGE (Tux is a giant), 2 = HUGEPAGE HOUSE (Tux is tiny) */
+    int tall_world;                      /* 1 = UPTIME HEIGHTS (skyscrapers), 2 = CORE DUMP CAVERNS (deep shaft) */
+    float zfar;                          /* far clip plane (0 = default) */
     float wind_yaw;
 } Level;
 extern Level lv;
@@ -82,6 +86,7 @@ enum {
     OT_SPACERING, OT_COMET, OT_METEOR, OT_ASTEROID,
     OT_NANOFOLK, OT_NANOSHIP, OT_NANOCLOUD, OT_NANOFIRE, OT_NANOSOLDIER, OT_NANOCATAPULT, OT_NANOSHOT, OT_NANOTRAIN,
     OT_TOASTER, OT_GIANTCAT, OT_YARN, OT_GIANTFOOT,
+    OT_MINECART, OT_STALACTITE, OT_MUSHROOM, OT_CAVECRYSTAL,
     OT_FX_SPARKLE, OT_FX_SMOKE, OT_FX_EXPLODE, OT_FX_BUBBLE, OT_FX_SNOWPUFF, OT_FX_SHOCKWAVE,
     OT_COUNT
 };
@@ -361,7 +366,21 @@ void scale_update(void);
 void scale_obj_update(Obj *o);
 void scale_obj_draw(Obj *o);
 void scale_draw_alpha(void);
-int  scale_obj_solid(Obj *o);     /* adds the dynamic collision of a scale-world object; 1 if handled */
+int  scale_obj_solid(Obj *o);
+/* UPTIME HEIGHTS and CORE DUMP CAVERNS: vertical.c */
+#define CAVE_WALK_TURNS 2
+#define CAVE_TRACK_ANGLE (3 * PI_F + 0.6f)
+extern int g_crystals_left;
+extern int g_ring_next;     /* objects.c: next ring to pass */
+float cave_walk_y(float a);
+vec3 cave_polar(float a, float r, float y);
+vec3 cave_track_point(float u);
+void vert_reset(void);
+void vert_update(void);
+void vert_obj_update(Obj *o);
+void vert_obj_draw(Obj *o);
+void vert_draw_alpha(void);
+void vert_hud(void);     /* adds the dynamic collision of a scale-world object; 1 if handled */
 extern vec3 g_wind;          /* blizzard wind velocity (u/s), zero when calm */
 extern float g_gust;         /* 0..1 gust strength */
 extern const char *g_hud_msg;

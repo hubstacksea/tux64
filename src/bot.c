@@ -517,6 +517,26 @@ void bot_update(void)
         }
         break;
     }
+    case 'y': {   /* CORE DUMP CAVERNS: bounce up the mushroom chimney, shelf by shelf (max N frames) */
+        static int k;   /* the shelf of the last bounce */
+        float base = cave_walk_y(11.0f);
+        int nk;
+        if (t == 1 || pl.vel.y > 22) k = (int)floorf((pl.pos.y - base + 1.0f) / 7.0f);
+        nk = k + 1 > 5 ? 5 : k + 1;
+        float r = (nk & 1) ? 25.0f : 27.4f, cr = (k & 1) ? 25.0f : 27.4f;
+        vec3 next = cave_polar(11.0f, r, base + nk * 7), cur = cave_polar(11.0f, cr, base + k * 7);
+        if (pl.vel.y > 2 || pl.pos.y > next.y + 0.5f) stick_to(next.x, next.z, 1.0f);
+        else stick_to(cur.x, cur.z, 0.6f);
+        if (t >= (int)a[0]) done();
+        break;
+    }
+    case 'I': {   /* UPTIME HEIGHTS skydive: steer toward the next ring for up to N frames */
+        int i;
+        for (i = 0; i < nobj; i++)
+            if (objs[i].active && objs[i].type == OT_RING && objs[i].param == g_ring_next) { stick_to(objs[i].pos.x, objs[i].pos.z, 1.0f); break; }
+        if (t >= (int)a[0] || (t > 30 && !player_in_air())) done();
+        break;
+    }
     case 'U': {   /* STARDUST ORBIT: ring run autopilot */
         Obj *r = space_ring(g_ring_run_t > 0 ? g_ring_run_next : 0);
         static int started;

@@ -155,11 +155,13 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | STARDUST ORBIT（スターダスト オービット） | 2階 バルコニー 北の壁 西側のウィンドウ | 14 | 6 |
 | NANO VILLAGE（小人の国） | 1階 西の壁 奥のウィンドウ | 18 | 5 |
 | HUGEPAGE HOUSE（巨人の国） | 1階 東の壁 奥のウィンドウ | 20 | 6 |
+| UPTIME HEIGHTS（超高層ビル街） | 2階 バルコニー 北の壁 東端のウィンドウ | 22 | 6 |
+| CORE DUMP CAVERNS（地底の大洞窟） | 2階 バルコニー 北の壁 西端のウィンドウ | 24 | 6 |
 | SECRET ICE SLIDE | 2階 西端の隠し穴 | 0 | 2 |
 | CASTLE SECRETS | 城の庭 / ロビー | – | 2 |
 | SEGFAULT'S LAIR（最終） | 1階 バルコニー下のドア | 16 | グランドスター |
 
-全 65 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
+全 77 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
 アリーナのトゲ機雷の後ろに立って突進を誘い、直前で横に避けて機雷に激突させる（3回）。
 
 ### スター一覧
@@ -218,6 +220,21 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
   毛糸玉を B で拾ってネコの近くへ投げると、毛糸玉に夢中になってクッションを離れる）/
   Past the Giant's Slippers（廊下を歩く巨人のスリッパ。床に影が広がったあと踏みつけてきて、着地の衝撃波が床を走る（ジャンプでかわす）。
   奥のネズミの穴にスター。止まっているスリッパの上には乗れる）/ Red Fish in the Giant's Room / 100 Fish
+* **UPTIME HEIGHTS**（超高層ビル街）: 夕暮れの摩天楼の **屋上（地上120m）** から始まるステージ。足もとの下を雲の層が流れ、
+  そのさらに下の通りには車のライトの列、空には飛行船、高い塔の先では航空障害灯が点滅する。画面右に **高度計**。落ちると助からない。
+  Top of the Antenna（北の連絡通路の先の **超高速エレベーター** で地上230mの屋上へ。階段の上のアンテナのマストをよじ登る）/
+  Ride the Tower Crane（西のビルの壁を上下する **窓ふきゴンドラ** で屋上へ。建設中のビルの **タワークレーン** の回る腕に飛び乗り、運転室の上へ）/
+  Girder Walk in the Wind（東の細い鉄骨を渡る。ときどき **突風** が横から吹きつけ、笛のような音が予告。しゃがむ（Z）と耐えられる）/
+  Skydive into the Rooftop Pool（230mの屋上から飛び降り、空中の6つのリングをすべてくぐると、はるか下の屋上プールにスター）/
+  Red Fish Among the Rooftops / 100 Fish
+* **CORE DUMP CAVERNS**（地底の大洞窟）: 雪原に口を開けた **深さ290mの巨大な縦穴**。壁ぞいのらせんの道を下っていくと、
+  深くなるほど空の光が届かなくなって暗くなり（霧と環境光が深さで変化）、闇の中に壁の水晶の光が浮かび、底のマグマの赤い光と火の粉が見える。
+  画面右に **深度計**。壁を流れ落ちる地下の滝、縦穴の中央にそそり立つ岩の柱とそこへ渡るつり橋、道が崩れたすき間、
+  上を通ると震えて落ちてくる **つらら** がある。
+  Bottom of the Abyss（底のマグマの湖を飛び石で渡り、中央の岩の上へ）/
+  Mine Cart Plunge（地表の駅のトロッコに乗ると、急ならせんの線路を一気に下って深さ200mの駅へ。線路ぞいの魚も取れる）/
+  Bounce Up the Mushroom Chimney（光るキノコを踏むと大きく跳ねる。縦穴に下がる煙突の中を棚のキノコで跳ね上がる）/
+  Light the Five Crystals（道ぞいの暗い水晶5つをパンチで光らせる）/ Red Fish of the Deep / 100 Fish
 * **SECRET ICE SLIDE**: ゴール到達 / 21 秒以内
 * **CASTLE SECRETS**: ロケットパックで城の屋根へ / ロビーのペンギンの贈り物（スター8個以上で話しかける）
 
@@ -232,6 +249,8 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 * .deb / .rpm でインストールした Linux 版（実行ファイルの場所に書き込めない場合）:
   `$XDG_DATA_HOME/tux64/`（通常は `~/.local/share/tux64/`）
 
+セーブ形式は 24 コース分の枠を持ちます。以前のバージョン（16 コース・8 コースの形式）のセーブは読み込み時に自動で引き継がれます。
+
 ---
 
 ## コマンドラインオプション
@@ -245,7 +264,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 開発・テスト用:
 
 ```
---level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT 14=NANO VILLAGE 15=HUGEPAGE HOUSE)
+--level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT 14=NANO VILLAGE 15=HUGEPAGE HOUSE 16=UPTIME HEIGHTS 17=CORE DUMP CAVERNS)
 --state N             0=タイトル 1=ファイル選択 2=スター選択 4=ゲームオーバー 5=エンディング
 --shot FRAME FILE.bmp 指定フレームでスクリーンショットを保存して終了
 --quit FRAME          指定フレームで終了
@@ -277,6 +296,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | `src/levels.c` | 各ステージのデザイン |
 | `src/sky.c` | FROSTCLOUD SKYWAY のループ状コース・パラループ・制限時間 |
 | `src/space.c` | STARDUST ORBIT のリング・彗星・隕石・小惑星・追尾カメラ・宇宙の背景 |
+| `src/vertical.c` | UPTIME HEIGHTS（突風・雲の層・車のライト・飛行船・高度計）と CORE DUMP CAVERNS（トロッコ・つらら・キノコ・水晶・深さで変わる暗さ・深度計） |
 | `src/scale.c` | NANO VILLAGE（小人・艦隊・雨雲と山火事・小人の軍隊・汽車・巨人の足音）と HUGEPAGE HOUSE（トースター・巨大ネコ・毛糸玉・巨人のスリッパ・時計・窓の光） |
 | `src/game.c` | 画面遷移・HUD・メニュー・会話ウィンドウ・セーブ・ワープ |
 | `src/lang.c` / `src/lang.h` | 言語選択と翻訳（`tr()`）、設定ファイル |

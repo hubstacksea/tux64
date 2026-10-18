@@ -67,6 +67,10 @@ const CourseInfo courses[CRS_COUNT] = {
                            "Red Fish of the Tiny Kingdom", "100 Fish of the Village" }, LV_NANO },
     { "HUGEPAGE HOUSE", 6, { "Atop the Giant's Table", "Toaster Launch to the Top Shelf", "Distract the Giant Cat",
                              "Past the Giant's Slippers", "Red Fish in the Giant's Room", "100 Fish of the House" }, LV_HUGE },
+    { "UPTIME HEIGHTS", 6, { "Top of the Antenna", "Ride the Tower Crane", "Girder Walk in the Wind",
+                             "Skydive into the Rooftop Pool", "Red Fish Among the Rooftops", "100 Fish of the Heights" }, LV_CITY },
+    { "CORE DUMP CAVERNS", 6, { "Bottom of the Abyss", "Mine Cart Plunge", "Bounce Up the Mushroom Chimney",
+                                "Light the Five Crystals", "Red Fish of the Deep", "100 Fish of the Caverns" }, LV_CAVE },
 };
 
 /* ======================================================================
@@ -172,8 +176,9 @@ void input_update(void)
 /* ======================================================================
  * save
  * ====================================================================== */
-#define SAVE_MAGIC 0x54555838u
-#define SAVE_MAGIC_V7 0x54555837u   /* previous format: 8 courses */
+#define SAVE_MAGIC 0x54555839u
+#define SAVE_MAGIC_V8 0x54555838u   /* previous format: 16 courses */
+#define SAVE_MAGIC_V7 0x54555837u   /* older format: 8 courses */
 #define save_name plat_user_file("tux64.sav")
 
 typedef struct {
@@ -184,6 +189,14 @@ typedef struct {
     unsigned char lives;
 } SaveSlotV7;
 
+typedef struct {
+    unsigned char exists;
+    unsigned char stars[16];
+    unsigned short coin_hi[16];
+    unsigned flags;
+    unsigned char lives;
+} SaveSlotV8;
+
 void save_load(void)
 {
     FILE *f = fopen(save_name, "rb");
@@ -193,6 +206,16 @@ void save_load(void)
     if (fread(&magic, 4, 1, f) == 1) {
         if (magic == SAVE_MAGIC) {
             if (fread(save, sizeof save, 1, f) != 1) memset(save, 0, sizeof save);
+        } else if (magic == SAVE_MAGIC_V8) {
+            SaveSlotV8 old[3];
+            int i, c;
+            if (fread(old, sizeof old, 1, f) == 1)
+                for (i = 0; i < 3; i++) {
+                    save[i].exists = old[i].exists;
+                    for (c = 0; c < 16; c++) { save[i].stars[c] = old[i].stars[c]; save[i].coin_hi[c] = old[i].coin_hi[c]; }
+                    save[i].flags = old[i].flags;
+                    save[i].lives = old[i].lives;
+                }
         } else if (magic == SAVE_MAGIC_V7) {
             SaveSlotV7 old[3];
             int i, c;
@@ -375,7 +398,7 @@ void level_load(int level, int spawn)
     rng_state = 0x1234567u + (unsigned)level * 77u;
     cur_level = level;
     build_level(level);
-    if (spawn < 0 || spawn >= 16) spawn = 0;
+    if (spawn < 0 || spawn >= MAX_SPAWNS) spawn = 0;
     sp = lv.spawn[spawn];
     sy = lv.spawn_yaw[spawn];
     if (!keep_coins) { pl.coins = 0; }
@@ -403,12 +426,19 @@ void level_load(int level, int spawn)
                     "Fly through the rings, chase the comet and ram\nthe ice meteors at full boost to smash them!");
     }
     if (lv.scale_world) scale_reset();
+    if (lv.tall_world) vert_reset();
     if (level == LV_NANO)
         dialog_open("NANO VILLAGE\nWhoa... everything here is TINY! To the little\npenguins of this kingdom, Tux is a giant.\n"
                     "Watch your step, help them out, and look:\nthe clouds only reach up to your knees!");
     if (level == LV_HUGE)
         dialog_open("HUGEPAGE HOUSE\nWhoa... everything here is HUGE! Tux is no\nbigger than a cup in this giant's house.\n"
                     "Climb the furniture, ride the toaster and\ndon't wake the cat sleeping on the rug!");
+    if (level == LV_CITY)
+        dialog_open("UPTIME HEIGHTS\nThe rooftops of a city of skyscrapers, 120 m\nabove the street - the clouds float below you!\n"
+                    "Walk the girders, ride the lifts and the crane,\nand don't look down... too often.");
+    if (level == LV_CAVE)
+        dialog_open("CORE DUMP CAVERNS\nA giant shaft drills 290 m down into the\nearth, all the way to a lake of magma.\n"
+                    "The deeper you go, the darker it gets. Follow\nthe ledge down, or take the mine cart!");
     if (level == LV_SEA) {
         sfx(SFX_1UP);
         dialog_open("You got the DASH BOOTS!\nThey make you run so fast that you skim over\nthe water... and they won't come off on this sea!\n"
@@ -658,6 +688,7 @@ static void play_update(void)
     sky_update();
     space_update();
     scale_update();
+    vert_update();
     objs_update();
     objs_collision();
     player_update();
@@ -968,7 +999,7 @@ static void render_world(void)
     float fog[3];
     float wy;
     int underwater;
-    gfx_begin_3d(cam.fov > 1 ? cam.fov : 55.0f, 0.3f, lv.space ? 1000.0f : 400.0f);
+    gfx_begin_3d(cam.fov > 1 ? cam.fov : 55.0f, 0.3f, lv.zfar > 0 ? lv.zfar : (lv.space ? 1000.0f : 400.0f));
     wy = water_level_at(cam.pos.x, cam.pos.z, cam.pos.y);
     underwater = wy > -1e8f && cam.pos.y < wy;
     memcpy(fog, lv.fog, sizeof fog);
@@ -1009,6 +1040,7 @@ static void render_world(void)
     sky_draw_alpha();
     space_draw_alpha();
     scale_draw_alpha();
+    vert_draw_alpha();
     if (lv.snow) draw_snow();
     glDisable(GL_FOG);
     if (underwater) {
@@ -1140,6 +1172,7 @@ static void draw_hud(void)
         gfx_rect(32, 442, 200 * pl.sky_dash, 12, 0.4f, 0.85f + 0.15f * sinf(g_frame * 0.2f), 1.0f, 1);
         gfx_text_shadow(240, 438, 2, tr("DASH"), 0.7f, 0.95f, 1, 1);
     }
+    vert_hud();
     /* STARDUST ORBIT: speed, ring run, meteors and a marker on the next ring */
     if (lv.space && pl.act == ACT_SPACEFLY) {
         float x = 24, y = 420, k = clampf(pl.sp_speed / 78.0f, 0, 1);

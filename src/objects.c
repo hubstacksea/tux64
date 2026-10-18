@@ -122,6 +122,10 @@ Obj *obj_spawn(int type, vec3 pos, float yaw, int param)
     case OT_GIANTCAT: o->radius = 3.0f; o->height = 4.0f; o->flags = OF_SOLID | OF_SHADOW | OF_NOCULL; break;
     case OT_YARN: o->radius = 0.9f; o->height = 1.8f; o->flags = OF_GRABBABLE | OF_SHADOW; break;
     case OT_GIANTFOOT: o->radius = 4.0f; o->height = 3.0f; o->flags = OF_SOLID | OF_NOCULL; break;
+    case OT_MINECART: o->radius = 1.0f; o->height = 1.2f; o->flags = OF_NOCULL; break;
+    case OT_STALACTITE: o->radius = 0.7f; o->height = 2.4f; break;
+    case OT_MUSHROOM: o->radius = 1.6f; o->height = 1.3f; break;
+    case OT_CAVECRYSTAL: o->radius = 0.8f; o->height = 2.8f; o->flags = OF_SHADOW; break;
     case OT_GATE: if (param >= 0 && param < 32) { gate_idx[param] = (int)(o - objs); if (param + 1 > g_gate_n) g_gate_n = param + 1; }
         o->radius = 0; o->height = 6; o->f[0] = 7.0f; break;
     case OT_ICECHUNK: o->radius = 1.35f; o->height = 1.6f; break;
@@ -1003,10 +1007,11 @@ static void upd_elevator(Obj *o)
 {
     int on = pl.platform == obj_index(o) && !player_in_air();
     float top = o->home.y + o->f[0];
-    if (on) { o->timer = 0; o->pos.y = approachf(o->pos.y, top, 3.5f * DT); }
+    float spd = o->f[1] > 0 ? o->f[1] : 3.5f;   /* f[1]: express elevators */
+    if (on) { o->timer = 0; o->pos.y = approachf(o->pos.y, top, spd * DT); }
     else {
         o->timer++;
-        if (o->timer > 90) o->pos.y = approachf(o->pos.y, o->home.y, 3.0f * DT);
+        if (o->timer > 90) o->pos.y = approachf(o->pos.y, o->home.y, spd * 0.85f * DT);
     }
 }
 
@@ -1250,13 +1255,16 @@ static void upd_ring(Obj *o)
 {
     o->yaw += 0.5f * DT;
     if (o->state == 1) { o->scale += 3 * DT; if (o->scale > 2) obj_kill(o); return; }
-    if (v3dist(v3add(pl.pos, v3(0, 0.8f, 0)), o->pos) < 1.6f) {
+    /* f[0] > 0: a big horizontal ring of that size (UPTIME HEIGHTS skydive), passed from above */
+    if (o->f[0] > 0 ? (v3distxz(pl.pos, o->pos) < o->f[0] && fabsf(pl.pos.y + 0.8f - o->pos.y) < 1.5f)
+                    : v3dist(v3add(pl.pos, v3(0, 0.8f, 0)), o->pos) < 1.6f) {
         if (o->param == g_ring_next) {
             g_ring_next++;
             o->state = 1;
             sfx_ex(SFX_REDCOIN, 1.0f, 1.0f + g_ring_next * 0.12f);
             if (g_ring_next >= ring_total) {
-                star_spawn(o->pos, o->param2, 1, pl.pos);
+                /* skydive rings carry the place where their star appears in f[1..3] */
+                star_spawn(o->f[0] > 0 ? v3(o->f[1], o->f[2], o->f[3]) : o->pos, o->param2, 1, pl.pos);
                 hud_message("All rings cleared!", 120);
             }
         }
@@ -2289,6 +2297,7 @@ void objs_update(void)
         case OT_NANOFOLK: case OT_NANOSHIP: case OT_NANOCLOUD: case OT_NANOFIRE: case OT_NANOSOLDIER:
         case OT_NANOCATAPULT: case OT_NANOSHOT: case OT_NANOTRAIN:
         case OT_TOASTER: case OT_GIANTCAT: case OT_YARN: case OT_GIANTFOOT: scale_obj_update(o); break;
+        case OT_MINECART: case OT_STALACTITE: case OT_MUSHROOM: case OT_CAVECRYSTAL: vert_obj_update(o); break;
         case OT_ICECHUNK: upd_icechunk(o); break;
         case OT_WHALE: upd_whale(o); break;
         case OT_BOOSTPAD: upd_boostpad(o); break;
@@ -2612,6 +2621,7 @@ static void draw_obj(Obj *o)
         glPushMatrix();
         glTranslatef(o->pos.x, o->pos.y, o->pos.z);
         glRotatef(DEG(o->yaw), 0, 1, 0);
+        if (o->f[0] > 0) { glRotatef(90, 1, 0, 0); glScalef(o->f[0] / 1.4f, o->f[0] / 1.4f, o->f[0] / 1.4f); }
         glScalef(o->scale, o->scale, o->scale);
         if (o->param == g_ring_next) glColor3f(1, 1, 1);
         glCallList(mdl[MDL_RING]);
@@ -2651,6 +2661,7 @@ static void draw_obj(Obj *o)
     case OT_SPACERING: case OT_COMET: case OT_METEOR: case OT_ASTEROID: space_obj_draw(o); break;
     case OT_NANOFOLK: case OT_NANOSHIP: case OT_NANOSOLDIER: case OT_NANOCATAPULT: case OT_NANOSHOT: case OT_NANOTRAIN:
     case OT_TOASTER: case OT_GIANTCAT: case OT_YARN: case OT_GIANTFOOT: scale_obj_draw(o); break;
+    case OT_MINECART: case OT_STALACTITE: case OT_MUSHROOM: case OT_CAVECRYSTAL: vert_obj_draw(o); break;
     case OT_ICECHUNK: if (o->state != 90) draw_model_at(mdl[MDL_ICECHUNK], o->pos, o->yaw, o->scale); break;
     case OT_WHALE: {
         float sw = sinf(o->t * 1.6f);

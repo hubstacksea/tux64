@@ -650,6 +650,14 @@ static void gen_textures(void)
                     else put(w, x, y, k * 0.7f, k * 0.9f, k * 1.7f, 1);
                     break;
                 }
+                case TEX_OFFICE: {   /* 4 x 4 windows: concrete mullions, lit offices and dark glass */
+                    int px = x % 16, py = y % 16, cx = x / 16, cy = y / 16;
+                    float lit = hash2(cx, cy, 21), v = (float)py / 16;
+                    if (px < 2 || py < 3) put(w, x, y, 0.42f + 0.05f * n, 0.42f + 0.05f * n, 0.48f + 0.05f * n, 1);
+                    else if (lit > 0.55f) put(w, x, y, 1.0f, 0.82f - 0.15f * hash2(cx, cy, 22), 0.45f + 0.2f * v, 1);
+                    else put(w, x, y, 0.12f + 0.15f * v, 0.16f + 0.18f * v, 0.3f + 0.2f * v, 1);
+                    break;
+                }
                 case TEX_CYDATA: {   /* columns of glowing bits */
                     int col = x / 4;
                     float on = hash2(col, y / 3, 12) > 0.55f ? 1.0f : 0.0f;
@@ -676,7 +684,7 @@ static void gen_textures(void)
                 }
             }
         /* course pictures */
-        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL14) {
+        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL16) {
             mip = 1;
             for (y = 0; y < w; y++)
                 for (x = 0; x < w; x++) {
@@ -695,6 +703,8 @@ static void gen_textures(void)
                     case TEX_PORTAL10: put(w, x, y, 0.04f + 0.1f * v, 0.06f + 0.2f * v, 0.2f + 0.3f * v, 1); break;
                     case TEX_PORTAL13: put(w, x, y, 0.45f + 0.35f * v, 0.7f + 0.2f * v, 1.0f, 1); break;
                     case TEX_PORTAL14: put(w, x, y, 0.85f - 0.2f * v, 0.75f - 0.2f * v, 0.55f - 0.15f * v, 1); break;
+                    case TEX_PORTAL15: put(w, x, y, 0.1f + 0.8f * v, 0.12f + 0.4f * v, 0.35f + 0.05f * v, 1); break;
+                    case TEX_PORTAL16: put(w, x, y, 0.02f + 0.05f * v * v, 0.02f, 0.03f, 1); break;
                     default: put(w, x, y, 0.02f, 0.05f + 0.15f * v, 0.15f + 0.3f * v, 1); break;
                     }
                 }
@@ -894,6 +904,33 @@ static void gen_textures(void)
                 pic_circle(w, 22, 53, 1.4f, 1, 1, 1);
                 pic_rect(w, 20, 54, 24, 55, 1.0f, 0.6f, 0.1f);
             }
+            if (t == TEX_PORTAL15) {   /* skyscrapers at dusk, a cloud layer below and Tux on a rooftop */
+                int i, j;
+                static const int tw[6][3] = { { 2, 10, 30 }, { 13, 9, 12 }, { 24, 12, 4 }, { 38, 9, 18 }, { 49, 13, 8 }, { 54, 8, 26 } };
+                for (i = 0; i < 6; i++) {
+                    pic_rect(w, tw[i][0], tw[i][2], tw[i][0] + tw[i][1], 64, 0.15f, 0.17f, 0.3f);
+                    for (j = tw[i][2] + 2; j < 64; j += 3)
+                        pic_rect(w, tw[i][0] + 1 + (j % 2), j, tw[i][0] + 3 + (j % 2), j + 1, 1.0f, 0.85f, 0.45f);
+                }
+                pic_rect(w, 29, 0, 30, 4, 0.6f, 0.6f, 0.65f);
+                for (i = 0; i < 8; i++) pic_circle(w, 4 + i * 8, 50 + (i & 1) * 2, 5, 1.0f, 0.85f, 0.8f);
+                pic_circle(w, 30, 1, 1, 1, 0.2f, 0.1f);
+                pic_circle(w, 30, 7, 2.2f, 0.1f, 0.1f, 0.12f);   /* Tux on top of the tallest tower */
+                pic_circle(w, 30, 8, 1.3f, 1, 1, 1);
+            }
+            if (t == TEX_PORTAL16) {   /* a shaft into the dark: a spiral ledge, crystals and magma far below */
+                int i;
+                pic_circle(w, 32, 6, 14, 0.75f, 0.85f, 0.95f);
+                for (i = 0; i < 60; i++) {
+                    float a = i * 0.32f, r = 22 - i * 0.12f, y = 8 + i * 0.85f;
+                    pic_rect(w, (int)(32 + cosf(a) * r), (int)y, (int)(32 + cosf(a) * r) + 3, (int)y + 1, 0.45f, 0.4f, 0.38f);
+                }
+                for (i = 0; i < 14; i++) pic_circle(w, 6 + hash2(i, 1, 41) * 52, 16 + hash2(i, 2, 41) * 36, 1.0f, 0.4f, 0.9f, 1.0f);
+                pic_rect(w, 8, 58, 56, 64, 1.0f, 0.4f, 0.05f);
+                pic_circle(w, 32, 59, 7, 1.0f, 0.7f, 0.2f);
+                pic_circle(w, 22, 18, 2.2f, 0.1f, 0.1f, 0.12f);   /* Tux peering down */
+                pic_circle(w, 22, 19, 1.3f, 1, 1, 1);
+            }
             pic_frame(w, 0.85f, 0.7f, 0.25f);
         }
         upload(t, w, w, mip, 0);
@@ -920,6 +957,7 @@ void gfx_init(void)
     g_tex_scale[TEX_SNOW] = 0.15f;
     g_tex_scale[TEX_WATER] = 0.08f;
     g_tex_scale[TEX_LAVA] = 0.08f;
+    g_tex_scale[TEX_OFFICE] = 0.0625f;   /* a window every 4 units (one floor) */
     g_tex_scale[TEX_PLANK] = 0.3f;
     gen_textures();
     glEnable(GL_DEPTH_TEST);

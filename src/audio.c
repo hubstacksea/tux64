@@ -332,6 +332,16 @@ static const SongDef songdefs[MUS_COUNT] = {
       "f4 - - - a4 - c5 - f5 - - - e5 - c5 - d5 - - - bb4 - g4 - a4 - - - c5 - - - "
       "bb4 - - - d5 - f5 - a4 - - - c5 - f5 - g4 - bb4 - c5 - e5 - f5 - - - . . . .",
       NULL, B_ROOT, D_SOFT, 1, W_TRI, 1 },
+    /* CITY: a cool, jazzy walk among the towers at dusk */
+    { 112, "Dm7 Dm7 G7 G7 Cmaj7 Cmaj7 Am7 Am7 Dm7 Dm7 G7 G7 Em7 Em7 A7 A7",
+      "a5 - f5 - c6 - a5 - b5 - - g5 f5 - d5 - e5 - g5 - b5 - - - a5 - e5 - c5 - . . "
+      "d5 - f5 - a5 - c6 - b5 - g5 - f5 - d5 - g5 - b5 - e6 - d6 - c#6 - a5 - e5 - g5 -",
+      NULL, B_WALK, D_SHUFFLE, 2, W_TRI, 1 },
+    /* CAVE: slow, echoing drips in the dark */
+    { 76, "Em Em Em Em C C B B Em Em Em Em Am Am B B",
+      "e5 - . . b4 - . . g5 - . . f#5 - e5 - c5 - . . e5 - . . d#5 - . . b4 - . . "
+      "e5 - . . g5 - . . b5 - a5 - g5 - . . a4 - . . c5 - e5 - d#5 - - - . . . .",
+      NULL, B_ROOT, D_NONE, 1, W_SINE, 1 },
 };
 
 #define MAXSTEPS 512
