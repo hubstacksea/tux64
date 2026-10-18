@@ -65,6 +65,7 @@ int main(int argc, char **argv)
     for (i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--level") && i + 1 < argc) dbg_level = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--spawn") && i + 1 < argc) dbg_spawn = atoi(argv[++i]);
+        else if (!strcmp(argv[i], "--star") && i + 1 < argc) { extern int g_selected_star; g_selected_star = atoi(argv[++i]); }
         else if (!strcmp(argv[i], "--shot") && i + 2 < argc) { shot_frame = atoi(argv[++i]); shot_name = argv[++i]; }
         else if (!strcmp(argv[i], "--quit") && i + 1 < argc) quit_frame = atoi(argv[++i]);
         else if (!strcmp(argv[i], "--script") && i + 1 < argc) input_set_script(argv[++i]);

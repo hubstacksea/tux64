@@ -328,7 +328,7 @@ JA = {
 "TIME UP!": "タイムアップ!",
 "%d FISH! (star already owned)": "%d ひき たっせい! (スターは 入手ずみ)",
 "%d FISH! A star is waiting at the finish!": "%d ひき たっせい! ゴールで スターが もらえるよ!",
-"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSTARDUST ORBIT window (balcony, north-west): 14\nNANO VILLAGE window (west, deep in the hall): 18\nHUGEPAGE HOUSE window (east, deep in the hall): 20\nUPTIME HEIGHTS window (balcony, north-east end): 22\nCORE DUMP CAVERNS window (balcony, north-west end): 24\nTTY WORLD 1-1 window (east of the entrance): 11\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
+"Stars needed:\nBITSTREAM BAY door (east): 1 star\nBLIZZARD FORTRESS door (upstairs): 4 stars\nZOMBIE PROCESS MANOR (balcony, east): 6 stars\nDAEMON DRIFTS window (by the entrance): 8\nICICLE SPIRE window (west, by the door): 5\nWHITEOUT LABYRINTH window (east, by the door): 7\nAURORA SEA RALLY window (by the entrance, west): 10\nFROSTCLOUD SKYWAY window (balcony, north): 12\nSTARDUST ORBIT window (balcony, north-west): 14\nNANO VILLAGE window (west, deep in the hall): 18\nHUGEPAGE HOUSE window (east, deep in the hall): 20\nUPTIME HEIGHTS window (balcony, north-east end): 22\nCORE DUMP CAVERNS window (balcony, north-west end): 24\nTTY WORLD 1-1 window (east of the entrance): 11\nICE STACK CLIMBER window (west of the entrance): 13\nSEGFAULT's door (under the balcony): 16 stars\nJump into an app window to enter its world.":
     "ひつようなスター:\nビットストリーム ベイ(東のドア): 1こ\nふぶきの とりで(2階のドア): 4こ\n"
     "ゾンビプロセスの やかた(2階 東): 6こ\nデーモン ドリフト(入口よこの ウィンドウ): 8こ\n"
     "つららの塔(入口の 西の ウィンドウ): 5こ\nホワイトアウトの 迷宮(入口の 東の ウィンドウ): 7こ\n"
@@ -340,6 +340,7 @@ JA = {
     "アップタイム ハイツ(2階 北の 東はしの ウィンドウ): 22こ\n"
     "コアダンプ どうくつ(2階 北の 西はしの ウィンドウ): 24こ\n"
     "TTYワールド 1-1(入口の 東の ウィンドウ): 11こ\n"
+    "アイス スタック クライマー(入口の 西の ウィンドウ): 13こ\n"
     "セグフォルトの ドア(2階の下): 16こ\nアプリの ウィンドウに とびこむと その せかいに いけるよ。",
 # ---------------------------------------------------------------- STARDUST ORBIT
 "STARDUST ORBIT": "スターダスト オービット",
@@ -463,4 +464,24 @@ JA = {
     "ひそひそ… ブロックが ぜんぶ 見えるとは かぎらないよ。\n下から たたいて はじめて あらわれる ものも あるんだ!",
 "TOP OF THE FLAGPOLE!": "ポールの てっぺん!",
 "Flagpole bonus: %d fish": "ポール ボーナス: さかな %dひき",
+# ---------------------------------------------------------------- ICE STACK CLIMBER
+"ICE STACK CLIMBER": "アイス スタック クライマー",
+"Summit of Mountain 1": "山1の ちょうじょう",
+"Summit of Mountain 2": "山2の ちょうじょう",
+"Summit of Mountain 3": "山3の ちょうじょう",
+"Every Fish in the Bonus Stage": "ボーナスステージの さかな ぜんぶ",
+"8000 Points in One Climb": "1回の のぼりで 8000てん",
+"ICE STACK CLIMBER\nClimb the mountain floor by floor! Jump into the\nblocks above to break them, then jump through.\nYour jump can't be steered once you leave the\nground. B swings the hammer. Catch the condor\nat the top before the bonus time runs out!":
+    "アイス スタック クライマー\n1かいずつ 山を のぼろう! 上の ブロックに ジャンプで\nあたまから ぶつかって こわし、あいた あなを くぐる。\n"
+    "ジャンプは とびあがったら むきを かえられないよ。\nBで ハンマーを ふる。ちょうじょうの ボーナスタイムが\nおわる前に コンドルを つかまえろ!",
+"You fell! The bonus stage is over.": "おちてしまった! ボーナスステージ しゅうりょう。",
+"BONUS STAGE! Catch the condor at the top!": "ボーナスステージ! てっぺんの コンドルを つかまえろ!",
+"The Ice Brute is coming! Climb!": "アイス・ブルートが やってきた! いそいで のぼれ!",
+"Every fish in the bonus stage!": "ボーナスステージの さかなを ぜんぶ とった!",
+"You caught the condor! MOUNTAIN CLEAR!": "コンドルを つかまえた! 山 クリア!",
+"8000 POINTS! A Kernel Star appears!": "8000てん たっせい! カーネルスターが あらわれた!",
+"TIME UP! The condor flew away...": "タイムアップ! コンドルは とんでいってしまった…",
+"SCORE %06d": "スコア %06d",
+"BONUS  %d": "ボーナス  %d",
+"MOUNTAIN %d  FLOOR %d": "山 %d  %dかい",
 }

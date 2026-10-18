@@ -1552,7 +1552,7 @@ static void act_death(void)
         pl.vel.y = 1.0f;
         air_step();
         if (pl.pos.y > pl.water_y - 1.1f) pl.pos.y = pl.water_y - 1.1f;
-    } else if (lv.space) {
+    } else if (lv.space || lv.ice_mode) {
         pl.vel = v3(0, 0, 0);
     } else if (player_in_air() || pl.pos.y > pl.floor_y + 0.05f) {
         apply_gravity(1.0f);
@@ -1577,7 +1577,7 @@ static void act_star_dance(void)
 {
     pl.vel.x = pl.vel.z = 0;
     pl.fwd = 0;
-    if (lv.space) pl.vel = v3(0, 0, 0);
+    if (lv.space || lv.ice_mode) pl.vel = v3(0, 0, 0);
     else if (pl.pos.y > pl.floor_y + 0.05f) {
         apply_gravity(1.0f);
         if (air_step() == ASTEP_LAND) pl.vel.y = 0;
@@ -1612,6 +1612,7 @@ void player_update(void)
 {
     compute_intended();
     if (pl.invinc > 0 && pl.act != ACT_DEATH) pl.invinc--;
+    if (lv.ice_mode && pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE) return;   /* ICE STACK CLIMBER: ice.c moves Tux */
     if (pressed(BT_A)) pl.a_age = 0;
     else if (pl.a_age < 1000) pl.a_age++;
     if (pl.rocket_t > 0) {
@@ -1757,6 +1758,7 @@ void player_draw(void)
     float t = pl.anim;
     float sp = pl.fwd;
     if (!pl.visible) return;
+    if (lv.ice_mode && pl.act != ACT_DEATH && pl.act != ACT_STAR_DANCE) return;   /* drawn with his hammer by ice.c */
     if (pl.invinc > 0 && (pl.invinc / 3) % 2 == 0 && pl.act != ACT_DEATH) return;
     memset(&tp, 0, sizeof tp);
     tp.flipL_z = 0.15f;

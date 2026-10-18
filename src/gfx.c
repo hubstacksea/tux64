@@ -713,7 +713,7 @@ static void gen_textures(void)
                 }
             }
         /* course pictures */
-        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL17) {
+        if (t >= TEX_PORTAL1 && t <= TEX_PORTAL18) {
             mip = 1;
             for (y = 0; y < w; y++)
                 for (x = 0; x < w; x++) {
@@ -735,6 +735,7 @@ static void gen_textures(void)
                     case TEX_PORTAL15: put(w, x, y, 0.1f + 0.8f * v, 0.12f + 0.4f * v, 0.35f + 0.05f * v, 1); break;
                     case TEX_PORTAL16: put(w, x, y, 0.02f + 0.05f * v * v, 0.02f, 0.03f, 1); break;
                     case TEX_PORTAL17: put(w, x, y, 0.4f, 0.6f, 1.0f, 1); break;
+                    case TEX_PORTAL18: put(w, x, y, 0.15f + 0.3f * v, 0.25f + 0.35f * v, 0.6f + 0.3f * v, 1); break;
                     default: put(w, x, y, 0.02f, 0.05f + 0.15f * v, 0.15f + 0.3f * v, 1); break;
                     }
                 }
@@ -947,6 +948,22 @@ static void gen_textures(void)
                 pic_circle(w, 30, 1, 1, 1, 0.2f, 0.1f);
                 pic_circle(w, 30, 7, 2.2f, 0.1f, 0.1f, 0.12f);   /* Tux on top of the tallest tower */
                 pic_circle(w, 30, 8, 1.3f, 1, 1, 1);
+            }
+            if (t == TEX_PORTAL18) {   /* floors of blocks stacked up a mountain, a hammer-swinging Tux and the condor */
+                int i, j;
+                for (j = 0; j < 4; j++)
+                    for (i = 0; i < 16; i++) {
+                        int hole = (i == 5 + j * 3 || i == 6 + j * 3 || (j == 1 && i == 12));
+                        float r = j < 2 ? 0.72f : 0.55f, g = j < 2 ? 0.45f : 0.8f, b = j < 2 ? 0.28f : 1.0f;
+                        if (!hole) pic_rect(w, i * 4, 60 - j * 14, i * 4 + 3, 63 - j * 14, r, g, b);
+                    }
+                pic_circle(w, 40, 8, 3, 0.4f, 0.25f, 0.15f);   /* the condor */
+                pic_fill_tri(w, 34, 8, 40, 4, 46, 8, 0.4f, 0.25f, 0.15f);
+                pic_circle(w, 42, 6, 1, 1, 1, 1);
+                pic_circle(w, 22, 41, 2.4f, 0.1f, 0.1f, 0.12f);   /* Tux jumping with the hammer up */
+                pic_circle(w, 22, 42, 1.4f, 1, 1, 1);
+                pic_rect(w, 24, 34, 25, 39, 0.55f, 0.38f, 0.2f);
+                pic_rect(w, 22, 33, 27, 35, 0.75f, 0.78f, 0.82f);
             }
             if (t == TEX_PORTAL17) {   /* a side-scroller screen: ground tiles, a ? block, a pipe and Tux mid-jump */
                 int i;

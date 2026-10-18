@@ -59,6 +59,7 @@ void camera_update(void)
     if (pl.act == ACT_SKYFLY && cam.mode == CAM_FOLLOW) { sky_camera(); return; }
     if (pl.act == ACT_SPACEFLY && cam.mode == CAM_FOLLOW) { space_camera(); return; }
     if (lv.side_view && cam.mode == CAM_FOLLOW) { side_camera(); return; }
+    if (lv.ice_mode && cam.mode == CAM_FOLLOW) { ice_camera(); return; }
     cam.fov = approachf(cam.fov, 55, 30 * DT);
     if (cam.mode == CAM_FIXED) {
         cam.pos = cam.fixed_pos;

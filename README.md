@@ -158,11 +158,12 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | UPTIME HEIGHTS（超高層ビル街） | 2階 バルコニー 北の壁 東端のウィンドウ | 22 | 6 |
 | CORE DUMP CAVERNS（地底の大洞窟） | 2階 バルコニー 北の壁 西端のウィンドウ | 24 | 6 |
 | TTY WORLD 1-1（横スクロール） | 1階 南の壁 入口の東側のウィンドウ | 11 | 6 |
+| ICE STACK CLIMBER（アイスクライマー） | 1階 南の壁 入口の西側のウィンドウ | 13 | 5 |
 | SECRET ICE SLIDE | 2階 西端の隠し穴 | 0 | 2 |
 | CASTLE SECRETS | 城の庭 / ロビー | – | 2 |
 | SEGFAULT'S LAIR（最終） | 1階 バルコニー下のドア | 16 | グランドスター |
 
-全 83 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
+全 88 スター。最終ステージでラスボス **Segfault**（壊れたメモリブロックの巨人。直接攻撃は効かない）を倒すとエンディング。
 アリーナのトゲ機雷の後ろに立って突進を誘い、直前で横に避けて機雷に激突させる（3回）。
 
 ### スター一覧
@@ -244,6 +245,19 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
   大階段とゴールの **ポール**（つかむと旗と一緒にすべり降り、つかんだ高さで魚のボーナス）、小さなお城がある。落下ダメージなし。
   Reach the Goal Castle / Top of the Flagpole（大階段の頂上から助走してポールの上のほうにつかまる）/
   Secret of the Warp Pipe（地下のボーナス部屋）/ The Invisible Block（見えないブロックを下から頭突き）/ Red Fish / 100 Fish
+* **ICE STACK CLIMBER**（アイスクライマー）: ファミコン『アイスクライマー』のシステムを、この世界のキャラクターで再現したステージ。
+  山は横32マスで画面の左右がつながっていて（端から出ると反対側から出てくる）、4段ごとにブロックの階がある。
+  **ジャンプで頭（ハンマー）から上のブロックにぶつかると壊れ**、2マス以上の穴をくぐって上の階へ。ジャンプの高さは一定で、
+  **跳んだら向きも横の速さも変えられない**。B でハンマーを振る。画面は **上にしかスクロールせず**、画面の下に落ちるとミス（体力 -2、
+  見えている一番下の階からやり直し）。
+  * **アザラシ（トピー）**: 階を歩き、穴を見つけると氷のブロックを取りに行き、押してきて穴を埋める（押してくる氷はハンマーで壊せる）
+  * **鳥**: 上の階で飛んできてTuxに向かって急降下する / **つらら**: 階の下で育ち、真下に来ると落ちてくる
+  * **アイス・ブルート（サングラスの白熊）**: 同じ階に長くいると現れ、足踏みのたびに画面を1階ぶん押し上げる
+  * ベルトコンベアの床、つるつるの氷の床、左右に流れる雲（乗れる）
+  * 8階の上は40秒の **ボーナスステージ**: 足場を跳び移りながら魚を集め、てっぺんを飛ぶ **カーネルスターを抱えたコンドル** をつかまえれば山クリア
+  * 点数は原作どおり（ブロック10点、アザラシ400点、鳥800点、ボーナスの魚300点、コンドル3000点など）を画面に表示
+  スター選択で山を選ぶ: Summit of Mountain 1 / 2 / 3（それぞれの山でコンドルをつかまえる）/
+  Every Fish in the Bonus Stage（ボーナスステージの魚を全部。山1）/ 8000 Points in One Climb（1回の登山で8000点。山2）
 * **SECRET ICE SLIDE**: ゴール到達 / 21 秒以内
 * **CASTLE SECRETS**: ロケットパックで城の屋根へ / ロビーのペンギンの贈り物（スター8個以上で話しかける）
 
@@ -273,7 +287,8 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 開発・テスト用:
 
 ```
---level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT 14=NANO VILLAGE 15=HUGEPAGE HOUSE 16=UPTIME HEIGHTS 17=CORE DUMP CAVERNS 18=TTY WORLD 1-1)
+--level N [--spawn S] [--pos X Y Z YAWDEG]   指定ステージから直接開始 (0=庭 1=ロビー 2=PEAK 3=BAY 4=FORT 5=SLIDE 6=LAIR 7=DRIFTS 8=MANOR 9=SPIRE 10=LABYRINTH 11=AURORA SEA 12=SKYWAY 13=STARDUST ORBIT 14=NANO VILLAGE 15=HUGEPAGE HOUSE 16=UPTIME HEIGHTS 17=CORE DUMP CAVERNS 18=TTY WORLD 1-1 19=ICE STACK CLIMBER)
+--star N              --level と一緒に: スター選択画面で N 番目（0から）のスターを選んだことにする（ICE STACK CLIMBER の山の選択など）
 --state N             0=タイトル 1=ファイル選択 2=スター選択 4=ゲームオーバー 5=エンディング
 --shot FRAME FILE.bmp 指定フレームでスクリーンショットを保存して終了
 --quit FRAME          指定フレームで終了
@@ -305,6 +320,7 @@ Windows は UI 言語）が日本語なら日本語、それ以外なら英語�
 | `src/levels.c` | 各ステージのデザイン |
 | `src/sky.c` | FROSTCLOUD SKYWAY のループ状コース・パラループ・制限時間 |
 | `src/space.c` | STARDUST ORBIT のリング・彗星・隕石・小惑星・追尾カメラ・宇宙の背景 |
+| `src/ice.c`, `src/ice_maps.h` | ICE STACK CLIMBER のマス目の山・専用の物理（固定ジャンプ・頭突きでブロック破壊・左右ループ）・アザラシ・鳥・つらら・白熊・雲・ボーナスステージ・コンドル・得点・テスト用オートパイロット |
 | `src/side.c` | TTY WORLD 1-1 の横固定カメラ・? ブロック・レンガ・歩くてき・大砲・土管ワープ・ゴールのポール・視差背景 |
 | `src/vertical.c` | UPTIME HEIGHTS（突風・雲の層・車のライト・飛行船・高度計）と CORE DUMP CAVERNS（トロッコ・つらら・キノコ・水晶・深さで変わる暗さ・深度計） |
 | `src/scale.c` | NANO VILLAGE（小人・艦隊・雨雲と山火事・小人の軍隊・汽車・巨人の足音）と HUGEPAGE HOUSE（トースター・巨大ネコ・毛糸玉・巨人のスリッパ・時計・窓の光） |

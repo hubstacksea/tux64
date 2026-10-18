@@ -398,6 +398,8 @@ static void build_lobby(void)
         lobby_window(v3(-25, 8.2f, -40.0f), 0, 5, 3.5f, TEX_PORTAL16, 0.55f, 0.35f, 0.25f, CRS_CAVE);
         /* TTY WORLD 1-1 on the south wall, east of the entrance */
         lobby_window(v3(9, 3.3f, 10.0f), PI_F, 5, 4.0f, TEX_PORTAL17, 0.95f, 0.3f, 0.25f, CRS_SIDE);
+        /* ICE STACK CLIMBER on the south wall, west of the entrance */
+        lobby_window(v3(-9, 3.3f, 10.0f), PI_F, 5, 4.0f, TEX_PORTAL18, 0.4f, 0.6f, 1.0f, CRS_ICE);
         for (k = 0; k < 5; k++) {   /* a wall of monitors above the balcony */
             float x = -20 + k * 10;
             lb_appwindow(v3(x, 12.2f, -40.0f), 0, 3.6f, 2.4f, TEX_CYDATA, 0.15f, 0.35f, 0.6f);
@@ -425,6 +427,7 @@ static void build_lobby(void)
     lv.spawn[15] = v3(25, 6, -36.5f); lv.spawn_yaw[15] = 0;
     lv.spawn[16] = v3(-25, 6, -36.5f); lv.spawn_yaw[16] = 0;
     lv.spawn[17] = v3(9, 0, 6.5f); lv.spawn_yaw[17] = PI_F;
+    lv.spawn[18] = v3(-9, 0, 6.5f); lv.spawn_yaw[18] = PI_F;
 
     /* doors */
     o = obj_spawn(OT_DOOR, v3(0, 0, 9.8f), PI_F, 0);
@@ -468,6 +471,8 @@ static void build_lobby(void)
         if (w) w->i[1] = 24;
         w = warp_box(v3(9, 0.0f, 9.4f), 2.5f, 0.6f, 4.5f, LV_SIDE, 0, 1, 17);
         if (w) w->i[1] = 11;
+        w = warp_box(v3(-9, 0.0f, 9.4f), 2.5f, 0.6f, 4.5f, LV_ICE, 0, 1, 18);
+        if (w) w->i[1] = 13;
     }
 
     {
@@ -488,6 +493,7 @@ static void build_lobby(void)
                         "UPTIME HEIGHTS window (balcony, north-east end): 22\n"
                         "CORE DUMP CAVERNS window (balcony, north-west end): 24\n"
                         "TTY WORLD 1-1 window (east of the entrance): 11\n"
+                        "ICE STACK CLIMBER window (west of the entrance): 13\n"
                         "SEGFAULT's door (under the balcony): 16 stars\n"
                         "Jump into an app window to enter its world.");
     {
@@ -3386,6 +3392,39 @@ static void build_side(void)
     sign(170, -1.2f, 2, 0, "Psst... not every block can be seen. Some only\nshow up when you bump into them from below!");
 }
 
+/* ================================================================
+ * ICE STACK CLIMBER - the classic mountain climber (the mountain itself lives in ice.c)
+ * ================================================================ */
+static void build_ice(void)
+{
+    int k;
+    lv.name = "ICE STACK CLIMBER";
+    lv.music = MUS_ICE;
+    lv.course = CRS_ICE;
+    lv.ice_mode = 1;
+    lv.zfar = 500;
+    set_sky(0.15f, 0.3f, 0.75f, 0.6f, 0.78f, 1.0f, 200, 480);
+    lv.ambient = 0.65f; lv.diffuse = 0.55f;
+    lv.death_y = -200;
+    lv.snow = 1;
+    g_coin_star_idx = -1;
+    lb_begin();
+    /* far snowy peaks behind the mountain face */
+    for (k = -6; k <= 6; k++) {
+        float x = k * 18.0f, h = 30 + 22 * fabsf(sinf(k * 1.9f)), w = 22 + 6 * fabsf(cosf(k * 1.3f)), z = -40 - (k & 1) * 15.0f;
+        float sh = 0.75f + 0.15f * (k & 1);
+        lb_tri(TEX_NONE, v3(x - w, -10, z), v3(x + w, -10, z), v3(x, h, z), 0.45f * sh, 0.55f * sh, 0.75f * sh, 0, 0);
+        lb_tri(TEX_NONE, v3(x - w * 0.35f, h - (h + 10) * 0.35f, z + 0.1f), v3(x + w * 0.35f, h - (h + 10) * 0.35f, z + 0.1f), v3(x, h, z + 0.1f),
+               0.95f, 0.97f, 1.0f, 0, 0);
+    }
+    /* the great mountain the stack is carved into, rising behind the floors */
+    lb_tri(TEX_ROCK, v3(-60, -8, -6), v3(60, -8, -6), v3(0, 78, -6), 0.5f, 0.55f, 0.68f, 0, 0);
+    lb_tri(TEX_SNOW, v3(-16, 50, -5.9f), v3(16, 50, -5.9f), v3(0, 78, -5.9f), 1, 1, 1, 0, 0);
+    lb_box(-80, -10, -30, 80, -0.01f, 20, TEX_SNOW, TEX_SNOW, 1, 1, 1, 0);
+    finish_geometry();
+    lv.spawn[0] = v3(0, 1, 0); lv.spawn_yaw[0] = PI_F / 2;
+}
+
 void build_level(int level)
 {
     switch (level) {
@@ -3408,6 +3447,7 @@ void build_level(int level)
     case LV_CITY: build_city(); break;
     case LV_CAVE: build_cave(); break;
     case LV_SIDE: build_side(); break;
+    case LV_ICE: build_ice(); break;
     }
 }
 

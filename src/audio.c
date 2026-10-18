@@ -347,6 +347,11 @@ static const SongDef songdefs[MUS_COUNT] = {
       "c5 . e5 g5 c6 - g5 e5 a5 . c6 a5 e5 - c5 - f5 . a5 c6 f6 - c6 a5 g5 . b5 d6 g6 - . . "
       "e6 - d6 c6 g5 - e5 - a5 - c6 - e6 d6 c6 - f5 a5 c6 f5 a5 c6 - . g5 b5 d6 b5 c6 - - -",
       NULL, B_OCT, D_ROCK, 0, W_SQUARE, 1 },
+    /* ICE: a brisk, cheerful climbing march (original) */
+    { 144, "D D G G A A D D Bm Bm G G E E A A",
+      "d5 f#5 a5 d6 - a5 f#5 a5 g5 b5 d6 g6 - d6 b5 g5 a5 c#6 e6 a6 - e6 c#6 a5 f#5 - a5 - d6 - . . "
+      "b5 - f#5 - d5 - f#5 - g5 - b5 - d6 - g6 - e6 - g5 - b5 - e6 - c#6 e6 a6 e6 c#6 - a5 -",
+      NULL, B_POLKA, D_MARCH, 1, W_SQ25, 1 },
 };
 
 #define MAXSTEPS 512

@@ -517,6 +517,15 @@ void bot_update(void)
         }
         break;
     }
+    case 'l': {   /* ICE STACK CLIMBER autopilot for N frames */
+        float sx;
+        unsigned b;
+        ice_bot(&sx, &b);
+        in.sx = sx; in.sy = 0; in.mag = fabsf(sx);
+        h |= b;
+        if (t >= (int)a[0]) { printf("BOT %d: ice floor %d bonus %d score %d hp %d\n", stepno, ice_debug_floor(), ice_debug_bonus(), g_ice_score, pl.health); done(); }
+        break;
+    }
     case 'y': {   /* CORE DUMP CAVERNS: bounce up the mushroom chimney, shelf by shelf (max N frames) */
         static int k;   /* the shelf of the last bounce */
         float base = cave_walk_y(11.0f);

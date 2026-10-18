@@ -36,6 +36,7 @@ static int fade_dir;
 static int course_intro_t;
 static int last_health_t;
 static int star_select_course;
+int g_selected_star;
 static int powermeter_show;
 static int ending_t;
 static int gameover_t;
@@ -73,6 +74,8 @@ const CourseInfo courses[CRS_COUNT] = {
                                 "Light the Five Crystals", "Red Fish of the Deep", "100 Fish of the Caverns" }, LV_CAVE },
     { "TTY WORLD 1-1", 6, { "Reach the Goal Castle", "Top of the Flagpole", "Secret of the Warp Pipe",
                             "The Invisible Block", "Red Fish of TTY World", "100 Fish of TTY World" }, LV_SIDE },
+    { "ICE STACK CLIMBER", 5, { "Summit of Mountain 1", "Summit of Mountain 2", "Summit of Mountain 3",
+                                "Every Fish in the Bonus Stage", "8000 Points in One Climb" }, LV_ICE },
 };
 
 /* ======================================================================
@@ -430,6 +433,7 @@ void level_load(int level, int spawn)
     if (lv.scale_world) scale_reset();
     if (lv.tall_world) vert_reset();
     if (lv.side_view) { side_reset(); camera_update(); }
+    if (lv.ice_mode) { ice_reset(); camera_update(); }
     if (level == LV_NANO)
         dialog_open("NANO VILLAGE\nWhoa... everything here is TINY! To the little\npenguins of this kingdom, Tux is a giant.\n"
                     "Watch your step, help them out, and look:\nthe clouds only reach up to your knees!");
@@ -442,6 +446,9 @@ void level_load(int level, int spawn)
     if (level == LV_CAVE)
         dialog_open("CORE DUMP CAVERNS\nA giant shaft drills 290 m down into the\nearth, all the way to a lake of magma.\n"
                     "The deeper you go, the darker it gets. Follow\nthe ledge down, or take the mine cart!");
+    if (level == LV_ICE)
+        dialog_open("ICE STACK CLIMBER\nClimb the mountain floor by floor! Jump into the\nblocks above to break them, then jump through.\n"
+                    "Your jump can't be steered once you leave the\nground. B swings the hammer. Catch the condor\nat the top before the bonus time runs out!");
     if (level == LV_SIDE)
         dialog_open("TTY WORLD 1-1\nThe world has gone flat! Seen from the side,\nTux can only run left and right here.\n"
                     "Jump on the walkers, bump the ? blocks from\nbelow and run for the flagpole at the end!");
@@ -695,6 +702,7 @@ static void play_update(void)
     space_update();
     scale_update();
     vert_update();
+    ice_update();
     objs_update();
     objs_collision();
     player_update();
@@ -800,6 +808,7 @@ void game_update(void)
             sfx(SFX_MENU_OK);
             sfx_ex(SFX_SQUAWK, 0.8f, 1.3f);
             gstate = GS_PLAY;
+            g_selected_star = menu_sel;
             level_load(c->level, 0);
             pl.no_ctrl = 0;
         }
@@ -1025,6 +1034,8 @@ static void render_world(void)
     glCallList(lv.dl);
     objs_draw();
     glEnable(GL_LIGHTING);
+    ice_draw();
+    glEnable(GL_LIGHTING);
     player_draw();
     /* held object drawn by objs_draw; transparent stuff last */
     glEnable(GL_BLEND);
@@ -1180,6 +1191,7 @@ static void draw_hud(void)
         gfx_text_shadow(240, 438, 2, tr("DASH"), 0.7f, 0.95f, 1, 1);
     }
     vert_hud();
+    ice_hud();
     /* STARDUST ORBIT: speed, ring run, meteors and a marker on the next ring */
     if (lv.space && pl.act == ACT_SPACEFLY) {
         float x = 24, y = 420, k = clampf(pl.sp_speed / 78.0f, 0, 1);

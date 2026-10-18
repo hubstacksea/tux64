@@ -27,8 +27,8 @@ void input_update(void);
 void input_clear(void);
 
 /* ---------------- levels ---------------- */
-enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_NANO, LV_HUGE, LV_CITY, LV_CAVE, LV_SIDE, LV_COUNT };
-enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_NANO, CRS_HUGE, CRS_CITY, CRS_CAVE, CRS_SIDE, CRS_COUNT };
+enum { LV_GROUNDS, LV_LOBBY, LV_PEAK, LV_BAY, LV_FORT, LV_SLIDE, LV_LAIR, LV_DRIFTS, LV_MANOR, LV_SPIRE, LV_MAZE, LV_SEA, LV_SKY, LV_SPACE, LV_NANO, LV_HUGE, LV_CITY, LV_CAVE, LV_SIDE, LV_ICE, LV_COUNT };
+enum { CRS_PEAK, CRS_BAY, CRS_FORT, CRS_SLIDE, CRS_LAIR, CRS_SECRET, CRS_DRIFTS, CRS_MANOR, CRS_SPIRE, CRS_MAZE, CRS_SEA, CRS_SKY, CRS_SPACE, CRS_NANO, CRS_HUGE, CRS_CITY, CRS_CAVE, CRS_SIDE, CRS_ICE, CRS_COUNT };
 #define SAVE_COURSES 24   /* room in the save file for future courses */
 #define MAX_SPAWNS 24
 #define MAX_LABELS 24
@@ -58,6 +58,7 @@ typedef struct {
     int tall_world;                      /* 1 = UPTIME HEIGHTS (skyscrapers), 2 = CORE DUMP CAVERNS (deep shaft) */
     float zfar;                          /* far clip plane (0 = default) */
     int side_view;                       /* TTY WORLD 1-1: fixed side camera, Tux moves in the plane z = 0 */
+    int ice_mode;                        /* ICE STACK CLIMBER: a tile-grid mountain with its own physics (ice.c) */
     float wind_yaw;
 } Level;
 extern Level lv;
@@ -390,7 +391,18 @@ void side_camera(void);
 void side_obj_update(Obj *o);
 void side_obj_draw(Obj *o);
 int  side_obj_solid(Obj *o);
-void side_draw_sky(void);     /* adds the dynamic collision of a scale-world object; 1 if handled */
+void side_draw_sky(void);
+/* ICE STACK CLIMBER: ice.c */
+extern int g_ice_score, g_ice_mountain;
+extern int g_selected_star;     /* the star chosen on the star select screen */
+void ice_reset(void);
+void ice_update(void);
+void ice_camera(void);
+void ice_draw(void);
+void ice_hud(void);
+int  ice_debug_floor(void);
+void ice_bot(float *sx, unsigned *buttons);
+int  ice_debug_bonus(void);     /* adds the dynamic collision of a scale-world object; 1 if handled */
 extern vec3 g_wind;          /* blizzard wind velocity (u/s), zero when calm */
 extern float g_gust;         /* 0..1 gust strength */
 extern const char *g_hud_msg;
